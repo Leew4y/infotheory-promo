@@ -1,0 +1,9 @@
+[project]
+name = "infotheory-audio"
+version = "0.1.0"
+description = "Synthesized score and sound effects for the information-theory promo (music.py)"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "numpy>=2.0",
+  "scipy>=1.14",
+]

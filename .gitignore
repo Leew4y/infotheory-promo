@@ -1,0 +1,9 @@
+node_modules/
+dist/
+out/
+.cache/
+.venv/
+__pycache__/
+audio/music.wav
+audio/music.mp3
+audio/.venv/
