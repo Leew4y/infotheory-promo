@@ -1,0 +1,7 @@
+# Keep LF in the repository on every OS; git converts on checkout only if a tool needs it.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.mp3 binary
+*.wav binary
+*.mp4 binary
