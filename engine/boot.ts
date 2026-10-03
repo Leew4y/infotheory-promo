@@ -4,6 +4,8 @@
  *   __ready()          fonts loaded
  *   __frame(t, fps)    render time t with motion blur, return a JPEG data URL
  *   __duration         film length in seconds
+ *   __film             the film's id
+ *   __layout(t)        text boxes of the frame at t (for scripts/validate.ts)
  *   __gpu()            WebGL renderer string
  *   __cues()           the sound-effect cue sheet (audio/music.py reads it as cues.json)
  *   __scenes()         name/start/end of every scene (for the shot list)
@@ -15,13 +17,14 @@ import { frame } from './frame';
 import { gpuName } from './gl';
 import { SC, sceneAt } from './scene';
 import { clamp, fmtTime } from './util';
-import { TOTAL } from './film';
+import { film, TOTAL } from './film';
 
 declare global {
   interface Window {
     __ready: () => boolean;
     __frame: (t: number, fps?: number) => string;
     __duration: number;
+    __film: string;
     __gpu: () => string;
     __cues: () => { t: number; name: string; [k: string]: number | string }[];
     __scenes: () => { name: string; start: number; end: number }[];
@@ -69,6 +72,7 @@ export function boot(o: BootOptions): void {
     return cv.toDataURL('image/jpeg', 0.95);
   };
   window.__duration = TOTAL;
+  window.__film = film().id;
   // text boxes of the frame at t (no motion blur), for scripts/validate.ts
   window.__layout = (t, fps = 30) => {
     recordText(true);

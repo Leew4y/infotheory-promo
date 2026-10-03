@@ -131,7 +131,7 @@ films/<id>/      一部片子：film.ts、scenes/、score.py
 - 最小视觉校验：`text()` 等文字原语记录经当前变换后的边界框；`just validate <film>` 检查文字是否超出画面与安全区（四边各 5%）。
   检查帧集合为每个场景的 0%、25%、50%、75%、末帧；这只是抽样，不保证动画中间态。
 
-命令：`just regress <film>`（SwiftShader 渲染回归帧并与基线哈希比较）、`just validate <film>`、`just check-imports`。
+命令：`just regress [--film <id>]`（SwiftShader 渲染回归帧并与基线哈希比较）、`just validate [--film <id>]`、`just check-imports`（1a 只有 infotheory 一部片；工具会核对页面实际渲染的影片 ID）。
 产物：`out/regress/<film>/report.json`、`out/validate/<film>.json`。
 退出条件：0a 的帧集合加每秒一帧的全片抽样，与 `421b107` 的原始 RGBA 逐像素一致；导入检查通过；`validate` 无 error。
 

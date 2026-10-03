@@ -3,7 +3,7 @@
  * accumulated on the GPU -> grain and grade -> back onto the canvas -> sharp overlays from the style: chapter label,
  * page number, captions. frame(T) is a pure function of T.
  */
-import { ctx } from './draw';
+import { ctx, scaleText, textMark } from './draw';
 import { accumulate, glc, post, type Grade } from './gl';
 import { SC, sceneAt, camDrift } from './scene';
 import { film, TOTAL } from './film';
@@ -25,7 +25,8 @@ export function drawLayer(t: number, jx: number, jy: number): void {
   ctx.filter = 'none';
   ctx.fillStyle = fill;
   ctx.fillRect(0, 0, W, H);
-  const cam = sc.cam ? sc.cam(lt, sc.d) : camDrift(S.motion.drift)(lt, sc.d);
+  const cam = sc.cam ? sc.cam(lt, sc.d) : camDrift()(lt, sc.d);
+  const mark = textMark();
   ctx.save();
   ctx.translate(W / 2 + jx + (cam.x ?? 0), H / 2 + jy + (cam.y ?? 0));
   ctx.scale(cam.z, cam.z);
@@ -33,11 +34,10 @@ export function drawLayer(t: number, jx: number, jy: number): void {
   sc.draw(lt, sc.d, t);
   ctx.restore();
   const fade = 1 - win(lt, 0, sc.d, sc.fi ?? S.motion.fadeIn, sc.fo ?? S.motion.fadeOut);
+  // `fade > 0` is false for NaN (fi or fo = 0, see the plan's 1b notes): no transition then
   if (fade > 0) {
-    ctx.fillStyle = sc.fade ?? fill;
-    ctx.globalAlpha = fade;
-    ctx.fillRect(0, 0, W, H);
-    ctx.globalAlpha = 1;
+    S.transition(fade, sc.fade ?? fill);
+    scaleText(mark, 1 - fade);
   }
 }
 
