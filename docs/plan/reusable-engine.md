@@ -70,7 +70,7 @@
 1. 硬件加速的 2D canvas：结果依赖渲染顺序（乱序、多 worker 时不一致），GPU 与 SwiftShader 下都出现。关闭 2D canvas 加速后消失。
 2. GPU（D3D11）上的 WebGL 地平线着色器：偶发 3–6 个像素差 1 个色阶，与顺序无关，随机出现。SwiftShader 下未观察到。
 SwiftShader + CPU 2D canvas：79 帧 × 4 组运行全部一致。GPU WebGL + CPU 2D canvas：页面场景一致，地平线帧仍有来源 2 的偶发差异。
-据此：阶段 1 起 2D canvas 以 `willReadFrequently: true` 创建（等效于固定 CPU 光栅化，并在 1a 前用 0a 复核）；回归在 SwiftShader 上做；
+据此：阶段 1 起所有启动器都带 `--disable-accelerated-2d-canvas`（1a 实测 `willReadFrequently: true` 不等价：与基线有约 200 帧不同，且仍依赖渲染顺序，已放弃）；回归在 SwiftShader 上做；
 GPU 路径只用于生产，差异上限按来源 2 记录。
 
 **0b · 录屏素材嵌入。**
@@ -126,14 +126,21 @@ films/<id>/      一部片子：film.ts、scenes/、score.py
 
 - 依赖方向 `films → styles → engine`，由导入检查脚本强制。
 - 风格包接管：色板（语义名）、字体、纸面与背景着色器、版式网格、章节装饰、字幕位置与样式、调色参数、转场、动效。
-- 场景通过 `SceneContext` 访问风格与原语，不直接 import 引擎内部，也不直接调用 `paper()`、`glDraw(3)`。
+- 场景只通过引擎公共 API `engine/index.ts` 访问风格与原语（1a 实现为模块门面，没有单独的 `SceneContext` 类型），不直接 import 引擎内部，也不直接调用 `paper()`、`glDraw(3)`。
 - 契约：`FilmSpec`、`SceneSpec`（Zod）。
 - 最小视觉校验：`text()` 等文字原语记录经当前变换后的边界框；`just validate <film>` 检查文字是否超出画面与安全区（四边各 5%）。
   检查帧集合为每个场景的 0%、25%、50%、75%、末帧；这只是抽样，不保证动画中间态。
 
-命令：`just regress <film>`（SwiftShader 渲染回归帧并与基线哈希比较）、`just validate <film>`、`just check-imports`。
+命令：`just regress [--film <id>]`（SwiftShader 渲染回归帧并与基线哈希比较）、`just validate [--film <id>]`、`just check-imports`（1a 只有 infotheory 一部片；工具会核对页面实际渲染的影片 ID）。
 产物：`out/regress/<film>/report.json`、`out/validate/<film>.json`。
 退出条件：0a 的帧集合加每秒一帧的全片抽样，与 `421b107` 的原始 RGBA 逐像素一致；导入检查通过；`validate` 无 error。
+
+1a 实施记录（分支 `engine/1a-split`）：
+- 全部退出条件已满足：回归 231 帧逐像素一致（每一步提交后都跑过），`check-imports`、`tsc --noEmit` 通过，`validate` 0 error。
+- 安全区越界改为 warning（`--strict` 时为 error），越出画面仍是 error。原因：`validate` 在现有片中发现 7 处文字越过右侧 5% 安全区
+  （entropy、noise、capacity 的图表标签，仍在画面内），修排版会改变像素，不属于纯搬迁。2026-10-03 确认：1a 维持 warning，
+  排版在 1c 作为列明的行为变化修掉，修完后安全区恢复为 error。
+- 已知怪异行为照旧保留，留给 1b：`fi = 0` 依赖 NaN 关闭淡入；`fi > 0` 时场景首帧完全被淡入色覆盖；`sources` 起点为 `192.60000000000002`。
 
 **1b · 时间轴与音频（行为变化，单独记录）。**
 - 场景只声明时长，起点按全局契约累计解析；输出 `timeline.json`。tail 仍归 `sources`，不拆分。
@@ -153,10 +160,12 @@ films/<id>/      一部片子：film.ts、scenes/、score.py
 - 字体：OFL 字体随仓库分发；按 film 声明的字符集子集化；用 fonttools 校验实际文本（字幕、场景文字、动态数字的字符集）的字形覆盖；
   删除"15 秒后强制就绪"的逻辑，字体缺失、损坏、缺字、超时都让导出失败。
 - README 修正"预览与导出逐帧一致"的说法（预览 1 个子帧，导出 3 个）。
+- 排版（行为变化，单独提交）：在字体替换之后修正越过 5% 安全区的文字（1a 时为 entropy、noise、capacity 的 7 处图表标签；换字体后以 `validate` 实际结果为准），
+  列出改动的场景与样张；然后把 `validate` 的安全区检查恢复为 error（去掉 warning 默认）。
 
 失败用例（每个都要检查：退出码非零、限定时间内退出、无遗留子进程、旧成片保留、临时文件已删除）：
 短音频、缺音频且未加 `--noaudio`、worker 启动失败、编码器失败、中断信号、超过截止时间、同路径并发、缺字。
-退出条件：失败用例全部符合预期；Windows 与 macOS 都能预览和导出短样片；字体替换后的样张经人眼验收。
+退出条件：失败用例全部符合预期；Windows 与 macOS 都能预览和导出短样片；字体替换后的样张经人眼验收；安全区恢复为 error 后 `validate` 0 error。
 
 **风格解耦验收（1a–1c 完成后）。**
 第二套风格包（由 `nebula` 背景扩展而来，色板、字体、版式、转场均不同），用页面场景与全幅背景场景两类代表场景验证：

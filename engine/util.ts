@@ -1,13 +1,6 @@
-/** Timing grid, easing and seeded randomness. Everything here is pure: no clocks, no Math.random. */
+/** Frame size, easing and seeded randomness. Everything here is pure: no clocks, no Math.random. The timing grid is in film.ts. */
 export const W = 1920;
 export const H = 1080;
-export const BPM = 80;
-export const BEAT = 60 / BPM;
-export const BAR = BEAT * 4; // 3 s
-export const EIGHTH = BEAT / 2;
-export const NBARS = 66;
-export const TAIL = 4;
-export const TOTAL = NBARS * BAR + TAIL; // 202 s
 export const PI = Math.PI;
 export const TAU = PI * 2;
 
@@ -48,5 +41,4 @@ export function noise1(x: number, seed = 0): number {
   const b = hash1(i + 1 + seed * 1000.7);
   return (a + (b - a) * u) * 2 - 1;
 }
-export const bars = (n: number): number => n * BAR;
 export const fmtTime = (s: number): string => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;

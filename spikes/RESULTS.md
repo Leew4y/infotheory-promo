@@ -38,7 +38,9 @@
 - **已核实**：现有导出路径不是逐像素确定的。之前用 JPEG 比较（24 帧两次冷启动逐字节一致）没有发现问题，因为 JPEG 掩盖了微小差异，而且那次没有测乱序和多 worker。
 - **已核实**：来源 1 是硬件加速 2D canvas，结果依赖渲染历史（乱序、多 worker 时出现），两种 WebGL 后端下都有；关闭 2D canvas 加速后，79 帧 × 4 组 × 3 轮完全一致。
 - **已核实**：来源 2 是 GPU（D3D11）上的 WebGL 地平线着色器，偶发 ≤ 6 px、差 1 色阶，与顺序无关；SwiftShader 下未观察到。
-- **推断**：来源 1 与 Chrome 在频繁回读时切换 2D canvas 加速状态有关；在代码里用 `getContext('2d', { willReadFrequently: true })` 应能达到同样效果。需在阶段 1a 前用 0a 复核。
+- **推断**：来源 1 与 Chrome 在频繁回读时切换 2D canvas 加速状态有关。
+- **已核实（1a）**：在代码里用 `getContext('2d', { willReadFrequently: true })`（主 canvas 与纸纹 canvas 都加）**不能**替代启动参数：
+  不带参数的回归与基线有 199–214 帧不同，0a 在 GPU 与 SwiftShader 下仍有顺序相关的不一致。因此保留启动参数 `--disable-accelerated-2d-canvas`。
 - **推断**：来源 2 是 GPU 浮点运算的非确定性；没有进一步定位。
 - **已核实**：CPU 2D canvas 在这台机器上反而更快（4 组共 48 秒，现状 64 秒）。
 - 影响：README 中"任何进程数得到相同的视频"在像素级不成立（肉眼不可见的差异）。

@@ -1,9 +1,11 @@
 /**
- * Scene registry. A scene owns a window of bars on the 80 BPM grid (one bar = 3 s) and draws itself for a
+ * Scene registry. A scene owns a window of bars on the film's grid (see film.ts) and draws itself for a
  * local time `lt` onto the shared 2D canvas. Two kinds of scene: `page` (warm paper, ink, a chapter label
  * and a page number) and `plate` (the full-bleed dawn horizon, a quote). Registration order = film order.
  */
-import { BAR } from './util';
+import { BAR, film } from './film';
+import { check, SceneSpec } from './schema';
+import { style } from './style';
 import type { Grade } from './gl';
 
 export type Sub = [number, number, string, string];
@@ -36,15 +38,16 @@ export interface SceneDef {
 
 export const SC: SceneDef[] = [];
 export function scene(o: Omit<SceneDef, 't0' | 'd'>): SceneDef {
+  film();
+  check(SceneSpec, o, `scene "${o.name}"`);
   const s: SceneDef = { ...o, t0: o.start * BAR, d: o.len * BAR };
   SC.push(s);
   return s;
 }
 /** A slow push-in: the only camera move on pages. */
-export const camDrift = (amt = 0.025) => (lt: number, d: number): Cam => ({ z: 1 + (amt * lt) / d });
+export const camDrift = (amt?: number) => (lt: number, d: number): Cam => ({ z: 1 + ((amt ?? style().motion.drift) * lt) / d });
 export const sceneAt = (t: number): SceneDef => {
   let sc = SC[0];
   for (const s of SC) if (t >= s.t0) sc = s;
   return sc;
 };
-export const CHAPTERS = 8;

@@ -5,10 +5,13 @@
  * Contract under test: the source frame is chosen from the OUTPUT frame number only, never from the
  * motion-blur sub-frame time. The page records every draw so the checker can assert it.
  */
-import { scene } from '../../src/engine/scene';
-import { frame } from '../../src/engine/frame';
-import { cv, ctx } from '../../src/engine/draw';
-import { gpuName } from '../../src/engine/gl';
+import { scene } from '../../engine/scene';
+import { defineFilm } from '../../engine/film';
+import { useStyle } from '../../engine/style';
+import paperDawn from '../../styles/paper-dawn';
+import { frame } from '../../engine/frame';
+import { cv, ctx } from '../../engine/draw';
+import { gpuName } from '../../engine/gl';
 import { BAR, readBarcode } from './barcode';
 
 const q = new URLSearchParams(location.search);
@@ -47,6 +50,9 @@ function load(i: number): Promise<void> {
   }
   return p;
 }
+
+useStyle(paperDawn);
+defineFilm({ id: 'spike-0b', bpm: 80, bars: 30, tail: 0, chapters: 0 });
 
 // ---- the capture scene
 let outFrame = 0;
