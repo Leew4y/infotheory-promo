@@ -126,7 +126,7 @@ films/<id>/      一部片子：film.ts、scenes/、score.py
 
 - 依赖方向 `films → styles → engine`，由导入检查脚本强制。
 - 风格包接管：色板（语义名）、字体、纸面与背景着色器、版式网格、章节装饰、字幕位置与样式、调色参数、转场、动效。
-- 场景通过 `SceneContext` 访问风格与原语，不直接 import 引擎内部，也不直接调用 `paper()`、`glDraw(3)`。
+- 场景只通过引擎公共 API `engine/index.ts` 访问风格与原语（1a 实现为模块门面，没有单独的 `SceneContext` 类型），不直接 import 引擎内部，也不直接调用 `paper()`、`glDraw(3)`。
 - 契约：`FilmSpec`、`SceneSpec`（Zod）。
 - 最小视觉校验：`text()` 等文字原语记录经当前变换后的边界框；`just validate <film>` 检查文字是否超出画面与安全区（四边各 5%）。
   检查帧集合为每个场景的 0%、25%、50%、75%、末帧；这只是抽样，不保证动画中间态。

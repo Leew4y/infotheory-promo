@@ -11,7 +11,10 @@
  * Baseline: films/<film>/regress-baseline.json. To rebuild it from another commit:
  *   git worktree add ../base <commit> && (cd ../base && bun install && bun run build)
  *   bun scripts/regress.ts --dist ../base/dist --update
- * Exit code: 0 match (or baseline written), 1 mismatch, 2 setup error. Writes out/regress/<film>/report.json.
+ * The baseline is only comparable on the platform that recorded it (system fonts and SwiftShader can differ across
+ * OS / CPU); on another platform the run stops with exit code 2. Comparison uses the baseline's own frame list, so a
+ * moved scene boundary is reported as new frames instead of failing.
+ * Exit code: 0 match (or baseline written), 1 mismatch, 2 setup error or not comparable. Writes out/regress/<film>/report.json.
  */
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -69,6 +72,14 @@ const hashFrame = (w: W, f: number): Promise<string> =>
     return Array.from(d, (b) => b.toString(16).padStart(2, '0')).join('');
   }, f / FPS, FPS);
 
+const PLATFORM = `${process.platform} ${process.arch}`;
+const base = flag('update') ? null : existsSync(BASELINE) ? await Bun.file(BASELINE).json() : null;
+if (!flag('update') && !base) { console.error(`no baseline at ${BASELINE} (run with --update)`); process.exit(2); }
+if (base && base.platform !== PLATFORM) {
+  console.error(`baseline recorded on ${base.platform ?? 'an unknown platform'}; not comparable on ${PLATFORM}. Record a local baseline with --update (do not commit it).`);
+  process.exit(2);
+}
+
 const t0 = performance.now();
 const ws = await Promise.all(Array.from({ length: WORKERS }, launch));
 const scenes: { name: string; start: number; end: number }[] = await ws[0].page.evaluate(() => window.__scenes());
@@ -83,6 +94,8 @@ for (const s of scenes) {
   for (const f of [f0 - 1, f0, f0 + 1]) if (f >= 0 && f <= last) set.add(f);
 }
 for (let f = 0; f <= last; f += FPS) set.add(f);
+const current = new Set(set);
+if (base) for (const k of Object.keys(base.hashes)) set.add(+k);
 const frames = [...set].sort((a, b) => a - b);
 
 const hashes: Record<number, string> = {};
@@ -91,7 +104,7 @@ await Promise.all(ws.map(async (w) => { while (next < frames.length) { const f =
 await Promise.all(ws.map((w) => w.browser.close()));
 server.stop(true);
 const seconds = +((performance.now() - t0) / 1000).toFixed(1);
-const meta = { film: FILM, chrome, gpu, args: ARGS, fps: FPS, duration, frames: frames.length };
+const meta = { film: FILM, platform: PLATFORM, chrome, gpu, args: ARGS, fps: FPS, duration, frames: frames.length };
 
 if (flag('update')) {
   mkdirSync(path.dirname(BASELINE), { recursive: true });
@@ -100,19 +113,19 @@ if (flag('update')) {
   console.log(`baseline written: ${frames.length} frames, ${seconds}s -> ${BASELINE}`);
   process.exit(0);
 }
-if (!existsSync(BASELINE)) { console.error(`no baseline at ${BASELINE} (run with --update)`); process.exit(2); }
-const base = await Bun.file(BASELINE).json();
 const warnings: string[] = [];
 if (base.chrome !== chrome) warnings.push(`Chrome differs from baseline: ${base.chrome} vs ${chrome}`);
 if (base.duration !== duration) warnings.push(`duration differs: ${base.duration} vs ${duration}`);
 const mismatched = frames.filter((f) => base.hashes[f] !== undefined && base.hashes[f] !== hashes[f]);
-const missing = Object.keys(base.hashes).map(Number).filter((f) => hashes[f] === undefined);
-const extra = frames.filter((f) => base.hashes[f] === undefined);
-const pass = mismatched.length === 0 && missing.length === 0 && extra.length === 0;
+const missing = Object.keys(base.hashes).map(Number).filter((f) => hashes[f] === undefined || f > last);
+// frames in today's set but not in the baseline (e.g. a moved scene boundary): reported, not failed
+const extra = frames.filter((f) => base.hashes[f] === undefined && current.has(f));
+if (extra.length) warnings.push(`${extra.length} frame(s) not in the baseline (scene boundaries moved?): ${extra.slice(0, 12).join(' ')}`);
+const pass = mismatched.length === 0 && missing.length === 0;
 const report = { ...meta, baselineCommit: base.commit, pass, seconds, mismatched, missing, extra, warnings };
 mkdirSync(path.dirname(REPORT), { recursive: true });
 writeFileSync(REPORT, JSON.stringify(report, null, 1));
 for (const w of warnings) console.warn('warning:', w);
-console.log(`${pass ? 'PASS' : 'FAIL'} regress ${FILM}: ${frames.length} frames, ${mismatched.length} mismatched, ${missing.length} missing, ${extra.length} extra, ${seconds}s -> ${REPORT}`);
+console.log(`${pass ? 'PASS' : 'FAIL'} regress ${FILM}: ${frames.length} frames, ${mismatched.length} mismatched, ${missing.length} missing, ${extra.length} new, ${seconds}s -> ${REPORT}`);
 if (!pass && mismatched.length) console.log('first mismatches (frame/seconds):', mismatched.slice(0, 12).map((f) => `${f}/${(f / FPS).toFixed(2)}`).join(' '));
 process.exit(pass ? 0 : 1);
