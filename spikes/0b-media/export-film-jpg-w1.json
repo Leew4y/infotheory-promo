@@ -1,0 +1,56 @@
+{
+ "check": "export",
+ "page": "film",
+ "fmt": "jpg",
+ "workers": 1,
+ "from": 24,
+ "to": 42,
+ "env": {
+  "platform": "win32 x64",
+  "chrome": "Chrome/154.0.8037.93",
+  "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Laptop GPU (0x00002560) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "args": [
+   "--window-size=1920,1080",
+   "--ignore-gpu-blocklist",
+   "--mute-audio",
+   "--no-first-run",
+   "--no-default-browser-check",
+   "--disable-background-timer-throttling",
+   "--disable-renderer-backgrounding",
+   "--disable-backgrounding-occluded-windows",
+   "--disable-accelerated-2d-canvas",
+   "--use-angle=d3d11"
+  ]
+ },
+ "launchSeconds": 1.53,
+ "passes": [
+  {
+   "pass": 0,
+   "cold": true,
+   "frames": 540,
+   "wallSeconds": 115.8,
+   "fps": 4.66,
+   "firstFrameSeconds": 1.67,
+   "peakWorkingSetMiB": [
+    664
+   ],
+   "decodedFrames": 0,
+   "barcodeSequenceOk": null,
+   "badFrames": []
+  },
+  {
+   "pass": 1,
+   "cold": false,
+   "frames": 540,
+   "wallSeconds": 129,
+   "fps": 4.19,
+   "firstFrameSeconds": 0.18,
+   "peakWorkingSetMiB": [
+    821
+   ],
+   "decodedFrames": 0,
+   "barcodeSequenceOk": null,
+   "badFrames": []
+  }
+ ]
+}

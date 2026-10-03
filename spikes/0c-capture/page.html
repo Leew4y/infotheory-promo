@@ -1,0 +1,50 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>0c capture test page</title>
+<style>
+  html, body { margin: 0; height: 100%; font-family: Arial, sans-serif; background: #f4f4f4; overflow: hidden; }
+  #spinner { position: fixed; left: 40vw; top: 18vh; width: 14vw; height: 14vw; background: linear-gradient(90deg, #e53935, #1e88e5);
+    animation: spin 2s linear infinite, slide 3s ease-in-out infinite alternate; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes slide { from { left: 30vw; } to { left: 60vw; } }
+  #list { position: fixed; left: 2vw; top: 4vh; width: 24vw; height: 60vh; overflow-y: scroll; background: white; border: 1px solid #ccc; }
+  #list p { margin: 0; padding: 6px 10px; font-size: 14px; border-bottom: 1px solid #eee; }
+  #grid { position: fixed; right: 2vw; top: 4vh; width: 30vw; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1vw; }
+  #grid button { height: 8vh; font-size: 14px; }
+  #fine { position: fixed; left: 2vw; top: 68vh; font-size: 14px; color: #111; background: white; padding: 4px 8px; }
+  /* click marker: 10 blocks of 6vw x 8vh at the bottom; block 0 white ref, 1 black ref, 2..9 bits of the click index (LSB first) */
+  #marker { position: fixed; left: 0; bottom: 4vh; height: 8vh; display: flex; }
+  #marker i { width: 6vw; height: 8vh; display: block; }
+</style>
+</head>
+<body>
+<div id="list"></div>
+<div id="spinner"></div>
+<div id="grid"></div>
+<div id="fine">The quick brown fox jumps over the lazy dog 0123456789 — 14 px sample text</div>
+<div id="marker"></div>
+<script>
+  const list = document.getElementById('list');
+  for (let i = 0; i < 200; i++) list.insertAdjacentHTML('beforeend', `<p>Row ${i} — a line of 14 px text to scroll through</p>`);
+  const grid = document.getElementById('grid');
+  for (let i = 0; i < 16; i++) grid.insertAdjacentHTML('beforeend', `<button>Action ${i}</button>`);
+  const marker = document.getElementById('marker');
+  const blocks = Array.from({ length: 10 }, () => marker.appendChild(document.createElement('i')));
+  function show(n) {
+    blocks[0].style.background = '#fff';
+    blocks[1].style.background = '#000';
+    for (let k = 0; k < 8; k++) blocks[2 + k].style.background = (n >> k) & 1 ? '#fff' : '#000';
+  }
+  show(0);
+  window.__events = [];
+  let clicks = 0;
+  window.addEventListener('pointerdown', (e) => {
+    clicks++;
+    show(clicks);
+    window.__events.push({ i: clicks, t: performance.timeOrigin + e.timeStamp, x: e.clientX, y: e.clientY });
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+{
+ "platform": "win32 x64",
+ "chrome": "Chrome/154.0.8037.93",
+ "args": [
+  "--window-size=1920,1080",
+  "--ignore-gpu-blocklist",
+  "--mute-audio",
+  "--no-first-run",
+  "--disable-accelerated-2d-canvas",
+  "--use-angle=d3d11"
+ ],
+ "caps": {
+  "webgl2": true,
+  "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Laptop GPU (0x00002560) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "EXT_color_buffer_float": true,
+  "OES_texture_float_linear": true,
+  "rgba16fFramebufferComplete": true,
+  "shaderCompile": true,
+  "programLink": true,
+  "halfFloatRender": true,
+  "glError": 0
+ },
+ "pageErrors": [],
+ "missing": [],
+ "pass": true
+}

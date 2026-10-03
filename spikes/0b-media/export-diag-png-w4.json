@@ -1,0 +1,62 @@
+{
+ "check": "export",
+ "page": "diag",
+ "fmt": "png",
+ "workers": 4,
+ "from": 0,
+ "to": 30,
+ "env": {
+  "platform": "win32 x64",
+  "chrome": "Chrome/154.0.8037.93",
+  "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Laptop GPU (0x00002560) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "args": [
+   "--window-size=1920,1080",
+   "--ignore-gpu-blocklist",
+   "--mute-audio",
+   "--no-first-run",
+   "--no-default-browser-check",
+   "--disable-background-timer-throttling",
+   "--disable-renderer-backgrounding",
+   "--disable-backgrounding-occluded-windows",
+   "--disable-accelerated-2d-canvas",
+   "--use-angle=d3d11"
+  ]
+ },
+ "launchSeconds": 2.38,
+ "passes": [
+  {
+   "pass": 0,
+   "cold": true,
+   "frames": 900,
+   "wallSeconds": 36.6,
+   "fps": 24.58,
+   "firstFrameSeconds": 2.6,
+   "peakWorkingSetMiB": [
+    891,
+    886,
+    885,
+    878
+   ],
+   "decodedFrames": 900,
+   "barcodeSequenceOk": true,
+   "badFrames": []
+  },
+  {
+   "pass": 1,
+   "cold": false,
+   "frames": 900,
+   "wallSeconds": 34.8,
+   "fps": 25.86,
+   "firstFrameSeconds": 0.27,
+   "peakWorkingSetMiB": [
+    929,
+    938,
+    915,
+    911
+   ],
+   "decodedFrames": 900,
+   "barcodeSequenceOk": true,
+   "badFrames": []
+  }
+ ]
+}
