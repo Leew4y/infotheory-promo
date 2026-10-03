@@ -8,6 +8,16 @@ import { C, F } from './style';
 export const cv = document.getElementById('c') as HTMLCanvasElement;
 export const ctx = cv.getContext('2d')!;
 
+/** Where a text() call landed on the canvas (after the current transform), for layout checks. */
+export interface TextBox { s: string; x0: number; y0: number; x1: number; y1: number; alpha: number }
+let boxes: TextBox[] | null = null;
+/** Start (on = true) or stop recording text boxes; returns what was recorded since the last start. */
+export function recordText(on: boolean): TextBox[] {
+  const out = boxes ?? [];
+  boxes = on ? [] : null;
+  return out;
+}
+
 export interface TextOpts {
   font?: string;
   size?: number;
@@ -29,6 +39,16 @@ export function text(s: string, x: number, y: number, o: TextOpts = {}): void {
   if (o.ls) ctx.letterSpacing = `${o.ls}px`;
   ctx.globalAlpha = o.alpha ?? 1;
   ctx.fillStyle = o.color ?? C.fg;
+  if (boxes) {
+    const m = ctx.measureText(s), t = ctx.getTransform();
+    const xs: number[] = [], ys: number[] = [];
+    for (const [px, py] of [[x - m.actualBoundingBoxLeft, y - m.actualBoundingBoxAscent], [x + m.actualBoundingBoxRight, y - m.actualBoundingBoxAscent], [x - m.actualBoundingBoxLeft, y + m.actualBoundingBoxDescent], [x + m.actualBoundingBoxRight, y + m.actualBoundingBoxDescent]]) {
+      const q = t.transformPoint(new DOMPoint(px, py));
+      xs.push(q.x);
+      ys.push(q.y);
+    }
+    boxes.push({ s, x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys), alpha: ctx.globalAlpha });
+  }
   ctx.fillText(s, x, y);
   ctx.restore();
 }

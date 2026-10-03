@@ -9,7 +9,7 @@
  *   __scenes()         name/start/end of every scene (for the shot list)
  * A film's main.ts imports its film.ts and scenes, then calls boot().
  */
-import { cv } from './draw';
+import { cv, recordText, type TextBox } from './draw';
 import { F } from './style';
 import { frame } from './frame';
 import { gpuName } from './gl';
@@ -25,6 +25,7 @@ declare global {
     __gpu: () => string;
     __cues: () => { t: number; name: string; [k: string]: number | string }[];
     __scenes: () => { name: string; start: number; end: number }[];
+    __layout: (t: number, fps?: number) => TextBox[];
   }
 }
 
@@ -68,6 +69,12 @@ export function boot(o: BootOptions): void {
     return cv.toDataURL('image/jpeg', 0.95);
   };
   window.__duration = TOTAL;
+  // text boxes of the frame at t (no motion blur), for scripts/validate.ts
+  window.__layout = (t, fps = 30) => {
+    recordText(true);
+    frame(t, fps, 1);
+    return recordText(false);
+  };
   window.__gpu = gpuName;
   window.__cues = () =>
     SC.flatMap((s) => (s.sfx ?? []).map(([t, name, o]) => ({ t: +(s.t0 + t).toFixed(4), name, ...(o ?? {}) }))).sort((a, b) => a.t - b.t);

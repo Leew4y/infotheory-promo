@@ -19,6 +19,22 @@ dev:
 build:
     bun run build
 
+# Type-check the engine, styles, films and scripts.
+check:
+    bunx tsc --noEmit
+
+# Enforce the dependency direction films -> styles -> engine.
+check-imports:
+    bun scripts/check-imports.ts
+
+# Schema, timeline and text-layout checks of the built film (add --strict to fail on safe-area warnings).
+validate *args: build
+    bun scripts/validate.ts {{args}}
+
+# Pixel regression against films/<film>/regress-baseline.json (SwiftShader + CPU 2D canvas).
+regress *args: build
+    bun scripts/regress.ts {{args}}
+
 # Print the scene list with times.
 scenes: build
     bun scripts/export.ts --scenes
