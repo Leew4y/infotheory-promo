@@ -1,0 +1,37 @@
+{
+ "check": "correctness",
+ "fmt": "jpg",
+ "frames": 2700,
+ "env": {
+  "platform": "win32 x64",
+  "chrome": "Chrome/154.0.8037.93",
+  "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Laptop GPU (0x00002560) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "args": [
+   "--window-size=1920,1080",
+   "--ignore-gpu-blocklist",
+   "--mute-audio",
+   "--no-first-run",
+   "--no-default-browser-check",
+   "--disable-background-timer-throttling",
+   "--disable-renderer-backgrounding",
+   "--disable-backgrounding-occluded-windows",
+   "--disable-accelerated-2d-canvas",
+   "--use-angle=d3d11"
+  ]
+ },
+ "check1": {
+  "renders": 3307,
+  "seconds": 160.3
+ },
+ "check2": {
+  "frames": 392,
+  "subFrameDraws": 1176
+ },
+ "check3": {
+  "frames": 392,
+  "maxPatchError": 0.333
+ },
+ "pass": true,
+ "fails": [],
+ "failCount": 0
+}
