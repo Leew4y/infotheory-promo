@@ -5,8 +5,9 @@
  */
 import { ctx, cv, text, label, rule, C, F_EN, F_ZH } from './draw';
 import { accumulate, glc, GRADE, PLATE_GRADE, post, type Grade } from './gl';
-import { SC, sceneAt, camDrift, CHAPTERS } from './scene';
-import { clamp, eout, TOTAL, W, H, win } from './util';
+import { SC, sceneAt, camDrift } from './scene';
+import { film, TOTAL } from './film';
+import { clamp, eout, W, H, win } from './util';
 
 export interface SubLine { a: number; b: number; zh: string; en: string; plate: boolean }
 export const SUBS = (): SubLine[] => SC.flatMap((s) => s.subs.map(([a, b, zh, en]) => ({ a: s.t0 + a, b: s.t0 + b, zh, en, plate: s.kind === 'plate' })));
@@ -47,7 +48,7 @@ function chapterLabel(lt: number, d: number, n: number, ch: [string, string]): v
   rule(x + 52, y - 9, x + 52 + 40 * eout(clamp((lt - 0.3) / 0.8)), y - 9, C.rust, a, 1.5);
   text(ch[0], x + 108, y, { size: 26, weight: 600, color: C.ink, alpha: a, ls: 3 });
   label(ch[1], x + 108 + ctx.measureText(ch[0]).width + 60, y - 1, a, C.grey, 17);
-  label(`${num} / ${String(CHAPTERS).padStart(2, '0')}`, W - 150, H - 96, a * 0.9, C.grey, 16, 'right');
+  label(`${num} / ${String(film().chapters).padStart(2, '0')}`, W - 150, H - 96, a * 0.9, C.grey, 16, 'right');
 }
 
 let subsCache: SubLine[] | null = null;
