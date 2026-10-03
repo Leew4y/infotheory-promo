@@ -1,8 +1,5 @@
 // 6. Chapter 04, noise: a line of bits with a few struck through; the binary symmetric channel; the question.
-import { text, label, ink, rule, arrow, bits, measure } from '../../../engine/draw';
-import { background, statement, M, COL, C, F } from '../../../engine/style';
-import { scene } from '../../../engine/scene';
-import { clamp, eout, sstep, hash1, win } from '../../../engine/util';
+import { text, label, ink, rule, arrow, bits, measure, background, statement, M, COL, C, F, scene, clamp, eout, sstep, hash1, win } from '../../../engine';
 
 const N = 44;
 const SENT = 'INFORMATION';

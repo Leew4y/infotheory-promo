@@ -1,9 +1,5 @@
 // 12. Morning over the horizon with the closing lines (a plate), then a page of sources (its own page scene, so it keeps the paper grade).
-import { text, label, rule } from '../../../engine/draw';
-import { background, plate, M, C, F } from '../../../engine/style';
-import { scene } from '../../../engine/scene';
-import { clamp, eout, sstep, win, W, H } from '../../../engine/util';
-import { BAR } from '../../../engine/film';
+import { text, label, rule, background, plate, M, C, F, scene, clamp, eout, sstep, win, W, H, BAR } from '../../../engine';
 
 const SOURCES: [string, string, string][] = [
   ['1948', 'C. E. Shannon', 'A Mathematical Theory of Communication. Bell System Technical Journal.'],

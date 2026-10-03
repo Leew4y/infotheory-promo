@@ -1,8 +1,5 @@
 // 10. Chapter 07, mutual information: two entropies overlap in ink; then training as cross-entropy going down.
-import { text, label, circle, hatch, rule } from '../../../engine/draw';
-import { background, statement, M, COL, C, F } from '../../../engine/style';
-import { scene } from '../../../engine/scene';
-import { clamp, lerp, eio, eout, sstep, win, ctx, TAU } from './_ctx';
+import { text, label, circle, hatch, rule, background, statement, M, COL, C, F, scene, clamp, lerp, eio, eout, sstep, win, ctx, TAU } from '../../../engine';
 
 const TOKENS = ['信息', '比特', '熵', '噪声', '编码', '香农'];
 const PTRUE = [0.34, 0.22, 0.18, 0.12, 0.09, 0.05];
