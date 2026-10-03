@@ -1,8 +1,5 @@
 // 0. First light over the horizon; two lines, then the title.
-import { text, rule, label } from '../../../engine/draw';
-import { plate, C, F } from '../../../engine/style';
-import { scene } from '../../../engine/scene';
-import { clamp, eout, sstep, win, W } from '../../../engine/util';
+import { text, rule, label, plate, C, F, scene, clamp, eout, sstep, win, W } from '../../../engine';
 
 scene({
   name: 'dawn', kind: 'plate', start: 0, len: 5, fi: 1.4, fo: 0.9, mb: 3,

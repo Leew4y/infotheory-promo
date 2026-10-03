@@ -1,8 +1,5 @@
 // 7. Chapter 05, error correction: Hamming(7,4) in three ink circles; a bit flips, two circles go odd, it is found and fixed.
-import { text, label, circle, rule, bits } from '../../../engine/draw';
-import { background, statement, row, M, C, F } from '../../../engine/style';
-import { scene } from '../../../engine/scene';
-import { clamp, eout, sstep, win } from '../../../engine/util';
+import { text, label, circle, rule, bits, background, statement, row, M, C, F, scene, clamp, eout, sstep, win } from '../../../engine';
 
 const D = [1, 0, 1, 1];
 const P = [D[0] ^ D[1] ^ D[3], D[0] ^ D[2] ^ D[3], D[1] ^ D[2] ^ D[3]];

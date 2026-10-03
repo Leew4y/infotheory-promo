@@ -1,8 +1,5 @@
 // 5. Chapter 03, compression: a Huffman tree drawn in ink, the same message in two codes, the entropy floor.
-import { text, label, ink, circle, rule, bits } from '../../../engine/draw';
-import { background, statement, row, M, COL, C, F } from '../../../engine/style';
-import { scene } from '../../../engine/scene';
-import { clamp, lerp, eout, sstep, win } from '../../../engine/util';
+import { text, label, ink, circle, rule, bits, background, statement, row, M, COL, C, F, scene, clamp, lerp, eout, sstep, win } from '../../../engine';
 
 interface Node { id: string; p: number; x: number; y: number; kids?: [string, string]; born: number; code?: string }
 const NODES: Record<string, Node> = {
