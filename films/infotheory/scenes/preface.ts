@@ -1,8 +1,8 @@
 // 1. Preface: the question, set on paper, with four small ink drawings.
-import { paper, text, label, ink, circle, dot, C, F_EN } from '../engine/draw';
-import { M } from '../engine/page';
-import { scene } from '../engine/scene';
-import { clamp, eout, sstep, TAU } from '../engine/util';
+import { paper, text, label, ink, circle, dot, C, F_EN } from '../../../engine/draw';
+import { M } from '../../../engine/page';
+import { scene } from '../../../engine/scene';
+import { clamp, eout, sstep, TAU } from '../../../engine/util';
 
 function helix(x: number, y: number, k: number, a: number): void {
   const L: [number, number][] = [], R: [number, number][] = [];

@@ -8,12 +8,12 @@
  *   __scenes()         name/start/end of every scene (for the shot list)
  */
 import './scenes/index';
-import { cv, F_ZH, F_EN, F_MATH, F_MONO } from './engine/draw';
+import { cv, F_ZH, F_EN, F_MATH, F_MONO } from '../../engine/draw';
 const F_IT = F_EN;
-import { frame } from './engine/frame';
-import { gpuName } from './engine/gl';
-import { SC, sceneAt } from './engine/scene';
-import { clamp, fmtTime, TOTAL } from './engine/util';
+import { frame } from '../../engine/frame';
+import { gpuName } from '../../engine/gl';
+import { SC, sceneAt } from '../../engine/scene';
+import { clamp, fmtTime, TOTAL } from '../../engine/util';
 
 declare global {
   interface Window {

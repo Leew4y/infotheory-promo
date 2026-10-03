@@ -1,8 +1,8 @@
 // 8. A breath: the sun about to rise, one sentence.
-import { text, dot, C, F_EN } from '../engine/draw';
-import { glDraw } from '../engine/gl';
-import { scene } from '../engine/scene';
-import { win, W } from '../engine/util';
+import { text, dot, C, F_EN } from '../../../engine/draw';
+import { glDraw } from '../../../engine/gl';
+import { scene } from '../../../engine/scene';
+import { win, W } from '../../../engine/util';
 
 scene({
   name: 'dusk2', kind: 'plate', start: 40, len: 2, fi: 0.9, fo: 0.9, mb: 3,
