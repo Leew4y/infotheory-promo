@@ -135,6 +135,12 @@ films/<id>/      一部片子：film.ts、scenes/、score.py
 产物：`out/regress/<film>/report.json`、`out/validate/<film>.json`。
 退出条件：0a 的帧集合加每秒一帧的全片抽样，与 `421b107` 的原始 RGBA 逐像素一致；导入检查通过；`validate` 无 error。
 
+1a 实施记录（分支 `engine/1a-split`）：
+- 全部退出条件已满足：回归 231 帧逐像素一致（每一步提交后都跑过），`check-imports`、`tsc --noEmit` 通过，`validate` 0 error。
+- 安全区越界改为 warning（`--strict` 时为 error），越出画面仍是 error。原因：`validate` 在现有片中发现 7 处文字越过右侧 5% 安全区
+  （entropy、noise、capacity 的图表标签，仍在画面内），修排版会改变像素，不属于纯搬迁；留到行为变化的 PR 处理。
+- 已知怪异行为照旧保留，留给 1b：`fi = 0` 依赖 NaN 关闭淡入；`fi > 0` 时场景首帧完全被淡入色覆盖；`sources` 起点为 `192.60000000000002`。
+
 **1b · 时间轴与音频（行为变化，单独记录）。**
 - 场景只声明时长，起点按全局契约累计解析；输出 `timeline.json`。tail 仍归 `sources`，不拆分。
 - 浮点边界修正：现有 `sources` 起点为 `64.2 × 3 = 192.60000000000002`，解析后为第 5778 帧整，第 5778 帧从 `morning` 改归 `sources`。
