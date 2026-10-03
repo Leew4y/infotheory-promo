@@ -1,8 +1,8 @@
 // 3. Chapter 02, entropy: a distribution morphs from flat to a spike while H is read out; English letters.
-import { paper, text, label, ink, rule, rollNumber, C, F_EN, F_MATH, F_MONO } from '../engine/draw';
-import { M, COL, statement } from '../engine/page';
-import { scene } from '../engine/scene';
-import { clamp, lerp, eio, eout, sstep, win } from '../engine/util';
+import { paper, text, label, ink, rule, rollNumber, C, F_EN, F_MATH, F_MONO } from '../../../engine/draw';
+import { M, COL, statement } from '../../../engine/page';
+import { scene } from '../../../engine/scene';
+import { clamp, lerp, eio, eout, sstep, win } from '../../../engine/util';
 
 const FLAT = [1, 1, 1, 1, 1, 1, 1, 1].map((v) => v / 8);
 const PEAK = [0.5, 0.2, 0.1, 0.08, 0.05, 0.04, 0.02, 0.01];
@@ -70,7 +70,7 @@ scene({
   },
 });
 
-import { ctx } from '../engine/draw';
+import { ctx } from '../../../engine/draw';
 function ctx_fill(x: number, y: number, w: number, h: number, a: number, col = C.rust): void {
   if (a <= 0.002 || h <= 0) return;
   ctx.save();

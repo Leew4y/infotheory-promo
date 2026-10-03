@@ -1,8 +1,8 @@
 // 4. A breath: the horizon a little brighter, one sentence.
-import { text, dot, C, F_EN } from '../engine/draw';
-import { glDraw } from '../engine/gl';
-import { scene } from '../engine/scene';
-import { win, W } from '../engine/util';
+import { text, dot, C, F_EN } from '../../../engine/draw';
+import { glDraw } from '../../../engine/gl';
+import { scene } from '../../../engine/scene';
+import { win, W } from '../../../engine/util';
 
 scene({
   name: 'dusk1', kind: 'plate', start: 20, len: 2, fi: 0.9, fo: 0.9, mb: 3,

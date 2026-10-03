@@ -1,7 +1,7 @@
 // 11. Chapter 08, everywhere: six rows, each with a small ink drawing, and one unit for all of them.
-import { paper, text, label, ink, circle, rule, dot, C, F_EN, F_MATH } from '../engine/draw';
-import { M, COL, statement } from '../engine/page';
-import { scene } from '../engine/scene';
+import { paper, text, label, ink, circle, rule, dot, C, F_EN, F_MATH } from '../../../engine/draw';
+import { M, COL, statement } from '../../../engine/page';
+import { scene } from '../../../engine/scene';
 import { clamp, eout, sstep, ctx, TAU, PI } from './_ctx';
 
 type Icon = (x: number, y: number, k: number) => void;
