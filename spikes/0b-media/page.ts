@@ -6,6 +6,7 @@
  * motion-blur sub-frame time. The page records every draw so the checker can assert it.
  */
 import { scene } from '../../engine/scene';
+import { defineFilm } from '../../engine/film';
 import { frame } from '../../engine/frame';
 import { cv, ctx } from '../../engine/draw';
 import { gpuName } from '../../engine/gl';
@@ -47,6 +48,8 @@ function load(i: number): Promise<void> {
   }
   return p;
 }
+
+defineFilm({ id: 'spike-0b', bpm: 80, bars: 30, tail: 0, chapters: 0 });
 
 // ---- the capture scene
 let outFrame = 0;

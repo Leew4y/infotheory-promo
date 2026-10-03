@@ -7,13 +7,15 @@
  *   __cues()           the sound-effect cue sheet (audio/music.py reads it as cues.json)
  *   __scenes()         name/start/end of every scene (for the shot list)
  */
+import './film';
 import './scenes/index';
 import { cv, F_ZH, F_EN, F_MATH, F_MONO } from '../../engine/draw';
 const F_IT = F_EN;
 import { frame } from '../../engine/frame';
 import { gpuName } from '../../engine/gl';
 import { SC, sceneAt } from '../../engine/scene';
-import { clamp, fmtTime, TOTAL } from '../../engine/util';
+import { clamp, fmtTime } from '../../engine/util';
+import { TOTAL } from '../../engine/film';
 
 declare global {
   interface Window {

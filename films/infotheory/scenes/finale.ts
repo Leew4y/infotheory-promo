@@ -3,7 +3,8 @@ import { paper, text, label, rule, C, F_EN } from '../../../engine/draw';
 import { glDraw } from '../../../engine/gl';
 import { M } from '../../../engine/page';
 import { scene } from '../../../engine/scene';
-import { BAR, clamp, eout, sstep, win, W, H } from '../../../engine/util';
+import { clamp, eout, sstep, win, W, H } from '../../../engine/util';
+import { BAR } from '../../../engine/film';
 
 const SOURCES: [string, string, string][] = [
   ['1948', 'C. E. Shannon', 'A Mathematical Theory of Communication. Bell System Technical Journal.'],
