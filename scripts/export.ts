@@ -63,7 +63,7 @@ async function launch(id: number): Promise<Worker> {
     executablePath: CHROME,
     headless: true,
     defaultViewport: { width: 1920, height: 1080, deviceScaleFactor: 1 },
-    args: ['--window-size=1920,1080', '--use-angle=d3d11', '--ignore-gpu-blocklist', '--enable-gpu-rasterization', '--mute-audio', '--no-first-run', '--no-default-browser-check', '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows'],
+    args: ['--window-size=1920,1080', '--use-angle=d3d11', '--ignore-gpu-blocklist', '--enable-gpu-rasterization', '--disable-accelerated-2d-canvas', '--mute-audio', '--no-first-run', '--no-default-browser-check', '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows'],
   });
   const page = await browser.newPage();
   page.on('pageerror', (e: unknown) => console.error(`worker ${id} page error:`, e instanceof Error ? e.message : String(e)));
