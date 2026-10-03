@@ -8,6 +8,7 @@
  * so values a scene captures at registration (e.g. a fade colour) already come from the active style.
  */
 import type { Grade } from './gl';
+import { check, GradeSpec } from './schema';
 
 export interface Palette {
   /** Page paper and its darker tone. */
@@ -82,6 +83,10 @@ export interface StylePackage {
   statement(zh: string, en: string, lt: number, t0?: number, y?: number, size?: number): void;
   /** A typeset list row: key, title, note. */
   row(key: string, title: string, note: string, x: number, y: number, a: number, keyW?: number): void;
+  /** Small label text (the engine's label() delegates here). */
+  label(s: string, x: number, y: number, a: number, color: string, size: number, align: CanvasTextAlign): void;
+  /** Cover the scene layer for a scene fade: `amount` in (0, 1], through `color`. */
+  transition(amount: number, color: string): void;
   /** Chapter label and page number overlay on chapter pages. */
   chapterLabel(lt: number, d: number, n: number, ch: [string, string], chapters: number): void;
   /** Bilingual captions overlay at film time T. */
@@ -95,6 +100,8 @@ export let COL = 0;
 let active: StylePackage | null = null;
 
 export function useStyle(s: StylePackage): void {
+  check(GradeSpec, s.grade, `style "${s.id}" grade`);
+  check(GradeSpec.partial(), s.plateGrade, `style "${s.id}" plateGrade`);
   active = s;
   Object.assign(C, s.palette);
   Object.assign(F, s.fonts);

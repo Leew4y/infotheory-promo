@@ -5,6 +5,7 @@
  */
 import { BAR, film } from './film';
 import { check, SceneSpec } from './schema';
+import { style } from './style';
 import type { Grade } from './gl';
 
 export type Sub = [number, number, string, string];
@@ -44,7 +45,7 @@ export function scene(o: Omit<SceneDef, 't0' | 'd'>): SceneDef {
   return s;
 }
 /** A slow push-in: the only camera move on pages. */
-export const camDrift = (amt = 0.025) => (lt: number, d: number): Cam => ({ z: 1 + (amt * lt) / d });
+export const camDrift = (amt?: number) => (lt: number, d: number): Cam => ({ z: 1 + ((amt ?? style().motion.drift) * lt) / d });
 export const sceneAt = (t: number): SceneDef => {
   let sc = SC[0];
   for (const s of SC) if (t >= s.t0) sc = s;

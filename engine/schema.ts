@@ -18,8 +18,13 @@ export const FilmSpec = z.object({
 
 /** [start, end, zh, en]: seconds within the scene. */
 const Sub = z.tuple([nonneg, nonneg, z.string(), z.string()]).refine(([a, b]) => b > a, 'caption end must be after its start');
-/** [time, cue name, options]: seconds within the scene. */
-const Sfx = z.union([z.tuple([nonneg, z.string().min(1)]), z.tuple([nonneg, z.string().min(1), z.record(z.string(), z.union([z.number(), z.string()]))])]);
+/** [time, cue name, options?]: seconds within the scene; options may be omitted or undefined (matches the Sfx type). */
+const Sfx = z.tuple([nonneg, z.string().min(1), z.record(z.string(), z.union([z.number().finite(), z.string()])).optional()]);
+
+const num = z.number().finite();
+const rgb = z.tuple([num, num, num]);
+/** Same fields as gl.ts Grade; a scene may override any subset, nothing else. */
+export const GradeSpec = z.object({ bloom: num, ca: num, vig: num, grain: num, sat: num, split: num, tintS: rgb, tintH: rgb }).strict();
 
 export const SceneSpec = z.object({
   name: z.string().min(1),
@@ -30,7 +35,7 @@ export const SceneSpec = z.object({
   fo: nonneg.optional(),
   fade: z.string().optional(),
   mb: z.number().int().min(1).max(8).optional(),
-  grade: z.record(z.string(), z.unknown()).optional(),
+  grade: GradeSpec.partial().optional(),
   chapter: z.number().int().positive().optional(),
   ch: z.tuple([z.string(), z.string()]).optional(),
   subs: z.array(Sub),

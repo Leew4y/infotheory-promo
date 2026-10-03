@@ -90,6 +90,19 @@ const paperDawn: StylePackage = {
     text(note, x + keyW, y + 32, { size: 20, color: C.muted, alpha: a });
   },
 
+  /** Small-caps tracking label: "01 — 惊讶 · SURPRISE". */
+  label(s, x, y, a, color, size, align) {
+    text(s.toUpperCase(), x, y, { font: F.latin, size, ls: size * 0.28, color, alpha: a, align });
+  },
+
+  /** Fades go through a flat colour (paper or dark). */
+  transition(amount, color) {
+    ctx.fillStyle = color;
+    ctx.globalAlpha = amount;
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = 1;
+  },
+
   /** Top-left "01 — 惊讶 · SURPRISE" and bottom-right page number. */
   chapterLabel(lt, d, n, ch, chapters) {
     const a = win(lt, 0.2, d, 0.8, 0.5);

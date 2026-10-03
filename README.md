@@ -1,7 +1,7 @@
 # 信息论：不确定的度量
 
 一部约 3 分 22 秒的信息论短片。画面由 TypeScript 在 HTML Canvas 与 WebGL2 上逐帧绘制；配乐与音效由 Python 合成。
-视频为 1920 × 1080、30 fps，含中英双语文案。每一帧都是时间 `t` 的纯函数，浏览器里的实时预览和离线导出逐帧一致。
+视频为 1920 × 1080、30 fps，含中英双语文案。每一帧都是时间 `t` 的纯函数；离线导出每帧取 3 个运动模糊子帧，浏览器里的实时预览只取 1 个，其余相同。
 
 技术流程参考了 [abstract-algebra-promo](https://github.com/AnctyEnly453/abstract-algebra-promo)（小节网格、GPU 子帧累积运动模糊、页面导出音效 cue 表给 Python 合成配乐、多进程 Chrome 逐帧导出）和 [pdoom-video](https://github.com/mexicat/pdoom-video)（TypeScript 场景引擎、一场景一文件）。外观是另一套：暖纸面、墨线、一种朱红点色、衬线字、程序生成的黎明地平线，克制而缓慢。
 

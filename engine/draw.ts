@@ -3,7 +3,7 @@
  * come from the active style (style.ts); the look itself lives in the style package.
  */
 import { clamp, lerp, hash1, TAU, W, H } from './util';
-import { C, F } from './style';
+import { C, F, style } from './style';
 
 export const cv = document.getElementById('c') as HTMLCanvasElement;
 export const ctx = cv.getContext('2d')!;
@@ -16,6 +16,12 @@ export function recordText(on: boolean): TextBox[] {
   const out = boxes ?? [];
   boxes = on ? [] : null;
   return out;
+}
+/** Index of the next recorded box (0 when not recording). */
+export const textMark = (): number => boxes?.length ?? 0;
+/** Multiply the alpha of boxes recorded since `mark` by `k` (a layer later covered by a fade). */
+export function scaleText(mark: number, k: number): void {
+  if (boxes) for (let i = mark; i < boxes.length; i++) boxes[i].alpha *= k;
 }
 
 export interface TextOpts {
@@ -62,9 +68,9 @@ export function measure(s: string, size: number, font = F.body, weight: number |
   return w;
 }
 
-/** Small-caps tracking label: "01 — 惊讶 · SURPRISE". */
+/** A small label; how it is set (case, tracking, font) is the style's choice. */
 export function label(s: string, x: number, y: number, a = 1, color = C.muted, size = 19, align: CanvasTextAlign = 'left'): void {
-  text(s.toUpperCase(), x, y, { font: F.latin, size, ls: size * 0.28, color, alpha: a, align });
+  style().label(s, x, y, a, color, size, align);
 }
 
 /** Multi-line block, one string per line. */
