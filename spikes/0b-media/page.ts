@@ -7,6 +7,8 @@
  */
 import { scene } from '../../engine/scene';
 import { defineFilm } from '../../engine/film';
+import { useStyle } from '../../engine/style';
+import paperDawn from '../../styles/paper-dawn';
 import { frame } from '../../engine/frame';
 import { cv, ctx } from '../../engine/draw';
 import { gpuName } from '../../engine/gl';
@@ -49,6 +51,7 @@ function load(i: number): Promise<void> {
   return p;
 }
 
+useStyle(paperDawn);
 defineFilm({ id: 'spike-0b', bpm: 80, bars: 30, tail: 0, chapters: 0 });
 
 // ---- the capture scene

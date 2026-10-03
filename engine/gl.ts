@@ -1,6 +1,6 @@
 /**
  * WebGL2 side of the frame pipeline.
- *   glDraw(3, {p: day, q: sun}) the dawn horizon plate: sky gradient, warm band, curved dark earth, haze, a sun
+ *   glPlate(body, mode, u)       a style's full-frame background shader (e.g. the dawn horizon), drawn onto the 2D canvas
  *   accumulate(k, K)              upload the finished 2D canvas and average K sub-frames (motion blur)
  *   post(T, grade)                film grain, gentle vignette, a little halation on the plates, warm/cool split
  * The 2D canvas is then overwritten with the graded result; overlays (captions) are drawn on top, sharp.
@@ -17,7 +17,8 @@ gl.getExtension('OES_texture_float_linear');
 
 const VS = `#version 300 es
 in vec2 p; out vec2 vUv; void main() { vUv = p * .5 + .5; gl_Position = vec4(p, 0., 1.); }`;
-const HEAD = `#version 300 es
+/** Shader header shared by the engine passes and style background shaders (hash, value noise, fbm). */
+export const HEAD = `#version 300 es
 precision highp float;
 in vec2 vUv; out vec4 o;
 uniform vec2 uRes;
@@ -28,46 +29,6 @@ float noise(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.-2.*f);
 float fbm(vec2 p){ float s=0., a=.5; for(int i=0;i<6;i++){ s+=a*noise(p); p=p*2.03+vec2(1.7,9.2); a*=.5; } return s; }
 `;
 
-const FS_BG = HEAD + `
-uniform float uTime; uniform int uMode; uniform vec3 uTint; uniform float uAmp; uniform float uP; uniform float uQ;
-// The dawn plate. uP = time of day (0 first light, 1 morning), uQ = sun height above the horizon (0 hidden).
-vec3 dawn(vec2 uv){
-  float day = clamp(uP, 0., 1.);
-  float yh = -0.16 + 0.14 * uv.x * uv.x;              // the earth's curve
-  float ab = uv.y - yh;
-  vec3 top  = mix(vec3(.07,.12,.22), vec3(.34,.50,.66), day);
-  vec3 mid  = mix(vec3(.26,.38,.52), vec3(.66,.76,.85), day);
-  vec3 warm = mix(vec3(.86,.48,.18), vec3(.98,.82,.55), day);
-  float t = clamp(ab / 1.05, 0., 1.);
-  vec3 sky = mix(mid, top, smoothstep(0., 1., t));
-  float band = exp(-ab * ab * 22.) * (1. - t * .4);
-  sky = mix(sky, warm, clamp(band * 1.15, 0., 1.));
-  float haze = fbm(vec2(uv.x * 1.8 + uTime * .006, uv.y * 7. + 3.));
-  sky += (haze - .5) * .05;
-  float streak = fbm(vec2(uv.x * .9 - uTime * .004, uv.y * 30.));
-  sky += (streak - .5) * .03 * exp(-ab * 6.) * step(0., ab);
-  // sun
-  vec2 sp = vec2(.12, yh + uQ * .18);
-  float d = length((uv - sp) * vec2(1., 1.3));
-  sky += warm * (exp(-d * d * 60.) * 1.4 + exp(-d * 5.) * .35) * step(.001, uQ) * step(0., ab);
-  vec3 earth = vec3(.075,.055,.045) + warm * .10 * exp(-(-ab) * 9.);
-  earth += (fbm(vec2(uv.x * 3., uv.y * 3.)) - .5) * .02;
-  vec3 c = mix(earth, sky, smoothstep(-0.012, 0.012, ab));
-  return c;
-}
-vec3 nebula(vec2 uv){
-  float t=uTime*.02; vec2 p=uv*1.25;
-  vec2 q=vec2(fbm(p+t), fbm(p+vec2(5.2,1.3)-t));
-  float n=fbm(p+2.2*q+vec2(t*2.,0.));
-  vec3 c=vec3(.006,.009,.022);
-  c+=uTint*smoothstep(.35,1.05,n)*1.3;
-  return c;
-}
-void main(){
-  vec2 uv=(gl_FragCoord.xy-.5*uRes)/(.5*uRes.y);
-  vec3 c = uMode==3 ? dawn(uv) : nebula(uv);
-  o=vec4(c*uAmp,1.);
-}`;
 const FS_ACC = HEAD + `uniform sampler2D uT; uniform float uW; void main(){ o = vec4(texture(uT, vUv).rgb * uW, 1.); }`;
 const FS_DOWN = HEAD + `uniform sampler2D uT; uniform vec2 uTexel; uniform float uThresh;
 vec3 pre(vec3 c){ if(uThresh<=0.) return c; float l=max(c.r,max(c.g,c.b)); float k=clamp(l-uThresh+.12,0.,.24); k=k*k/.48; return c*max(k,l-uThresh)/max(l,1e-4); }
@@ -113,7 +74,6 @@ function program(fs: string, names: string[]): Prog {
   for (const n of ['uRes', ...names]) u[n] = gl.getUniformLocation(pr, n);
   return { pr, u };
 }
-const P_BG = program(FS_BG, ['uTime', 'uMode', 'uTint', 'uAmp', 'uP', 'uQ']);
 const P_ACC = program(FS_ACC, ['uT', 'uW']);
 const P_DOWN = program(FS_DOWN, ['uT', 'uTexel', 'uThresh']);
 const P_UP = program(FS_UP, ['uT', 'uTexel']);
@@ -155,9 +115,12 @@ function bindTex(unit: number, t: WebGLTexture | null): void {
 }
 
 export interface BgUniforms { time?: number; tint?: [number, number, number]; amp?: number; p?: number; q?: number }
-/** Draw a background shader onto the 2D canvas (3 = dawn plate). */
-export function glDraw(mode: number, u: BgUniforms = {}, alpha = 1): void {
-  const P = P_BG;
+const BG_UNIFORMS = ['uTime', 'uMode', 'uTint', 'uAmp', 'uP', 'uQ'];
+const bgPrograms = new Map<string, Prog>();
+/** Draw a style's background shader (HEAD + body) onto the 2D canvas. `mode` is passed as uMode. */
+export function glPlate(body: string, mode: number, u: BgUniforms = {}, alpha = 1): void {
+  let P = bgPrograms.get(body);
+  if (!P) bgPrograms.set(body, (P = program(HEAD + body, BG_UNIFORMS)));
   gl.useProgram(P.pr);
   gl.disable(gl.BLEND);
   gl.uniform2f(P.u.uRes, W, H);
@@ -191,9 +154,6 @@ export function accumulate(k: number, K: number): void {
 }
 
 export interface Grade { bloom: number; ca: number; vig: number; grain: number; sat: number; split: number; tintS: [number, number, number]; tintH: [number, number, number] }
-/** Pages: no halation, light grain. Plates override bloom for a little sun halation and more grain. */
-export const GRADE: Grade = { bloom: 0, ca: 0.0005, vig: 0.22, grain: 0.05, sat: 0.98, split: 0.35, tintS: [0.97, 0.98, 1.03], tintH: [1.03, 1.0, 0.96] };
-export const PLATE_GRADE: Partial<Grade> = { bloom: 0.22, ca: 0.0012, vig: 0.42, grain: 0.085, sat: 1.0 };
 
 export function post(T: number, g: Grade, fps = 30): void {
   let src: Fbo = ACC;
