@@ -167,15 +167,25 @@ films/<id>/      一部片子：film.ts、scenes/、score.py
 分三个 PR。
 
 **2a · 录屏合成。**
-- 契约：`CaptureAsset`（帧序列、帧时间戳、viewport、DPR、实际帧尺寸、`events.jsonl`）。
+- 契约：`CaptureAsset`（帧序列、帧时间戳、viewport、DPR、实际帧尺寸、`events.jsonl`；`events.jsonl` 可选），与录制方式无关。
+- 两种录制来源，产出同一种 `CaptureAsset`：
+  - **Playwright 脚本录制**（网页 demo 的默认方式）：`page.screencast` 的 `onFrame` 帧加 DOM 事件（目标元素、边界框），同一时钟；
+    viewport = 输出分辨率、DPR 1（0c）。
+  - **视频文件导入**（OBS 或任何录屏，用于原生应用、终端、模拟器、人工操作的演示）：ffmpeg 拆成固定帧率 JPEG 序列，
+    帧时间戳由帧号推出；默认没有事件，镜头关键帧与点击效果在场景里手动指定。若另有输入记录（JSONL，自带时钟），提供一个已知同步点的对齐参数。
 - 时间映射：录制时间 → 素材时间（裁剪、删除空闲段、变速）→ 影片时间。删除区间半开；落在删除区间内的事件丢弃并输出 warning；
   变速后源帧取 `floor(映射后的源时间 × 源 fps + 1e-9)`。
 - 坐标映射：viewport × DPR → 实际帧像素 → 输出画面（含镜头缩放平移）。
 - BrowserDemo 场景：镜头规划（缩放、平移、跟随）、合成光标、点击波纹、窗口外观，参数全部来自风格包。
 
-命令：`just capture <scenario>`、`just validate <film>`、`just regress <film>`。
-退出条件：分别覆盖 DPR 2、裁剪、删除空闲段、变速、镜头缩放平移及其组合；每个用例中合成光标与页面内可见标记的偏差 ≤ 4 px、≤ 1 帧；
-BrowserDemo 在两套风格下都通过风格解耦验收。
+命令：`just capture <scenario>`（Playwright）、`just import-capture <video> [--fps 30] [--events <jsonl> --sync <录制时刻>=<视频时刻>]`、
+`just validate <film>`、`just regress <film>`。
+退出条件：
+- Playwright 来源：分别覆盖裁剪、删除空闲段、变速、镜头缩放平移及其组合；每个用例中合成光标与页面内可见标记的位置偏差 ≤ 4 px，
+  点击效果落在事件所在帧，页面标记在其后 [0, 2] 帧内出现（与 0c 的时延标准一致）；
+- 导入来源：一段 OBS 录制（或等效录屏文件）经 `import-capture` 后，用手动镜头关键帧做成 BrowserDemo 场景并导出；
+  帧数等于 `round(时长 × fps)`，无重复帧以外的跳帧（用带帧号的测试视频验证）；
+- BrowserDemo 在两套风格下都通过风格解耦验收。
 
 **2b · 旁白、时间轴与最终混音。**
 - 契约：`Script`（分段、稳定 token ID、读法规范化映射）、`Alignment`（token ID → 起止时刻，含所属分段的音频偏移）。
