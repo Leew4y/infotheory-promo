@@ -81,7 +81,7 @@ just all            # cues → music → export
 just check          # 类型检查
 just check-imports  # 依赖方向
 just validate       # 声明、时间轴、文字版面（--strict：安全区越界也算错误）
-just regress        # 像素回归（--update 重写基线）
+just regress        # 像素回归（--update 重写基线）。基线只在录制它的平台上可比较（目前是 Windows x64），其他平台会直接退出并提示
 ```
 
 预览需要 `audio/music.mp3` 存在（先 `just cues` 再 `just music`），否则页面按内部时钟播放、无声。
