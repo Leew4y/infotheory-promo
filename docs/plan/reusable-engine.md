@@ -70,7 +70,7 @@
 1. 硬件加速的 2D canvas：结果依赖渲染顺序（乱序、多 worker 时不一致），GPU 与 SwiftShader 下都出现。关闭 2D canvas 加速后消失。
 2. GPU（D3D11）上的 WebGL 地平线着色器：偶发 3–6 个像素差 1 个色阶，与顺序无关，随机出现。SwiftShader 下未观察到。
 SwiftShader + CPU 2D canvas：79 帧 × 4 组运行全部一致。GPU WebGL + CPU 2D canvas：页面场景一致，地平线帧仍有来源 2 的偶发差异。
-据此：阶段 1 起 2D canvas 以 `willReadFrequently: true` 创建（等效于固定 CPU 光栅化，并在 1a 前用 0a 复核）；回归在 SwiftShader 上做；
+据此：阶段 1 起所有启动器都带 `--disable-accelerated-2d-canvas`（1a 实测 `willReadFrequently: true` 不等价：与基线有约 200 帧不同，且仍依赖渲染顺序，已放弃）；回归在 SwiftShader 上做；
 GPU 路径只用于生产，差异上限按来源 2 记录。
 
 **0b · 录屏素材嵌入。**
