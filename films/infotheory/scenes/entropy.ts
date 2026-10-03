@@ -1,6 +1,6 @@
 // 3. Chapter 02, entropy: a distribution morphs from flat to a spike while H is read out; English letters.
-import { paper, text, label, ink, rule, rollNumber, C, F_EN, F_MATH, F_MONO } from '../../../engine/draw';
-import { M, COL, statement } from '../../../engine/page';
+import { text, label, ink, rule, rollNumber } from '../../../engine/draw';
+import { background, statement, M, COL, C, F } from '../../../engine/style';
 import { scene } from '../../../engine/scene';
 import { clamp, lerp, eio, eout, sstep, win } from '../../../engine/util';
 
@@ -22,56 +22,56 @@ scene({
   ],
   sfx: [[0.1, 'page'], ...[0, 1, 2, 3, 4, 5, 6, 7].map((i) => [0.9 + i * 0.12, 'tick'] as [number, string]), [2.6, 'breath', { dur: 2 }], [5.6, 'breath', { dur: 2 }], [8.2, 'tone', { midi: 62 }], [9.6, 'ink'], [11.6, 'tone', { midi: 67 }], [13.8, 'tone', { midi: 64 }], [16.2, 'chime', { midi: 72 }]],
   draw(lt) {
-    paper();
+    background();
     statement('熵，是平均的惊讶。', 'Entropy is surprise, averaged.', lt);
     const aD = 1 - sstep(9.0, 9.8, lt);
     if (aD > 0) {
       const m1 = eio(clamp((lt - 2.6) / 2.0)), m2 = eio(clamp((lt - 5.6) / 2.0));
       const p = mixP(mixP(FLAT, PEAK, m1), SPIKE, m2);
       const x0 = COL + 40, by = 720, bw = 66, gap = 24, hmax = 380;
-      rule(x0 - 10, by, x0 + 8 * (bw + gap), by, C.line, aD, 1.5);
+      rule(x0 - 10, by, x0 + 8 * (bw + gap), by, C.rule, aD, 1.5);
       p.forEach((v, i) => {
         const a = aD * sstep(0.9 + i * 0.12, 1.2 + i * 0.12, lt);
         const h = Math.min(hmax, hmax * v * 3.2);
         const x = x0 + i * (bw + gap);
-        ink([[x, by], [x, by - h], [x + bw, by - h], [x + bw, by]], 1, C.ink, 1.5, a);
-        ink([[x + 2, by - 1], [x + 2, by - h + 2]], 1, C.rust, 0, a);
+        ink([[x, by], [x, by - h], [x + bw, by - h], [x + bw, by]], 1, C.fg, 1.5, a);
+        ink([[x + 2, by - 1], [x + 2, by - h + 2]], 1, C.accent, 0, a);
         // a light rust fill
         ctx_fill(x, by - h, bw, h, a * 0.18);
-        text(String.fromCharCode(65 + i), x + bw / 2, by + 30, { font: F_EN, size: 18, color: C.grey, alpha: a, align: 'center' });
+        text(String.fromCharCode(65 + i), x + bw / 2, by + 30, { font: F.latin, size: 18, color: C.muted, alpha: a, align: 'center' });
       });
       const H = entropy(p);
-      text(`H = ${H.toFixed(2)} bit`, x0, 250, { font: F_MATH, size: 46, color: C.rust, alpha: aD * sstep(1.8, 2.4, lt) });
+      text(`H = ${H.toFixed(2)} bit`, x0, 250, { font: F.math, size: 46, color: C.accent, alpha: aD * sstep(1.8, 2.4, lt) });
       const lab = m2 > 0.9 ? '只有一种可能，熵为零' : m1 > 0.9 && m2 < 0.1 ? '偏向一种结果，熵变小' : m1 < 0.1 ? '等可能，熵最大' : '';
-      text(lab, x0 + 300, 250, { size: 22, color: C.grey, alpha: aD * sstep(1.2, 1.8, lt) });
+      text(lab, x0 + 300, 250, { size: 22, color: C.muted, alpha: aD * sstep(1.2, 1.8, lt) });
     }
     const kf = sstep(4.8, 5.6, lt);
-    text('H(X) = −Σ p(x) log₂ p(x)', M, 620, { font: F_MATH, size: 44, color: C.ink, alpha: kf });
-    rule(M, 636, M + 420 * eout(clamp((lt - 5.2) / 0.8)), 636, C.rust, kf, 2);
-    label('Entropy · 平均惊讶', M, 672, sstep(5.4, 6, lt), C.grey, 16);
+    text('H(X) = −Σ p(x) log₂ p(x)', M, 620, { font: F.math, size: 44, color: C.fg, alpha: kf });
+    rule(M, 636, M + 420 * eout(clamp((lt - 5.2) / 0.8)), 636, C.accent, kf, 2);
+    label('Entropy · 平均惊讶', M, 672, sstep(5.4, 6, lt), C.muted, 16);
     // English letters
     const aE = win(lt, 9.4, 18, 0.6, 0.01);
     if (aE > 0) {
       const x0 = COL + 20, y0 = 720, w = 28, hmax = 380;
-      rule(x0 - 6, y0, x0 + 26 * w, y0, C.line, aE, 1.5);
+      rule(x0 - 6, y0, x0 + 26 * w, y0, C.rule, aE, 1.5);
       [...LETTERS].forEach((ch, i) => {
         const a = aE * sstep(9.6 + i * 0.05, 9.9 + i * 0.05, lt);
         const h = (FREQ[i] / 12.7) * hmax;
-        ctx_fill(x0 + i * w + 4, y0 - h, w - 8, h, a * (i < 5 ? 0.9 : 0.45), i < 5 ? C.rust : C.ink2);
-        text(ch, x0 + i * w + w / 2, y0 + 26, { font: F_MONO, size: 15, color: C.grey, alpha: a, align: 'center' });
+        ctx_fill(x0 + i * w + 4, y0 - h, w - 8, h, a * (i < 5 ? 0.9 : 0.45), i < 5 ? C.accent : C.fg2);
+        text(ch, x0 + i * w + w / 2, y0 + 26, { font: F.mono, size: 15, color: C.muted, alpha: a, align: 'center' });
       });
       const rows: [number, string, string][] = [[11.4, 'log₂ 26 = 4.70 bit', '若二十六个字母等可能'], [13.8, 'H₁ ≈ 4.14 bit', '按单字母频率'], [16.2, 'H ≈ 1 bit / 字母', '考虑上下文']];
       rows.forEach(([t0, f, lab], i) => {
         const a = aE * sstep(t0, t0 + 0.5, lt);
-        text(f, x0 + 330, 270 + i * 60, { font: F_MATH, size: 30, color: i === 2 ? C.rust : C.ink, alpha: a });
-        text(lab, x0 + 640, 270 + i * 60, { size: 20, color: C.grey, alpha: a });
+        text(f, x0 + 330, 270 + i * 60, { font: F.math, size: 30, color: i === 2 ? C.accent : C.fg, alpha: a });
+        text(lab, x0 + 640, 270 + i * 60, { size: 20, color: C.muted, alpha: a });
       });
     }
   },
 });
 
 import { ctx } from '../../../engine/draw';
-function ctx_fill(x: number, y: number, w: number, h: number, a: number, col = C.rust): void {
+function ctx_fill(x: number, y: number, w: number, h: number, a: number, col = C.accent): void {
   if (a <= 0.002 || h <= 0) return;
   ctx.save();
   ctx.globalAlpha = a;

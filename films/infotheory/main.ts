@@ -9,8 +9,9 @@
  */
 import './film';
 import './scenes/index';
-import { cv, F_ZH, F_EN, F_MATH, F_MONO } from '../../engine/draw';
-const F_IT = F_EN;
+import { cv } from '../../engine/draw';
+import { F } from '../../engine/style';
+const F_IT = F.latin;
 import { frame } from '../../engine/frame';
 import { gpuName } from '../../engine/gl';
 import { SC, sceneAt } from '../../engine/scene';
@@ -34,13 +35,13 @@ const params = new URLSearchParams(location.search);
 let fontsReady = false;
 const SAMPLE = '信息论熵比特惊讶压缩噪声纠错容量互信息无处不在ABCabc0123456789';
 Promise.all([
-  ...['400', '500', '600'].map((w) => document.fonts.load(`${w} 40px ${F_ZH}`, SAMPLE)),
-  document.fonts.load(`400 40px ${F_EN}`),
-  document.fonts.load(`700 40px ${F_EN}`),
+  ...['400', '500', '600'].map((w) => document.fonts.load(`${w} 40px ${F.body}`, SAMPLE)),
+  document.fonts.load(`400 40px ${F.latin}`),
+  document.fonts.load(`700 40px ${F.latin}`),
   document.fonts.load(`italic 400 40px ${F_IT}`),
-  document.fonts.load(`400 40px ${F_MATH}`, 'H = −Σ p log₂ p'),
-  document.fonts.load(`italic 400 40px ${F_MATH}`),
-  document.fonts.load(`700 40px ${F_MONO}`, '0101'),
+  document.fonts.load(`400 40px ${F.math}`, 'H = −Σ p log₂ p'),
+  document.fonts.load(`italic 400 40px ${F.math}`),
+  document.fonts.load(`700 40px ${F.mono}`, '0101'),
 ])
   .catch(() => {})
   .then(() => document.fonts.ready)
