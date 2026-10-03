@@ -4,6 +4,7 @@
  * and a page number) and `plate` (the full-bleed dawn horizon, a quote). Registration order = film order.
  */
 import { BAR, film } from './film';
+import { check, SceneSpec } from './schema';
 import type { Grade } from './gl';
 
 export type Sub = [number, number, string, string];
@@ -37,6 +38,7 @@ export interface SceneDef {
 export const SC: SceneDef[] = [];
 export function scene(o: Omit<SceneDef, 't0' | 'd'>): SceneDef {
   film();
+  check(SceneSpec, o, `scene "${o.name}"`);
   const s: SceneDef = { ...o, t0: o.start * BAR, d: o.len * BAR };
   SC.push(s);
   return s;

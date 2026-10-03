@@ -3,6 +3,8 @@
  * scene module registers (the film entry imports film.ts first). The timing values are live bindings: read them at
  * registration or draw time, not at engine module load.
  */
+import { check, FilmSpec } from './schema';
+
 export interface FilmMeta {
   id: string;
   /** Tempo of the bar grid; one bar is four beats. */
@@ -23,6 +25,7 @@ export let TOTAL = 0;
 
 export function defineFilm(m: FilmMeta): FilmMeta {
   if (FILM) throw new Error(`film already defined: ${FILM.id}`);
+  check(FilmSpec, m, 'film');
   FILM = m;
   BPM = m.bpm;
   BEAT = 60 / BPM;
