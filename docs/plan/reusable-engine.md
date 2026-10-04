@@ -174,6 +174,15 @@ films/<id>/      一部片子：film.ts、scenes/、score.py
 短音频、缺音频且未加 `--noaudio`、worker 启动失败、编码器失败、中断信号、超过截止时间、同路径并发、缺字。
 退出条件：失败用例全部符合预期；Windows 与 macOS 都能预览和导出短样片；字体替换后的样张经人眼验收；安全区恢复为 error 后 `validate` 0 error。
 
+1c 实施记录（分支 `engine/1c-export`）：
+- 导出：作业私有临时文件 + 校验（帧数、时长、音轨及长度、色彩标记）后才替换成片；锁文件防并发；默认要求音频（`--audio` 指定，`--noaudio` 无声）；去掉 `-shortest`；`--deadline`；失败、中断都关闭或强杀 Chrome 与 ffmpeg。`scripts/test-export.ts` 8/8 通过（缺音频、音频过短、启动失败、编码失败、中断、超时、并发、成功），遗留进程检测经运行中实测有效（18 → 0）。Windows 上无法向子进程发送 SIGINT，中断用例走 `--abort-after` 钩子，与 SIGINT 处理同一路径。
+- 色彩：canvas JPEG（全范围 BT.601）转为有限范围 BT.709 并打标记。实测 ffmpeg 默认的 swscale 舍入会带来 2–6 个色阶的系统偏差，改用 `accurate_rnd+full_chroma_int+full_chroma_inp` 后，成片按标记精确解码与 canvas PNG 的块平均色差为 0.52 个色阶（旧管线 0.24–0.50；旧管线在 ffmpeg 9 下其实已自动标记为全范围 BT.601，但全范围 H.264 的播放器兼容性较差）。
+- 平台：ANGLE 后端按平台选择（只有 Windows 强制 D3D11），三处启动参数合并到 `scripts/chrome.ts`；缺 WebGL2、缺扩展、半浮点 framebuffer 不完整、着色器编译或链接失败都抛错（反例：着色器语法错误时 `validate` 立即失败）。
+- 字体：`styles/paper-dawn/fonts.lock.json` 锁定 google/fonts @9710da1 的来源与 sha256；`just fonts` 下载到 `.cache/fonts`、裁剪子集（共约 410 KiB）并写 manifest，重跑结果逐字节相同。页面只加载这些字体，任一加载失败则 `__ready()` 抛错；删除 15 秒强制就绪。`text()` 按字体链逐字检查覆盖，缺字直接抛错（预览、validate、导出都生效）。Georgia → Gelasio（字宽兼容），Cambria Math → STIX Two Text + STIX Two Math，Consolas → Inconsolata。所有字体都不含 ₚ，黑洞熵公式改写为等价的 `S = kc³A / 4Għ`。反例：缺字、字体文件损坏、字体文件缺失都按预期失败。
+- 排版：章节标签英文部分按标题实际字体量宽度后摆放（原来会重叠，如 无处不在 / EVERYWHERE）；entropy 注释列左移 50 px；capacity 的 S/N (dB) 移到轴下方。安全区恢复为 error，`validate` 0 error、0 warning。
+- 回归基线重录两次：字体替换（194/231 帧变化）、排版修正（147/231 帧变化），每次都先看新旧样张。
+- 未完成：macOS 上的预览与导出（0d，等协作者）。
+
 **风格解耦验收（1a–1c 完成后）。**
 第二套风格包（由 `nebula` 背景扩展而来，色板、字体、版式、转场均不同），用页面场景与全幅背景场景两类代表场景验证：
 不改场景代码即可切换；`just validate` 无 error；人眼确认两套风格可明显区分。

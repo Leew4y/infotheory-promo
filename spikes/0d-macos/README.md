@@ -42,6 +42,19 @@ RESULT_DIR=spikes/0d-macos bun spikes/0b-media/run.ts export --page diag --fmt j
 cp out/0c-capture/sample-*.jpg spikes/0d-macos/
 ```
 
+## 补充：在 1c 分支上（PR #5 合入前）
+
+0d 的上述步骤跑完后，如果方便，再切到分支 `engine/1c-export` 跑一遍新的检查（字体已随仓库分发、导出有失败保护）：
+
+```bash
+git switch engine/1c-export && bun install && bun run build
+bun scripts/validate.ts                                    # 0 error 即通过
+bun scripts/test-export.ts                                 # 8/8 即通过（需要先 just music 生成音频，或看缺音频用例的报错）
+bun scripts/export.ts --from 30 --to 36 --out out/mac-1c.mp4
+```
+
+把输出贴回即可；`just regress` 在 macOS 上会提示"基线不可比较"，这是预期的。
+
 ## 需要人眼看的
 
 - `spikes/0d-macos/frames/` 的三张样张：地平线（深蓝到暖色的天空、地平线光带）、章节页（米白纸面、墨线图表、中英文字）、

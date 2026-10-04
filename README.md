@@ -49,7 +49,7 @@ engine/               与片子无关
   gl.ts               WebGL2：风格背景着色器、子帧累积、颗粒与暗角调色
   schema.ts           FilmSpec / SceneSpec（zod），注册时校验
   boot.ts             页面入口：预览播放器与导出钩子 __frame/__layout/__cues/__timeline/__duration/__scenes/__film
-styles/paper-dawn/    "纸与黎明"风格包：色板、字体、纸面、地平线着色器、调色、版式块、叠加层
+styles/paper-dawn/    "纸与黎明"风格包：色板、字体链、纸面、地平线着色器、调色、版式块、叠加层；fonts.lock.json 锁定字体来源
 films/infotheory/     信息论短片
   film.ts             帧率、BPM、章节数与所用风格
   main.ts             入口：film → scenes → boot()
@@ -57,9 +57,13 @@ films/infotheory/     信息论短片
   score.py            配乐编曲：按"场景 + 场景内小节"定位，读 timeline.json 与 cues.json
   cues.json           页面导出的音效 cue 表（生成文件）
   timeline.json       页面导出的解析后时间轴（生成文件）
+  fonts/              随仓库分发的字体子集（just fonts 生成）与 manifest.json
   regress-baseline.json  像素回归基线
 index.html            页面：一个 1920×1080 的 canvas、开始卡片、播放条
-scripts/export.ts     导出：N 个 headless Chrome 各自渲染精确帧时刻，按序写入 ffmpeg；也出检查帧、cue 表和时间轴
+scripts/export.ts     导出：N 个 headless Chrome 各自渲染精确帧时刻，按序写入 ffmpeg；先写临时文件、校验后替换成片；也出检查帧、cue 表和时间轴
+scripts/test-export.ts  导出失败用例（缺音频、音频过短、浏览器启动失败、编码失败、中断、超时、并发）
+scripts/chrome.ts     共享的 Chrome 启动参数（CPU 2D canvas；Windows 用 ANGLE D3D11，其他平台用浏览器默认；或 SwiftShader）
+scripts/fonts.ts      按锁定文件下载字体、按片子用字裁剪子集、检查覆盖
 scripts/regress.ts    像素回归：SwiftShader + CPU 2D canvas 下逐帧比较原始 RGBA 哈希
 scripts/validate.ts   校验：声明、时间轴、文字是否出画面或出安全区
 scripts/check-imports.ts  依赖方向检查
@@ -70,7 +74,7 @@ justfile              一键命令
 
 ## 运行
 
-需要 bun、uv、Chrome 或 Edge、PATH 上的 ffmpeg。字体使用本机已安装的 Noto Serif SC、Cambria Math、Georgia、Consolas，不需要联网。
+需要 bun、uv、Chrome 或 Edge、PATH 上的 ffmpeg。字体随仓库分发（OFL：Noto Serif SC、Gelasio、STIX Two Text / Math、Inconsolata），按片子用到的字裁剪成子集放在 `films/infotheory/fonts/`；改了文案之后运行 `just fonts`（会下载完整字体到 `.cache/fonts`，需要联网）。渲染时任何一个字没有随仓库字体覆盖都会直接报错。
 
 ```
 just setup          # bun install + uv sync
@@ -83,6 +87,8 @@ just all            # cues → music → export
 just check          # 类型检查
 just check-imports  # 依赖方向
 just validate       # 声明、时间轴、渲染、文字版面（出画面或出 5% 安全区都是错误）
+just fonts          # 文案改动后重新生成字体子集
+just test-export    # 导出失败用例
 just regress        # 像素回归（--update 重写基线）。基线只在录制它的平台上可比较（目前是 Windows x64），其他平台会直接退出并提示
 ```
 
