@@ -9,7 +9,7 @@ export const cv = document.getElementById('c') as HTMLCanvasElement;
 export const ctx = cv.getContext('2d')!;
 
 /** Where a text() call landed on the canvas (after the current transform), for layout checks. */
-export interface TextBox { s: string; x0: number; y0: number; x1: number; y1: number; alpha: number }
+export interface TextBox { s: string; font: string; x0: number; y0: number; x1: number; y1: number; alpha: number }
 let boxes: TextBox[] | null = null;
 /** Start (on = true) or stop recording text boxes; returns what was recorded since the last start. */
 export function recordText(on: boolean): TextBox[] {
@@ -22,6 +22,39 @@ export const textMark = (): number => boxes?.length ?? 0;
 /** Multiply the alpha of boxes recorded since `mark` by `k` (a layer later covered by a fade). */
 export function scaleText(mark: number, k: number): void {
   if (boxes) for (let i = mark; i < boxes.length; i++) boxes[i].alpha *= k;
+}
+
+/**
+ * Glyph coverage of the bundled fonts (set by boot from the film's font manifest). Every string text() draws is
+ * checked once per font chain and style: each character must be covered by a bundled family in the chain, otherwise
+ * text() throws, so an export can never fall back to a system font silently.
+ */
+interface Coverage { charset: Set<string>; missing: Map<string, string> }
+let coverage: Coverage | null = null;
+const checked = new Set<string>();
+export function setCoverage(m: { charset: string; fonts: { family: string; style: string; missing: string }[] }): void {
+  coverage = { charset: new Set(m.charset), missing: new Map(m.fonts.map((f) => [`${f.family}|${f.style}`, f.missing])) };
+  checked.clear();
+}
+const families = (font: string): string[] => font.split(',').map((x) => x.trim().replace(/^["']|["']$/g, ''));
+function checkGlyphs(s: string, font: string, style: string): void {
+  if (!coverage) return;
+  const key = `${style}|${font}|${s}`;
+  if (checked.has(key)) return;
+  const cov = coverage;
+  const st = style === 'italic' ? 'italic' : 'normal';
+  for (const ch of s) {
+    if (/\s/.test(ch)) continue;
+    const ok = cov.charset.has(ch) && families(font).some((fam) => {
+      const miss = cov.missing.get(`${fam}|${st}`) ?? cov.missing.get(`${fam}|normal`);
+      return miss !== undefined && !miss.includes(ch);
+    });
+    if (!ok) {
+      const code = ch.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0');
+      throw new Error(`no bundled font covers "${ch}" (U+${code}) in "${s}" (font: ${font}): put the character in the film's text and run "just fonts", or change the text`);
+    }
+  }
+  checked.add(key);
 }
 
 export interface TextOpts {
@@ -39,6 +72,7 @@ export interface TextOpts {
 export function text(s: string, x: number, y: number, o: TextOpts = {}): void {
   if ((o.alpha ?? 1) <= 0.002 || !s) return;
   ctx.save();
+  checkGlyphs(s, o.font ?? F.body, o.style ?? 'normal');
   ctx.font = `${o.style ?? ''} ${o.weight ?? 400} ${o.size ?? 40}px ${o.font ?? F.body}`;
   ctx.textAlign = o.align ?? 'left';
   ctx.textBaseline = o.base ?? 'alphabetic';
@@ -53,7 +87,7 @@ export function text(s: string, x: number, y: number, o: TextOpts = {}): void {
       xs.push(q.x);
       ys.push(q.y);
     }
-    boxes.push({ s, x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys), alpha: ctx.globalAlpha });
+    boxes.push({ s, font: ctx.font, x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys), alpha: ctx.globalAlpha });
   }
   ctx.fillText(s, x, y);
   ctx.restore();

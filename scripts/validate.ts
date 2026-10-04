@@ -6,6 +6,7 @@
  * - page load: the page renders the requested film; film and scene declarations satisfy FilmSpec / SceneSpec
  *   (engine/schema.ts); no page errors
  * - timeline: scenes start at 0, are contiguous (no gap, no overlap) and end at the film's duration
+ * - render: each sampled frame renders without error (this includes the bundled-font glyph check in text())
  * - layout: at 0 / 25 / 50 / 75 % and the last frame of every scene (no motion blur), every visible text box
  *   (alpha >= 0.02 after the scene's fade, after the camera transform) lies inside the frame (error) and inside the
  *   safe area, 5 % each side (warning; error with --strict). Five frames per scene are a sample: nothing is proved
@@ -91,7 +92,14 @@ try {
         const d = s.end - s.start;
         for (const [tag, t] of [['0%', s.start], ['25%', s.start + d * 0.25], ['50%', s.start + d * 0.5], ['75%', s.start + d * 0.75], ['end', s.end - 1 / FPS]] as const) {
           framesChecked++;
-          const boxes: { s: string; x0: number; y0: number; x1: number; y1: number; alpha: number }[] = await page.evaluate((t) => window.__layout(t, 30), t);
+          let boxes: { s: string; x0: number; y0: number; x1: number; y1: number; alpha: number }[];
+          try {
+            boxes = await page.evaluate((t) => window.__layout(t, 30), t);
+          } catch (e) {
+            // the film failed to render this frame (e.g. a character no bundled font covers)
+            err('render-error', `scene:${s.name}@${tag}(${t.toFixed(2)}s)`, (e instanceof Error ? e.message : String(e)).split(/\r?\n/)[0]);
+            continue;
+          }
           for (const b of boxes) {
             if (!(b.alpha >= MIN_ALPHA)) continue;
             boxesChecked++;

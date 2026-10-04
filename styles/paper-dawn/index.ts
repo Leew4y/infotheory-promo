@@ -58,12 +58,14 @@ const paperDawn: StylePackage = {
     fgOnDark: '#F3EDE0',
     mutedOnDark: '#D9CFBD',
   },
-  // installed locally on the render machine (phase 1c moves to bundled OFL fonts)
+  // Bundled OFL fonts (fonts.lock.json; the film's subsets come from `just fonts`). Each chain lists only bundled
+  // families, ordered so every character the film draws is covered (scripts/validate.ts checks); the generic family
+  // at the end is never relied on.
   fonts: {
-    body: '"Noto Serif SC", "华文中宋", "SimSun", serif',
-    latin: '"Georgia", "Palatino Linotype", "Times New Roman", serif',
-    math: '"Cambria Math", "Cambria", "Times New Roman", serif',
-    mono: '"Consolas", "Cascadia Mono", monospace',
+    body: '"Noto Serif SC", "STIX Two Text", "STIX Two Math", serif',
+    latin: '"Gelasio", "STIX Two Text", "Noto Serif SC", "STIX Two Math", serif',
+    math: '"STIX Two Text", "Noto Serif SC", "STIX Two Math", serif',
+    mono: '"Inconsolata", "STIX Two Text", "Noto Serif SC", "STIX Two Math", monospace',
   },
   // pages: no halation, light grain; plates: a little sun halation and more grain
   grade: { bloom: 0, ca: 0.0005, vig: 0.22, grain: 0.05, sat: 0.98, split: 0.35, tintS: [0.97, 0.98, 1.03], tintH: [1.03, 1.0, 0.96] },
