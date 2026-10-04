@@ -27,7 +27,7 @@ scene({
     ink([[X0, Y1 - 10], [X0, Y0], [X1 + 10, Y0]], ka, C.fg2, 1.5);
     for (let db = -10; db <= 30; db += 10) text(String(db), px(db), Y0 + 32, { font: F.mono, size: 16, color: C.muted, alpha: ka, align: 'center' });
     for (let c = 2; c <= 10; c += 2) text(String(c), X0 - 14, py(c) + 6, { font: F.mono, size: 16, color: C.muted, alpha: ka, align: 'right' });
-    text('S/N (dB)', X1 + 14, Y0 + 32, { font: F.math, size: 18, color: C.fg2, alpha: ka });
+    text('S/N (dB)', X1 + 10, Y0 + 62, { font: F.math, size: 18, color: C.fg2, alpha: ka, align: 'right' });
     text('bit / s / Hz', X0 - 8, Y1 - 24, { font: F.math, size: 18, color: C.fg2, alpha: ka, align: 'right' });
     // regions
     const aR = win(lt, 5.4, 18, 0.9, 0.01);

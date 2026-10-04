@@ -31,7 +31,7 @@ check:
 check-imports:
     bun scripts/check-imports.ts
 
-# Schema, timeline and text-layout checks of the built film (add --strict to fail on safe-area warnings).
+# Schema, timeline, rendering and text-layout checks of the built film (text outside the frame or the 5% safe area is an error).
 validate *args: build
     bun scripts/validate.ts {{args}}
 
