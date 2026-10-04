@@ -10,9 +10,8 @@ const nonneg = z.number().finite().nonnegative();
 
 export const FilmSpec = z.object({
   id: z.string().regex(/^[a-z0-9][a-z0-9-]*$/, 'lowercase id: letters, digits, hyphens'),
+  fps: z.number().int().positive(),
   bpm: z.number().finite().positive(),
-  bars: z.number().finite().positive(),
-  tail: nonneg,
   chapters: z.number().int().nonnegative(),
 });
 
@@ -29,8 +28,7 @@ export const GradeSpec = z.object({ bloom: num, ca: num, vig: num, grain: num, s
 export const SceneSpec = z.object({
   name: z.string().min(1),
   kind: z.enum(['page', 'plate']),
-  start: nonneg,
-  len: z.number().finite().positive(),
+  dur: z.number().finite().positive(),
   fi: nonneg.optional(),
   fo: nonneg.optional(),
   fade: z.string().optional(),

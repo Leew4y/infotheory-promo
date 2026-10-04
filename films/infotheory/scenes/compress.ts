@@ -1,5 +1,5 @@
 // 5. Chapter 03, compression: a Huffman tree drawn in ink, the same message in two codes, the entropy floor.
-import { text, label, ink, circle, rule, bits, background, statement, row, M, COL, C, F, scene, clamp, lerp, eout, sstep, win } from '../../../engine';
+import { text, label, ink, circle, rule, bits, background, statement, row, M, COL, C, F, scene, clamp, lerp, eout, sstep, win, bars } from '../../../engine';
 
 interface Node { id: string; p: number; x: number; y: number; kids?: [string, string]; born: number; code?: string }
 const NODES: Record<string, Node> = {
@@ -16,7 +16,7 @@ const MSG = 'ABACABAEBA';
 const FIXED: Record<string, string> = { A: '000', B: '001', C: '010', D: '011', E: '100', F: '101' };
 
 scene({
-  name: 'compress', kind: 'page', start: 22, len: 7, mb: 3, chapter: 3, ch: ['压缩', 'Compression'],
+  name: 'compress', kind: 'page', dur: bars(7), mb: 3, chapter: 3, ch: ['压缩', 'Compression'],
   subs: [
     [0.8, 4.6, '常见的符号给短码，罕见的给长码。', 'Frequent symbols get short codes, rare ones long codes.'],
     [5.2, 9.4, '霍夫曼树：每次把最不常见的两个合并，直到只剩一个根。', 'A Huffman tree: merge the two least frequent, until one root remains.'],

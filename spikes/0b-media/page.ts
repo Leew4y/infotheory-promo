@@ -52,7 +52,7 @@ function load(i: number): Promise<void> {
 }
 
 useStyle(paperDawn);
-defineFilm({ id: 'spike-0b', bpm: 80, bars: 30, tail: 0, chapters: 0 });
+defineFilm({ id: 'spike-0b', fps: 30, bpm: 80, chapters: 0 });
 
 // ---- the capture scene
 let outFrame = 0;
@@ -75,16 +75,14 @@ function drawCapture(_lt: number, _d: number, t: number): void {
   draws.push({ tk: t, src, have: !!bmp, level });
 }
 const common = {
-  // fi/fo = 0 disables the scene fade. Any fi > 0 makes a scene's first frame fully faded (win() is 0 at lt = 0),
-  // which would hide the barcode; with 0, win() evaluates 0/0 = NaN and `fade > 0` is false. Phase 1 should make
-  // "no fade" explicit instead of relying on NaN.
-  kind: 'page' as const, len: 15, fi: 0, fo: 0, mb: 3, subs: [],
+  // fi/fo = 0: no scene fade, so the barcode is readable on every frame
+  kind: 'page' as const, dur: 45, fi: 0, fo: 0, mb: 3, subs: [],
   grade: { bloom: 0, ca: 0, vig: 0, grain: 0, sat: 1, split: 0 },
   cam: CAM ? (lt: number, d: number) => ({ z: 1 + (0.2 * lt) / d, x: 40 * Math.sin(lt * 2) }) : () => ({ z: 1 }),
   draw: drawCapture,
 };
-scene({ ...common, name: 'capture-a', start: 0 });
-scene({ ...common, name: 'capture-b', start: 15 });
+scene({ ...common, name: 'capture-a' });
+scene({ ...common, name: 'capture-b' });
 
 declare global {
   interface Window {

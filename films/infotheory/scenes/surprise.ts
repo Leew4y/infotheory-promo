@@ -1,12 +1,12 @@
 // 2. Chapter 01, surprise: I = −log2 p drawn in ink; a coin, a sunrise, a lottery ticket.
-import { text, label, ink, circle, dot, rule, arrow, background, statement, M, COL, C, F, scene, clamp, lerp, eout, sstep, win } from '../../../engine';
+import { text, label, ink, circle, dot, rule, arrow, background, statement, M, COL, C, F, scene, clamp, lerp, eout, sstep, win, bars } from '../../../engine';
 
 const X0 = COL + 60, X1 = 1740, Y0 = 740, Y1 = 300;
 const px = (p: number) => lerp(X0, X1, p);
 const py = (b: number) => lerp(Y0, Y1, clamp(b / 8));
 
 scene({
-  name: 'surprise', kind: 'page', start: 8, len: 6, mb: 3, chapter: 1, ch: ['惊讶', 'Surprise'],
+  name: 'surprise', kind: 'page', dur: bars(6), mb: 3, chapter: 1, ch: ['惊讶', 'Surprise'],
   subs: [
     [0.8, 4.6, '抛一枚公平的硬币，无论落在哪一面，你得到 1 比特。', 'Toss a fair coin: whichever side lands, you gain one bit.'],
     [5.2, 8.8, '太阳明天升起，几乎没有惊讶，也几乎没有信息。', 'The sun rising tomorrow brings almost no surprise, and almost no information.'],

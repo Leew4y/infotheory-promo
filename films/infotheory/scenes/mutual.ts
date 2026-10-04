@@ -1,5 +1,5 @@
 // 10. Chapter 07, mutual information: two entropies overlap in ink; then training as cross-entropy going down.
-import { text, label, circle, hatch, rule, background, statement, M, COL, C, F, scene, clamp, lerp, eio, eout, sstep, win, ctx, TAU } from '../../../engine';
+import { text, label, circle, hatch, rule, background, statement, M, COL, C, F, scene, clamp, lerp, eio, eout, sstep, win, ctx, TAU, bars } from '../../../engine';
 
 const TOKENS = ['信息', '比特', '熵', '噪声', '编码', '香农'];
 const PTRUE = [0.34, 0.22, 0.18, 0.12, 0.09, 0.05];
@@ -7,7 +7,7 @@ const Q0 = [0.05, 0.1, 0.3, 0.25, 0.2, 0.1];
 const xent = (p: number[], q: number[]) => -p.reduce((s, v, i) => s + v * Math.log2(Math.max(q[i], 1e-6)), 0);
 
 scene({
-  name: 'mutual', kind: 'page', start: 48, len: 6, mb: 3, chapter: 7, ch: ['互信息', 'Mutual information'],
+  name: 'mutual', kind: 'page', dur: bars(6), mb: 3, chapter: 7, ch: ['互信息', 'Mutual information'],
   subs: [
     [0.8, 4.4, '知道了 Y，关于 X 的不确定减少了多少？', 'Knowing Y, how much less uncertain are you about X?'],
     [5, 7.8, '这块重叠，叫互信息。', 'That overlap is mutual information.'],

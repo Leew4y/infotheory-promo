@@ -1,5 +1,5 @@
 // 11. Chapter 08, everywhere: six rows, each with a small ink drawing, and one unit for all of them.
-import { text, label, ink, circle, rule, dot, background, statement, M, COL, C, F, scene, clamp, eout, sstep, ctx, TAU, PI } from '../../../engine';
+import { text, label, ink, circle, rule, dot, background, statement, M, COL, C, F, scene, clamp, eout, sstep, ctx, TAU, PI, bars } from '../../../engine';
 
 type Icon = (x: number, y: number, k: number) => void;
 const helix: Icon = (x, y, k) => {
@@ -53,7 +53,7 @@ const ROWS: [Icon, string, string, string][] = [
 ];
 
 scene({
-  name: 'everywhere', kind: 'page', start: 54, len: 7, mb: 3, chapter: 8, ch: ['无处不在', 'Everywhere'],
+  name: 'everywhere', kind: 'page', dur: bars(7), mb: 3, chapter: 8, ch: ['无处不在', 'Everywhere'],
   subs: [
     [0.6, 3.6, 'DNA 用四种碱基写字：每个两比特。', 'DNA writes with four bases: two bits each.'],
     [3.9, 6.8, '擦掉一比特，至少要放出 kT ln 2 的热。', 'Erasing one bit costs at least kT ln 2 of heat.'],
