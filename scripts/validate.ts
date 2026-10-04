@@ -16,6 +16,7 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import puppeteer, { type Browser } from 'puppeteer-core';
+import { chromeArgs, findChrome, serveDist } from './chrome';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const argv = Bun.argv.slice(2);
@@ -37,25 +38,17 @@ const diags: Diag[] = [];
 const err = (code: string, p: string, message: string) => diags.push({ level: 'error', code, path: p, message });
 const warn = (code: string, p: string, message: string) => diags.push({ level: STRICT ? 'error' : 'warning', code, path: p, message });
 
-const CHROME = [process.env.CHROME_PATH, 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/usr/bin/google-chrome'].find((p) => p && existsSync(p));
-if (!CHROME) { console.error('Chrome not found (set CHROME_PATH)'); process.exit(2); }
+let CHROME = '';
+try { CHROME = findChrome(); } catch (e) { console.error((e as Error).message); process.exit(2); }
 if (!existsSync(path.join(DIST, 'index.html'))) { console.error(`${DIST}/index.html missing: run \`bun run build\``); process.exit(2); }
 
-const server = Bun.serve({
-  hostname: '127.0.0.1', port: 0,
-  async fetch(req) {
-    const p = decodeURIComponent(new URL(req.url).pathname);
-    if (p === '/favicon.ico') return new Response(null, { status: 204 });
-    const f = Bun.file(path.join(DIST, p === '/' ? 'index.html' : p));
-    return (await f.exists()) ? new Response(f) : new Response('not found', { status: 404 });
-  },
-});
+const server = serveDist(DIST);
 let browser: Browser | null = null;
 let scenesChecked = 0, framesChecked = 0, boxesChecked = 0, toolError: string | null = null;
 try {
   browser = await puppeteer.launch({
     executablePath: CHROME, headless: true, defaultViewport: { width: W, height: H, deviceScaleFactor: 1 },
-    args: ['--window-size=1920,1080', '--ignore-gpu-blocklist', '--mute-audio', '--no-first-run', '--disable-accelerated-2d-canvas', ...(process.platform === 'win32' ? ['--use-angle=d3d11'] : [])],
+    args: chromeArgs('platform'),
   });
   const page = await browser.newPage();
   page.on('pageerror', (e) => err('page-error', 'page', e instanceof Error ? e.message : String(e)));
@@ -67,7 +60,7 @@ try {
     // module evaluation errors fire during goto
     const thrown = new Promise<never>((_, reject) => page.once('pageerror', () => reject(new Error('page threw during load'))));
     thrown.catch(() => {});
-    await Promise.race([page.goto(`http://127.0.0.1:${server.port}/?export=1`, { waitUntil: 'load' }), thrown]);
+    await Promise.race([page.goto(`${server.url}/?export=1`, { waitUntil: 'load' }), thrown]);
     await Promise.race([page.waitForFunction(() => typeof window.__layout === 'function' && window.__ready(), { timeout: 30_000 }), thrown]);
     ready = true;
   } catch (e) {
@@ -116,7 +109,7 @@ try {
   err('tool-error', 'validate', `validate could not finish: ${toolError}`);
 } finally {
   await browser?.close().catch(() => {});
-  server.stop(true);
+  server.stop();
 }
 
 mkdirSync(path.dirname(OUT), { recursive: true });
