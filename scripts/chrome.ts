@@ -35,6 +35,26 @@ export function chromeArgs(gpu: Gpu, o: { cpu2d?: boolean } = {}): string[] {
   ];
 }
 
+/**
+ * Kill a process and all its descendants and wait (bounded) until the root is gone. Windows: taskkill /T /F.
+ * Elsewhere: SIGKILL to the process group (puppeteer starts Chrome detached, i.e. as a group leader), then the pid.
+ * Returns false if the root is still running after `waitMs`.
+ */
+export async function killTree(pid: number | undefined, waitMs = 5000): Promise<boolean> {
+  if (!pid) return true;
+  const alive = () => { try { process.kill(pid, 0); return true; } catch (e) { return (e as NodeJS.ErrnoException).code === 'EPERM'; } };
+  if (!alive()) return true;
+  if (process.platform === 'win32') {
+    await Bun.spawn(['taskkill', '/PID', String(pid), '/T', '/F'], { stdout: 'ignore', stderr: 'ignore' }).exited;
+  } else {
+    try { process.kill(-pid, 'SIGKILL'); } catch {}
+    try { process.kill(pid, 'SIGKILL'); } catch {}
+  }
+  const t0 = performance.now();
+  while (alive() && performance.now() - t0 < waitMs) await Bun.sleep(50);
+  return !alive();
+}
+
 /** A static file server for a built page directory; '/' is index.html. */
 export function serveDist(dist: string): { url: string; stop: () => void } {
   const server = Bun.serve({
