@@ -29,7 +29,8 @@ const CRF = opt('crf', '18')!;
 const SINGLE = flag('shots') || flag('cues') || flag('timeline') || flag('scenes');
 const WORKERS = SINGLE ? 1 : Math.max(1, +(opt('workers', '4') ?? 4));
 const OUT = path.resolve(ROOT, opt('out', 'out/infotheory.mp4')!);
-const AUDIO = path.join(ROOT, 'audio', 'music.mp3');
+// the loudness-normalized WAV master from the score (the MP3 is only for the preview player)
+const AUDIO = path.join(ROOT, 'audio', 'music.wav');
 
 function findChrome(): string {
   const c = [
@@ -135,7 +136,7 @@ const TO = Math.min(+(opt('to', String(DUR)) ?? DUR), DUR);
 const N = Math.round((TO - FROM) * FPS);
 mkdirSync(path.dirname(OUT), { recursive: true });
 const withAudio = !flag('noaudio') && existsSync(AUDIO);
-if (!withAudio) console.log('no audio/music.mp3: exporting video only');
+if (!withAudio) console.log('no audio/music.wav: exporting video only');
 console.log(`rendering ${N} frames (${FROM.toFixed(2)}s -> ${TO.toFixed(2)}s @ ${FPS} fps) -> ${OUT}`);
 const ffArgs = ['-y', '-hide_banner', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', String(FPS), '-c:v', 'mjpeg', '-i', 'pipe:0'];
 if (withAudio) ffArgs.push('-ss', String(FROM), '-t', String(TO - FROM), '-i', AUDIO, '-map', '0:v:0', '-map', '1:a:0');

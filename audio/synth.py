@@ -277,7 +277,8 @@ def conv(bus, h):
 
 
 def render(wav_path, mp3_path):
-    """Reverbs, mix, bus compression and look-ahead limiting; write the 16-bit mix and a loudness-normalized MP3."""
+    """Reverbs, mix, bus compression and look-ahead limiting, then the loudness-normalized WAV master (wav_path) and an
+    MP3 for the preview player encoded from it (mp3_path). The export muxes the WAV master."""
     hall = ir([((0, 300), 1.5), ((300, 1500), 1.3), ((1500, 5000), .9), ((5000, 16000), .4)], 4.2, .028, 1)
     plate = ir([((0, 500), .6), ((500, 4000), .7), ((4000, 16000), .5)], 2.0, .008, 2)
     room = ir([((0, 400), .2), ((400, 6000), .18), ((6000, 16000), .09)], .7, .004, 3)
@@ -310,14 +311,50 @@ def render(wav_path, mp3_path):
     mix /= np.max(np.abs(mix)) + 1e-9
     pcm = (mix.T * 32000).astype(np.int16)
     os.makedirs(os.path.dirname(wav_path) or '.', exist_ok=True)
-    with wave.open(wav_path, 'wb') as w:
+    mix_path = wav_path[:-4] + '.mix.wav'
+    with wave.open(mix_path, 'wb') as w:
         w.setnchannels(2)
         w.setsampwidth(2)
         w.setframerate(SR)
         w.writeframes(pcm.tobytes())
-    ln = 'loudnorm=I=-16:TP=-1.5:LRA=13'
-    m = subprocess.run(['ffmpeg', '-hide_banner', '-i', wav_path, '-af', ln + ':print_format=json', '-f', 'null', '-'], capture_output=True, text=True).stderr
+    master(mix_path, wav_path)
+    os.remove(mix_path)
+    subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', wav_path, '-b:a', '192k', mp3_path], check=True)
+    print(f'music: {TOTAL:.2f}s -> {wav_path} (master), {mp3_path} (preview)')
+
+
+# loudness targets of the master: integrated loudness, its tolerance, and the true-peak ceiling
+TARGET_I, TOL_I, MAX_TP = -16.0, 0.5, -1.5
+
+
+def master(mix_path, wav_path):
+    """Two-pass loudnorm to TARGET_I with a sample-peak limiter, written as the 16-bit WAV master, then measured:
+    a master off target in loudness, true peak or duration is an error (SystemExit)."""
+    ln = f'loudnorm=I={TARGET_I}:TP={MAX_TP}:LRA=13'
+    m = subprocess.run(['ffmpeg', '-hide_banner', '-i', mix_path, '-af', ln + ':print_format=json', '-f', 'null', '-'], capture_output=True, text=True).stderr
     m = json.loads(m[m.rindex('{'):m.rindex('}') + 1])
     ln += f":measured_I={m['input_i']}:measured_TP={m['input_tp']}:measured_LRA={m['input_lra']}:measured_thresh={m['input_thresh']}:offset={m['target_offset']}:linear=true"
-    subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', wav_path, '-af', ln + ',alimiter=limit=-1.8dB:level=false', '-ar', '44100', '-b:a', '192k', mp3_path], check=True)
-    print(f'music: {TOTAL:.2f}s -> {mp3_path}')
+    subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', mix_path, '-af', ln + ',alimiter=limit=-1.8dB:level=false',
+                    '-ar', str(SR), '-c:a', 'pcm_s16le', wav_path], check=True)
+    q = measure(wav_path)
+    print(f"master: {q['duration']:.3f}s, {q['I']:.2f} LUFS, true peak {q['TP']:.2f} dBTP")
+    errors = []
+    if abs(q['I'] - TARGET_I) > TOL_I:
+        errors.append(f"integrated loudness {q['I']:.2f} LUFS is not within {TARGET_I}±{TOL_I}")
+    if q['TP'] > MAX_TP:
+        errors.append(f"true peak {q['TP']:.2f} dBTP is above {MAX_TP}")
+    if abs(q['duration'] - TOTAL) > 1 / SR:
+        errors.append(f"duration {q['duration']:.6f}s differs from the film's {TOTAL}s")
+    if errors:
+        raise SystemExit('master out of spec: ' + '; '.join(errors))
+
+
+def measure(path):
+    """Integrated loudness and true peak (EBU R128, ffmpeg ebur128) and duration of an audio file."""
+    out = subprocess.run(['ffmpeg', '-hide_banner', '-nostats', '-i', path, '-af', 'ebur128=peak=true', '-f', 'null', '-'], capture_output=True, text=True).stderr
+    summary = out[out.rindex('Summary:'):]
+    loud = float(summary.split('I:')[1].split('LUFS')[0])
+    peak = float(summary.split('Peak:')[1].split('dBFS')[0])
+    with wave.open(path, 'rb') as w:
+        duration = w.getnframes() / w.getframerate()
+    return {'I': loud, 'TP': peak, 'duration': duration}
