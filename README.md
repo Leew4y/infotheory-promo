@@ -41,27 +41,29 @@
 ```
 engine/               与片子无关
   index.ts            公共 API：片子只能从这里导入
-  film.ts             影片时间网格（BPM、小节数、尾段）与章节数，由片子的 film.ts 声明
+  film.ts             帧率、小节网格（BPM）、章节数与解析后的时间轴（帧为权威单位），由片子的 film.ts 声明
   style.ts            风格包接口与当前风格：语义色板 C、字体 F、版式 M/COL、background/plate/statement/row
-  scene.ts            场景注册表：page / plate 两种，start/len（小节）、文案、音效 cue、镜头
+  scene.ts            场景注册表：page / plate 两种，时长 dur（秒，可用 bars(n)）、文案、音效 cue、镜头；起点按顺序累加
   frame.ts            帧管线：场景层 → 运动模糊累积 → 后期 → 风格的章节标签、页码、文案叠加
   draw.ts             绘图原语：文字、细线、笔画、圆、阴影线、箭头、比特行
   gl.ts               WebGL2：风格背景着色器、子帧累积、颗粒与暗角调色
   schema.ts           FilmSpec / SceneSpec（zod），注册时校验
-  boot.ts             页面入口：预览播放器与导出钩子 __frame/__layout/__cues/__duration/__scenes
+  boot.ts             页面入口：预览播放器与导出钩子 __frame/__layout/__cues/__timeline/__duration/__scenes/__film
 styles/paper-dawn/    "纸与黎明"风格包：色板、字体、纸面、地平线着色器、调色、版式块、叠加层
 films/infotheory/     信息论短片
-  film.ts             时间网格与所用风格
+  film.ts             帧率、BPM、章节数与所用风格
   main.ts             入口：film → scenes → boot()
   scenes/*.ts         一场景一文件，index.ts 决定顺序
+  score.py            配乐编曲：按"场景 + 场景内小节"定位，读 timeline.json 与 cues.json
+  cues.json           页面导出的音效 cue 表（生成文件）
+  timeline.json       页面导出的解析后时间轴（生成文件）
   regress-baseline.json  像素回归基线
 index.html            页面：一个 1920×1080 的 canvas、开始卡片、播放条
-scripts/export.ts     导出：N 个 headless Chrome 各自渲染精确帧时刻，按序写入 ffmpeg；也出检查帧和 cue 表
+scripts/export.ts     导出：N 个 headless Chrome 各自渲染精确帧时刻，按序写入 ffmpeg；也出检查帧、cue 表和时间轴
 scripts/regress.ts    像素回归：SwiftShader + CPU 2D canvas 下逐帧比较原始 RGBA 哈希
 scripts/validate.ts   校验：声明、时间轴、文字是否出画面或出安全区
 scripts/check-imports.ts  依赖方向检查
-audio/music.py        配乐与音效合成（numpy/scipy）：毛毡钢琴、弦乐、大提琴，无鼓；按 cues.json 放置翻页、落笔、轻钟等音效
-audio/cues.json       页面导出的音效 cue 表（生成文件）
+audio/synth.py        合成库（numpy/scipy）：毛毡钢琴、弦乐、大提琴，翻页、落笔、轻钟等音效，混响、混音、母版
 spikes/               阶段 0 的验证实验与结果（spikes/RESULTS.md）
 justfile              一键命令
 ```
@@ -74,8 +76,8 @@ justfile              一键命令
 just setup          # bun install + uv sync
 just dev            # 预览 http://127.0.0.1:5174 ：空格播放/暂停，←/→ 5 秒，, . 单帧，[ ] 跳场景，F 全屏
 just shots 5,20.5   # 写检查帧到 out/shots/
-just cues           # 页面 → audio/cues.json
-just music          # cues.json → audio/music.wav, audio/music.mp3
+just cues           # 页面 → films/infotheory/cues.json 与 timeline.json
+just music          # cues → 配乐 → audio/music.wav（母版，导出用）与 audio/music.mp3（预览用）
 just export         # 4 个 Chrome 进程逐帧导出 → out/infotheory.mp4（crf 18）
 just all            # cues → music → export
 just check          # 类型检查
@@ -88,12 +90,12 @@ just regress        # 像素回归（--update 重写基线）。基线只在录�
 
 ## 它是怎么工作的
 
-- **时间网格**：80 BPM，一小节 3 秒。每个场景声明 `start` 和 `len`（单位：小节），文案、音效 cue、镜头运动都写成场景内的局部时间。目前起点是手写的绝对小节号，改一个场景的长度需要手动顺延后面的场景，`music.py` 也另有一份常数（阶段 1b 改为由时长解析起点并共享 `timeline.json`）。
+- **时间网格**：帧（30 fps）是权威单位；小节网格 80 BPM，一小节 3 秒。每个场景只声明时长 `dur`（秒，常写成 `bars(6)`），取整到帧，起点按注册顺序累加，没有空隙、不累积误差；文案、音效 cue、镜头运动都写成场景内的局部时间。改一个场景的长度，后面的场景自动顺延；`just cues` 写出 `timeline.json`，配乐按场景定位，跟着走。
 - **确定性**：绘制函数只接收 `lt`；随机数全部来自固定种子，颗粒由帧号播种。导出（3 个运动模糊子帧）与预览（1 个子帧）不完全相同。所有启动器都带 `--disable-accelerated-2d-canvas`：硬件加速的 2D canvas 会让像素依赖渲染顺序（见 `spikes/RESULTS.md` 0a）。
 - **帧管线**（`frame.ts`）：一帧先在 Canvas2D 上画场景层（缓慢推近、场景首尾经纸面或暗色的淡入淡出），上传到 WebGL 累积缓冲；导出时每帧画 3 个子帧（快门 0.5 帧，带亚像素抖动）求平均得到运动模糊；随后是颗粒、暗角、明暗分离的轻微冷暖调色，地平线页另加一点光晕；结果画回 canvas，最后叠加不受模糊影响的章节标签、页码和文案。
 - **地平线**：一个全屏片元着色器：按参数 `p`（时刻）在深蓝到晨蓝之间插值天空，地平线附近叠加暖色光带，大地是一条抛物线以下的暗色，fbm 噪声做薄雾和条状云，`q` 控制太阳高度。
-- **导出**：页面在 `?export=1` 下暴露 `__frame(t, fps)`，渲染该时刻并返回 JPEG；`scripts/export.ts` 起 N 个独立的 headless Chrome，把帧号交给空闲的进程，收回后严格按序写入 `ffmpeg -f image2pipe -c:v mjpeg`，再与 `audio/music.mp3` 混合成 H.264。在 CPU 2D canvas 下，任何进程数得到相同的页面帧；GPU 上的地平线着色器偶有 1 个色阶的随机差异，逐像素回归因此在 SwiftShader 上做。
-- **音乐**：场景里写的 `sfx: [[t, 'tone', {midi: 64}], ...]` 由页面汇总成 cue 表；`music.py` 按小节写编曲（每小节一个毛毡钢琴和弦、四分音符琶音、弦乐铺底、大提琴根音；地平线页只有弦乐渐强和单音），再按 cue 表放置翻页、落笔、轻击、单音、小钟，混音后由 ffmpeg 两遍 loudnorm 归一到 −16 LUFS。
+- **导出**：页面在 `?export=1` 下暴露 `__frame(t, fps)`，渲染该时刻并返回 JPEG；`scripts/export.ts` 起 N 个独立的 headless Chrome，把帧号交给空闲的进程，收回后严格按序写入 `ffmpeg -f image2pipe -c:v mjpeg`，再与 `audio/music.wav`（母版）混合成 H.264 + AAC。在 CPU 2D canvas 下，任何进程数得到相同的页面帧；GPU 上的地平线着色器偶有 1 个色阶的随机差异，逐像素回归因此在 SwiftShader 上做。
+- **音乐**：场景里写的 `sfx: [[t, 'tone', {midi: 64}], ...]` 由页面汇总成 cue 表；`films/infotheory/score.py` 用 `audio/synth.py` 的乐器按场景写编曲（每小节一个毛毡钢琴和弦、四分音符琶音、弦乐铺底、大提琴根音；地平线页只有弦乐渐强和单音），再按 cue 表放置翻页、落笔、轻击、单音、小钟；混音后由 ffmpeg 两遍 loudnorm 做成 WAV 母版，并检查积分响度 −16 LUFS ±0.5、真峰值 ≤ −1.5 dBTP、时长等于影片。
 
 ## 成片记录
 

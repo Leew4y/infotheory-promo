@@ -35,6 +35,10 @@ validate *args: build
 regress *args: build
     bun scripts/regress.ts {{args}}
 
+# Write the resolved timeline only (just cues writes it too).
+timeline: build
+    bun scripts/export.ts --timeline films/infotheory/timeline.json
+
 # Print the scene list with times.
 scenes: build
     bun scripts/export.ts --scenes

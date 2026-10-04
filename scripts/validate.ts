@@ -63,9 +63,11 @@ try {
 
   let ready = false;
   try {
-    await page.goto(`http://127.0.0.1:${server.port}/?export=1`, { waitUntil: 'load' });
-    // stop waiting as soon as the page throws (e.g. a declaration fails its schema)
+    // stop waiting as soon as the page throws (e.g. a declaration fails its schema); listen before loading, since
+    // module evaluation errors fire during goto
     const thrown = new Promise<never>((_, reject) => page.once('pageerror', () => reject(new Error('page threw during load'))));
+    thrown.catch(() => {});
+    await Promise.race([page.goto(`http://127.0.0.1:${server.port}/?export=1`, { waitUntil: 'load' }), thrown]);
     await Promise.race([page.waitForFunction(() => typeof window.__layout === 'function' && window.__ready(), { timeout: 30_000 }), thrown]);
     ready = true;
   } catch (e) {
