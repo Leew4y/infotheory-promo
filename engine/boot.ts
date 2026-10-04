@@ -26,7 +26,7 @@ declare global {
     __frame: (t: number, fps?: number) => string;
     __duration: number;
     __film: string;
-    __timeline: () => { film: string; fps: number; frames: number; duration: number; scenes: { name: string; kind: string; f0: number; f1: number; start: number; end: number }[] };
+    __timeline: () => { film: string; fps: number; bpm: number; frames: number; duration: number; scenes: { name: string; kind: string; f0: number; f1: number; start: number; end: number }[] };
     __gpu: () => string;
     __cues: () => { t: number; name: string; [k: string]: number | string }[];
     __scenes: () => { name: string; start: number; end: number }[];
@@ -76,7 +76,7 @@ export function boot(o: BootOptions): void {
   window.__duration = TOTAL;
   window.__film = film().id;
   window.__timeline = () => ({
-    film: film().id, fps: FPS, frames: FRAMES, duration: TOTAL,
+    film: film().id, fps: FPS, bpm: film().bpm, frames: FRAMES, duration: TOTAL,
     scenes: SC.map((s) => ({ name: s.name, kind: s.kind, f0: s.f0, f1: s.f1, start: s.t0, end: s.t0 + s.d })),
   });
   // text boxes of the frame at t (no motion blur), for scripts/validate.ts

@@ -3,7 +3,8 @@
  *
  *   bun scripts/export.ts [--workers 4] [--fps 30] [--from 0] [--to <end>] [--crf 18] [--out out/infotheory.mp4] [--noaudio]
  *   bun scripts/export.ts --shots 5,20.5,60 [--dir out/shots]     write single frames (JPEG) for checking
- *   bun scripts/export.ts --cues audio/cues.json                  dump the sound-effect cue sheet for audio/music.py
+ *   bun scripts/export.ts --cues films/infotheory/cues.json       dump the sound-effect cue sheet for the score
+ *   bun scripts/export.ts --timeline films/infotheory/timeline.json  dump the resolved timeline (scene frames / seconds)
  *   bun scripts/export.ts --scenes                                print the scene list with start/end times
  *
  * Every worker is its own headless Chrome rendering exact frame times through the page's ?export=1 hooks.
@@ -25,7 +26,7 @@ const flag = (k: string): boolean => argv.includes(`--${k}`);
 
 const FPS = +(opt('fps', '30') ?? 30);
 const CRF = opt('crf', '18')!;
-const SINGLE = flag('shots') || flag('cues') || flag('scenes');
+const SINGLE = flag('shots') || flag('cues') || flag('timeline') || flag('scenes');
 const WORKERS = SINGLE ? 1 : Math.max(1, +(opt('workers', '4') ?? 4));
 const OUT = path.resolve(ROOT, opt('out', 'out/infotheory.mp4')!);
 const AUDIO = path.join(ROOT, 'audio', 'music.mp3');
@@ -98,8 +99,16 @@ if (flag('scenes')) {
   await shutdown();
   process.exit(0);
 }
-if (flag('cues')) {
-  const file = path.resolve(ROOT, opt('cues', 'audio/cues.json')!);
+if (flag('cues') || flag('timeline')) {
+  if (flag('timeline')) {
+    const tf = path.resolve(ROOT, opt('timeline', 'films/infotheory/timeline.json')!);
+    const tl = await workers[0].evaluate(() => window.__timeline());
+    mkdirSync(path.dirname(tf), { recursive: true });
+    writeFileSync(tf, JSON.stringify(tl, null, 1));
+    console.log(`wrote timeline (${tl.scenes.length} scenes, ${tl.frames} frames) to ${tf}`);
+  }
+  if (!flag('cues')) { await shutdown(); process.exit(0); }
+  const file = path.resolve(ROOT, opt('cues', 'films/infotheory/cues.json')!);
   const cues = await workers[0].evaluate(() => window.__cues());
   mkdirSync(path.dirname(file), { recursive: true });
   writeFileSync(file, JSON.stringify(cues, null, 1));

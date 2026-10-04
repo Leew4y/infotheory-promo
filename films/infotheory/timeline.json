@@ -1,0 +1,121 @@
+{
+ "film": "infotheory",
+ "fps": 30,
+ "bpm": 80,
+ "frames": 6060,
+ "duration": 202,
+ "scenes": [
+  {
+   "name": "dawn",
+   "kind": "plate",
+   "f0": 0,
+   "f1": 450,
+   "start": 0,
+   "end": 15
+  },
+  {
+   "name": "preface",
+   "kind": "page",
+   "f0": 450,
+   "f1": 720,
+   "start": 15,
+   "end": 24
+  },
+  {
+   "name": "surprise",
+   "kind": "page",
+   "f0": 720,
+   "f1": 1260,
+   "start": 24,
+   "end": 42
+  },
+  {
+   "name": "entropy",
+   "kind": "page",
+   "f0": 1260,
+   "f1": 1800,
+   "start": 42,
+   "end": 60
+  },
+  {
+   "name": "dusk1",
+   "kind": "plate",
+   "f0": 1800,
+   "f1": 1980,
+   "start": 60,
+   "end": 66
+  },
+  {
+   "name": "compress",
+   "kind": "page",
+   "f0": 1980,
+   "f1": 2610,
+   "start": 66,
+   "end": 87
+  },
+  {
+   "name": "noise",
+   "kind": "page",
+   "f0": 2610,
+   "f1": 3060,
+   "start": 87,
+   "end": 102
+  },
+  {
+   "name": "hamming",
+   "kind": "page",
+   "f0": 3060,
+   "f1": 3600,
+   "start": 102,
+   "end": 120
+  },
+  {
+   "name": "dusk2",
+   "kind": "plate",
+   "f0": 3600,
+   "f1": 3780,
+   "start": 120,
+   "end": 126
+  },
+  {
+   "name": "capacity",
+   "kind": "page",
+   "f0": 3780,
+   "f1": 4320,
+   "start": 126,
+   "end": 144
+  },
+  {
+   "name": "mutual",
+   "kind": "page",
+   "f0": 4320,
+   "f1": 4860,
+   "start": 144,
+   "end": 162
+  },
+  {
+   "name": "everywhere",
+   "kind": "page",
+   "f0": 4860,
+   "f1": 5490,
+   "start": 162,
+   "end": 183
+  },
+  {
+   "name": "morning",
+   "kind": "plate",
+   "f0": 5490,
+   "f1": 5778,
+   "start": 183,
+   "end": 192.6
+  },
+  {
+   "name": "sources",
+   "kind": "page",
+   "f0": 5778,
+   "f1": 6060,
+   "start": 192.6,
+   "end": 202
+  }
+ ]
+}
