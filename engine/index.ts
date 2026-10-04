@@ -8,4 +8,4 @@ export { scene, camDrift, type Cam, type SceneDef, type Sfx, type Sub } from './
 export { defineFilm, film, bars, BAR, BEAT, BPM, EIGHTH, FPS, FRAMES, TOTAL, type FilmMeta } from './film';
 export { W, H, PI, TAU, clamp, lerp, sstep, eio, eout, ein, eexpo, win, mulberry, hash1, noise1 } from './util';
 export type { Grade } from './gl';
-export { boot, type BootOptions } from './boot';
+export { boot, type BootOptions, type FontManifest } from './boot';

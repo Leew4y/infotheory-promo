@@ -19,6 +19,10 @@ dev:
 build:
     bun run build
 
+# Download the style's pinned fonts (to .cache/fonts) and write the film's subsets + manifest (films/infotheory/fonts).
+fonts:
+    bun scripts/fonts.ts
+
 # Type-check the engine, styles, films and scripts.
 check:
     bunx tsc --noEmit

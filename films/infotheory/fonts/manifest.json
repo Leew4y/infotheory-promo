@@ -1,0 +1,126 @@
+{
+ "film": "infotheory",
+ "style": "paper-dawn",
+ "charset": " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~²³·¹×ħıΣ–—‖’⁷⁹⁻₁₂₃₄↑→⇒−≈≥、。一三上下不与世东丢两个中为么乎也了事二于互些交享人什今从以们件任优会传但位低何余你信修偏做偶元全八公六兰共关其再冗写农决准减凑几出函分到削前剩加化十升半华单却压参叉发取变叠另只叫可号合同后向吗告和哪器噪四因圆在地均块型基声处复多大天太夫失头奇奖好字存学它宋完定实室容宽察对封小少尔就差已币布带常平年并序张彩很得德必息惊意成所手找把抛按损换据掉探摸擦收放数整文旅无日明是曼最有朵机条来极枚果树校根概模次正段母每比汉没洞测消深温源点热焦然照熵片特猜率理用由界的目直看真眼着睛知短码硬确碱票离种科秒积称空穿符第等算篇类精纠约纪练组终结给维缀编缩罕罗置翻考者耳聪肯能自至花若英落虑行被西要见视觉言计让训讶论证诉词语误说读贵起越距转输边过近还这送通速逼道那部都采里重量错长门问阳限除集零霍非靠面项预频题香验高黑，：；？",
+ "fonts": [
+  {
+   "family": "Noto Serif SC",
+   "role": "body",
+   "style": "normal",
+   "weight": "200 900",
+   "file": "NotoSerifSC-normal.woff2",
+   "sha256": "9a53a1e58f7c12bb81adeaac5b52e6024c6b0d811fdfdb36a690a49db8861ff4",
+   "bytes": 196224,
+   "source": {
+    "file": "NotoSerifSC[wght].ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/notoserifsc/NotoSerifSC%5Bwght%5D.ttf",
+    "sha256": "050080d9255a86808f2945bffac582b31ef32bc36411ce29563b4961670c66f9"
+   },
+   "license": "OFL-1.1",
+   "chars": 467,
+   "missing": "ħı⁷⁹⁻₁₂₃₄"
+  },
+  {
+   "family": "Gelasio",
+   "role": "latin",
+   "style": "normal",
+   "weight": "400 700",
+   "file": "Gelasio-normal.woff2",
+   "sha256": "d766398924ac9df33666ddd78512a8db63a71568b161f904620797504e126ff2",
+   "bytes": 25728,
+   "source": {
+    "file": "Gelasio[wght].ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/gelasio/Gelasio%5Bwght%5D.ttf",
+    "sha256": "4daecea457258c9ebeb8bc99ed3fd24353618bfad3ea4b93fa0b5d0468fc04e4"
+   },
+   "license": "OFL-1.1",
+   "chars": 117,
+   "missing": "‖⁻⇒、。一三上下不与世东丢两个中为么乎也了事二于互些交享人什今从以们件任优会传但位低何余你信修偏做偶元全八公六兰共关其再冗写农决准减凑几出函分到削前剩加化十升半华单却压参叉发取变叠另只叫可号合同后向吗告和哪器噪四因圆在地均块型基声处复多大天太夫失头奇奖好字存学它宋完定实室容宽察对封小少尔就差已币布带常平年并序张彩很得德必息惊意成所手找把抛按损换据掉探摸擦收放数整文旅无日明是曼最有朵机条来极枚果树校根概模次正段母每比汉没洞测消深温源点热焦然照熵片特猜率理用由界的目直看真眼着睛知短码硬确碱票离种科秒积称空穿符第等算篇类精纠约纪练组终结给维缀编缩罕罗置翻考者耳聪肯能自至花若英落虑行被西要见视觉言计让训讶论证诉词语误说读贵起越距转输边过近还这送通速逼道那部都采里重量错长门问阳限除集零霍非靠面项预频题香验高黑，：；？"
+  },
+  {
+   "family": "Gelasio",
+   "role": "latin",
+   "style": "italic",
+   "weight": "400 700",
+   "file": "Gelasio-italic.woff2",
+   "sha256": "81d20d40b3cae196a136fcfd16c122e9a6c36d4fbacc14f52f85dda4fe9c4c96",
+   "bytes": 30156,
+   "source": {
+    "file": "Gelasio-Italic[wght].ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/gelasio/Gelasio-Italic%5Bwght%5D.ttf",
+    "sha256": "52559e845a4d33514e5f93bb9ae7dbeae1894a53f2c565a15f18af40cd337c09"
+   },
+   "license": "OFL-1.1",
+   "chars": 117,
+   "missing": "‖⁻⇒、。一三上下不与世东丢两个中为么乎也了事二于互些交享人什今从以们件任优会传但位低何余你信修偏做偶元全八公六兰共关其再冗写农决准减凑几出函分到削前剩加化十升半华单却压参叉发取变叠另只叫可号合同后向吗告和哪器噪四因圆在地均块型基声处复多大天太夫失头奇奖好字存学它宋完定实室容宽察对封小少尔就差已币布带常平年并序张彩很得德必息惊意成所手找把抛按损换据掉探摸擦收放数整文旅无日明是曼最有朵机条来极枚果树校根概模次正段母每比汉没洞测消深温源点热焦然照熵片特猜率理用由界的目直看真眼着睛知短码硬确碱票离种科秒积称空穿符第等算篇类精纠约纪练组终结给维缀编缩罕罗置翻考者耳聪肯能自至花若英落虑行被西要见视觉言计让训讶论证诉词语误说读贵起越距转输边过近还这送通速逼道那部都采里重量错长门问阳限除集零霍非靠面项预频题香验高黑，：；？"
+  },
+  {
+   "family": "STIX Two Text",
+   "role": "math",
+   "style": "normal",
+   "weight": "400 700",
+   "file": "STIXTwoText-normal.woff2",
+   "sha256": "46b873d3efe346820685561df31b9910de0beed8f5a4adaa86e963c93f33e2be",
+   "bytes": 30936,
+   "source": {
+    "file": "STIXTwoText[wght].ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/stixtwotext/STIXTwoText%5Bwght%5D.ttf",
+    "sha256": "7962b8b7811e6a896c9a91a0bccbb5241047770eb24d4997c5cb5fe21d5c0df2"
+   },
+   "license": "OFL-1.1",
+   "chars": 115,
+   "missing": "↑→⇒≈≥、。一三上下不与世东丢两个中为么乎也了事二于互些交享人什今从以们件任优会传但位低何余你信修偏做偶元全八公六兰共关其再冗写农决准减凑几出函分到削前剩加化十升半华单却压参叉发取变叠另只叫可号合同后向吗告和哪器噪四因圆在地均块型基声处复多大天太夫失头奇奖好字存学它宋完定实室容宽察对封小少尔就差已币布带常平年并序张彩很得德必息惊意成所手找把抛按损换据掉探摸擦收放数整文旅无日明是曼最有朵机条来极枚果树校根概模次正段母每比汉没洞测消深温源点热焦然照熵片特猜率理用由界的目直看真眼着睛知短码硬确碱票离种科秒积称空穿符第等算篇类精纠约纪练组终结给维缀编缩罕罗置翻考者耳聪肯能自至花若英落虑行被西要见视觉言计让训讶论证诉词语误说读贵起越距转输边过近还这送通速逼道那部都采里重量错长门问阳限除集零霍非靠面项预频题香验高黑，：；？"
+  },
+  {
+   "family": "STIX Two Text",
+   "role": "math",
+   "style": "italic",
+   "weight": "400 700",
+   "file": "STIXTwoText-italic.woff2",
+   "sha256": "505e3ccf6db146693fe946cd433986c343d28a272dd9e806829bd1ba5a51936d",
+   "bytes": 34288,
+   "source": {
+    "file": "STIXTwoText-Italic[wght].ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/stixtwotext/STIXTwoText-Italic%5Bwght%5D.ttf",
+    "sha256": "88c0e2e316eaff56eddc9e51e4850317e2a1e490bbf758b2dec4793aedba9c74"
+   },
+   "license": "OFL-1.1",
+   "chars": 115,
+   "missing": "↑→⇒≈≥、。一三上下不与世东丢两个中为么乎也了事二于互些交享人什今从以们件任优会传但位低何余你信修偏做偶元全八公六兰共关其再冗写农决准减凑几出函分到削前剩加化十升半华单却压参叉发取变叠另只叫可号合同后向吗告和哪器噪四因圆在地均块型基声处复多大天太夫失头奇奖好字存学它宋完定实室容宽察对封小少尔就差已币布带常平年并序张彩很得德必息惊意成所手找把抛按损换据掉探摸擦收放数整文旅无日明是曼最有朵机条来极枚果树校根概模次正段母每比汉没洞测消深温源点热焦然照熵片特猜率理用由界的目直看真眼着睛知短码硬确碱票离种科秒积称空穿符第等算篇类精纠约纪练组终结给维缀编缩罕罗置翻考者耳聪肯能自至花若英落虑行被西要见视觉言计让训讶论证诉词语误说读贵起越距转输边过近还这送通速逼道那部都采里重量错长门问阳限除集零霍非靠面项预频题香验高黑，：；？"
+  },
+  {
+   "family": "Inconsolata",
+   "role": "mono",
+   "style": "normal",
+   "weight": "200 900",
+   "file": "Inconsolata-normal.woff2",
+   "sha256": "4d9874deee82b039fb51a5a798dc5a4f1ec3fea22c80e0551e49a083d5ab8b49",
+   "bytes": 52052,
+   "source": {
+    "file": "Inconsolata[wdth,wght].ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/inconsolata/Inconsolata%5Bwdth%2Cwght%5D.ttf",
+    "sha256": "23ded25b447074d00659392bf9b1123d89df55cb07b0ad9bfef3366d199b5fcb"
+   },
+   "license": "OFL-1.1",
+   "chars": 117,
+   "missing": "Σ‖⇒、。一三上下不与世东丢两个中为么乎也了事二于互些交享人什今从以们件任优会传但位低何余你信修偏做偶元全八公六兰共关其再冗写农决准减凑几出函分到削前剩加化十升半华单却压参叉发取变叠另只叫可号合同后向吗告和哪器噪四因圆在地均块型基声处复多大天太夫失头奇奖好字存学它宋完定实室容宽察对封小少尔就差已币布带常平年并序张彩很得德必息惊意成所手找把抛按损换据掉探摸擦收放数整文旅无日明是曼最有朵机条来极枚果树校根概模次正段母每比汉没洞测消深温源点热焦然照熵片特猜率理用由界的目直看真眼着睛知短码硬确碱票离种科秒积称空穿符第等算篇类精纠约纪练组终结给维缀编缩罕罗置翻考者耳聪肯能自至花若英落虑行被西要见视觉言计让训讶论证诉词语误说读贵起越距转输边过近还这送通速逼道那部都采里重量错长门问阳限除集零霍非靠面项预频题香验高黑，：；？"
+  },
+  {
+   "family": "STIX Two Math",
+   "role": "fallback",
+   "style": "normal",
+   "weight": "400",
+   "file": "STIXTwoMath-normal.woff2",
+   "sha256": "a564e2b278abc81ffbe612b98e62ee2b778b0fac9c3a5548fe2d8b6eb96bd00d",
+   "bytes": 23336,
+   "source": {
+    "file": "STIXTwoMath-Regular.ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/stixtwomath/STIXTwoMath-Regular.ttf",
+    "sha256": "562551b15b836e6e01d1b7350909baf3c8c8d83260c1190fbf4544333e6936de"
+   },
+   "license": "OFL-1.1",
+   "chars": 120,
+   "missing": "、。一三上下不与世东丢两个中为么乎也了事二于互些交享人什今从以们件任优会传但位低何余你信修偏做偶元全八公六兰共关其再冗写农决准减凑几出函分到削前剩加化十升半华单却压参叉发取变叠另只叫可号合同后向吗告和哪器噪四因圆在地均块型基声处复多大天太夫失头奇奖好字存学它宋完定实室容宽察对封小少尔就差已币布带常平年并序张彩很得德必息惊意成所手找把抛按损换据掉探摸擦收放数整文旅无日明是曼最有朵机条来极枚果树校根概模次正段母每比汉没洞测消深温源点热焦然照熵片特猜率理用由界的目直看真眼着睛知短码硬确碱票离种科秒积称空穿符第等算篇类精纠约纪练组终结给维缀编缩罕罗置翻考者耳聪肯能自至花若英落虑行被西要见视觉言计让训讶论证诉词语误说读贵起越距转输边过近还这送通速逼道那部都采里重量错长门问阳限除集零霍非靠面项预频题香验高黑，：；？"
+  }
+ ]
+}

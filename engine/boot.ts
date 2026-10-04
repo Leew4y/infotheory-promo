@@ -1,7 +1,8 @@
 /**
  * Page entry shared by all films. Normal load: a player (fonts -> start card -> audio-clocked playback with a scrub bar).
  * ?export=1: no UI; export hooks for scripts/export.ts and the other tools:
- *   __ready()          fonts loaded
+ *   __ready()          fonts loaded (throws if a font failed to load)
+ *   __fonts()          the film's font manifest (for scripts/validate.ts)
  *   __frame(t, fps)    render time t with motion blur, return a JPEG data URL
  *   __duration         film length in seconds
  *   __film             the film's id
@@ -12,8 +13,7 @@
  *   __scenes()         name/start/end of every scene (for the shot list)
  * A film's main.ts imports its film.ts and scenes, then calls boot().
  */
-import { cv, recordText, type TextBox } from './draw';
-import { F } from './style';
+import { cv, recordText, setCoverage, type TextBox } from './draw';
 import { frame } from './frame';
 import { gpuName } from './gl';
 import { SC, sceneAt } from './scene';
@@ -31,13 +31,18 @@ declare global {
     __cues: () => { t: number; name: string; [k: string]: number | string }[];
     __scenes: () => { name: string; start: number; end: number }[];
     __layout: (t: number, fps?: number) => TextBox[];
+    __fonts: () => FontManifest;
   }
 }
 
+/** One bundled font face: films/<id>/fonts/manifest.json, written by scripts/fonts.ts. */
+export interface FontEntry { family: string; style: string; weight: string; file: string }
+export interface FontManifest { film: string; charset: string; fonts: (FontEntry & { missing: string })[] }
+
 export interface BootOptions {
-  /** Characters to preload in the body font (the film's CJK text). */
-  fontSample: string;
-  mathSample?: string;
+  /** The film's font manifest and the bundled URL of each file in it (from import.meta.glob). */
+  fonts: FontManifest;
+  fontUrls: Record<string, string>;
   /** Start-card text once fonts are ready. */
   readyText?: string;
 }
@@ -46,29 +51,35 @@ export function boot(o: BootOptions): void {
   const EXPORT = /[?&]export=1/.test(location.search);
   const params = new URLSearchParams(location.search);
 
+  // Fonts: only the film's bundled subsets, loaded explicitly. A face that fails to load is an error: __ready()
+  // throws, so the tools stop instead of rendering with a system fallback.
   let fontsReady = false;
-  Promise.all([
-    ...['400', '500', '600'].map((w) => document.fonts.load(`${w} 40px ${F.body}`, o.fontSample)),
-    document.fonts.load(`400 40px ${F.latin}`),
-    document.fonts.load(`700 40px ${F.latin}`),
-    document.fonts.load(`italic 400 40px ${F.latin}`),
-    document.fonts.load(`400 40px ${F.math}`, o.mathSample ?? 'H = −Σ p log₂ p'),
-    document.fonts.load(`italic 400 40px ${F.math}`),
-    document.fonts.load(`700 40px ${F.mono}`, '0101'),
-  ])
-    .catch(() => {})
-    .then(() => document.fonts.ready)
+  let fontError: string | null = null;
+  setCoverage(o.fonts);
+  Promise.all(o.fonts.fonts.map(async (f) => {
+    const url = o.fontUrls[f.file];
+    if (!url) throw new Error(`font file ${f.file} is in the manifest but not bundled`);
+    const face = new FontFace(f.family, `url(${url}) format('woff2')`, { style: f.style, weight: f.weight });
+    document.fonts.add(await face.load());
+  }))
     .then(() => {
       fontsReady = true;
       const l = document.getElementById('load');
       if (l) l.textContent = o.readyText ?? '字体已就绪 · 建议全屏观看（F）';
       frame(0);
+    })
+    .catch((e) => {
+      fontError = `fonts failed to load: ${e instanceof Error ? e.message : String(e)}`;
+      console.error(fontError);
+      const l = document.getElementById('load');
+      if (l) l.textContent = fontError;
     });
-  setTimeout(() => {
-    fontsReady = true;
-  }, 15000);
 
-  window.__ready = () => fontsReady;
+  window.__ready = () => {
+    if (fontError) throw new Error(fontError);
+    return fontsReady;
+  };
+  window.__fonts = () => o.fonts;
   window.__frame = (t, fps = 30) => {
     frame(t, fps, 3);
     return cv.toDataURL('image/jpeg', 0.95);
