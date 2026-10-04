@@ -1,12 +1,9 @@
-"""Score and sound design for the information-theory film: A minor, 80 BPM, locked to the page's bar grid.
+"""Synthesis library for film scores: felt piano, strings, cello, sound effects, convolution reverb, mix and master.
 
-    bun scripts/export.ts --cues audio/cues.json     (the page's sound-effect cue sheet)
-    uv run --project audio python audio/music.py     -> audio/music.wav, audio/music.mp3
-
-A quiet chamber score: felt piano, a warm string bed, a cello on the low notes, no drums. Sound effects
-(page turns, pen strokes, soft ticks, single piano tones, a small bell) are placed from the cue sheet the
-page exports. Buses get convolution reverb, gentle compression and a look-ahead limiter; ffmpeg normalizes
-the result to -16 LUFS, a little quieter than the usual -14, which suits the register.
+A film's score module calls init() with the film's resolved timeline (timeline.json, exported by the page), writes
+its arrangement with the instruments below, places the page's cue sheet with place_cues(), then calls render().
+Times are seconds on the film clock; at(scene, bars) gives a time relative to a scene, snapped to the sample grid.
+Everything is deterministic: one seeded generator for noise, fixed seeds for the reverb impulses.
 """
 import json
 import os
@@ -17,28 +14,44 @@ import numpy as np
 from scipy.ndimage import maximum_filter1d
 from scipy.signal import butter, fftconvolve, lfilter, sosfilt, sosfiltfilt
 
-HERE = os.path.dirname(os.path.abspath(__file__))
 SR = 44100
-BPM = 80
-BEAT = 60 / BPM
-BAR = 4 * BEAT
-EIGHTH = BEAT / 2
-NBARS = 66
-TAIL = 4.0
-TOTAL = NBARS * BAR + TAIL
-N = int((TOTAL + 1) * SR)
 F32 = np.float32
 TAU = 2 * np.pi
-rng = np.random.default_rng(11)
-BUS = {k: np.zeros((2, N), F32) for k in ('mus', 'pad', 'sfx', 'hall', 'plate', 'room', 'sfxwet')}
+
+# set by init()
+BPM = BEAT = BAR = EIGHTH = TOTAL = 0.0
+N = 0
+BUS = {}
+SCENES = {}
+rng = None
+
+
+def init(timeline):
+    """Size the buses for the film and read its bar grid and scene starts from a timeline dict."""
+    global BPM, BEAT, BAR, EIGHTH, TOTAL, N, BUS, SCENES, rng
+    BPM = timeline['bpm']
+    BEAT = 60 / BPM
+    BAR = 4 * BEAT
+    EIGHTH = BEAT / 2
+    TOTAL = timeline['duration']
+    N = int((TOTAL + 1) * SR)
+    BUS = {k: np.zeros((2, N), F32) for k in ('mus', 'pad', 'sfx', 'hall', 'plate', 'room', 'sfxwet')}
+    SCENES = {s['name']: s for s in timeline['scenes']}
+    rng = np.random.default_rng(11)
+
+
+def load_json(path):
+    with open(path, encoding='utf-8') as f:
+        return json.load(f)
+
+
+def at(scene, bars_in=0.0):
+    """Seconds at `bars_in` bars after the start of `scene`, snapped to the sample grid."""
+    return round((SCENES[scene]['start'] + bars_in * BAR) * SR) / SR
 
 
 def midi(m):
     return 440.0 * 2 ** ((m - 69) / 12)
-
-
-def b(x):
-    return x * BAR
 
 
 def tv(dur):
@@ -151,17 +164,17 @@ def sub(t0, m, dur, gain=.1):
     put(np.sin(TAU * midi(m) * t) * e, t0, 'mus', gain)
 
 
-# ================================================================== harmony + arrangement
+# ================================================================== harmony
 CH = {'Am': [57, 60, 64, 67], 'Am9': [57, 60, 64, 71], 'F': [53, 57, 60, 65], 'Fmaj7': [53, 57, 60, 64], 'C': [55, 60, 64, 67], 'G': [55, 59, 62, 67],
       'Dm': [53, 57, 62, 65], 'Em': [52, 55, 59, 64], 'E': [52, 56, 59, 64], 'A': [57, 61, 64, 69], 'Aadd9': [57, 61, 64, 71]}
 ROOT = {'Am': 45, 'Am9': 45, 'F': 41, 'Fmaj7': 41, 'C': 48, 'G': 43, 'Dm': 50, 'Em': 52, 'E': 52, 'A': 45, 'Aadd9': 45}
 LOW = {k: v - 12 for k, v in ROOT.items()}
 
 
-def progression(start, chords, felt_gain=.045, str_gain=.026, arp=True, lows=True, arp_gain=.03):
-    """One chord per bar: a felt chord on the downbeat, a soft quarter-note arpeggio, a string bed, a cello root."""
+def progression(t0, chords, felt_gain=.045, str_gain=.026, arp=True, lows=True, arp_gain=.03):
+    """One chord per bar from t0: a felt chord on the downbeat, a soft quarter-note arpeggio, a string bed, a cello root."""
     for i, c in enumerate(chords):
-        t = b(start + i)
+        t = t0 + i * BAR
         chordf(t, CH[c], felt_gain, 3.2)
         if str_gain:
             strings(t, [m + 12 for m in CH[c][1:]], BAR, str_gain, att=1.4)
@@ -171,54 +184,6 @@ def progression(start, chords, felt_gain=.045, str_gain=.026, arp=True, lows=Tru
             notes = CH[c]
             for k in range(1, 4):
                 felt(t + k * BEAT, notes[(k * 2) % 4] + 12, arp_gain * (.8 if k % 2 else 1), 1.8, np.sin(k * 1.9) * .5)
-
-
-# ---- 0-5  first light: a string swell, single notes, the title chord
-strings(0.0, [57, 64, 69, 76], 12.0, .028, att=4.0, rel=2.0, cut=1800)
-bed(0.0, [45, 52], 14.0, .03, att=3.0)
-felt(2.2, 57, .05, 3.0)
-felt(7.0, 60, .05, 3.0)
-chordf(11.0, CH['Am9'] + [69, 76], .055, 4.0)
-strings(11.0, [64, 69, 72, 76], b(5) - 11.0 + .5, .035, att=.8)
-cello(11.0, 33, b(5) - 11.0, .05, att=.3)
-# ---- 5-8  preface: sparse
-for k, m in enumerate([57, 60, 64, 60, 57, 65, 60, 57, 55, 60, 64, 67]):
-    felt(b(5) + .6 + k * BEAT, m, .038, 2.4, np.sin(k) * .4)
-bed(b(5), [45, 52, 60], b(3) - .3, .024, att=1.5)
-# ---- 8-14  surprise
-progression(8, ['Am', 'F', 'C', 'G', 'Am', 'E'], .04, .022)
-# ---- 14-20  entropy
-progression(14, ['F', 'G', 'Am', 'Em', 'F', 'G'], .042, .024)
-# ---- 20-22  breath
-strings(b(20), [60, 64, 67, 72], b(2), .036, att=1.6)
-felt(b(20) + 1.0, 72, .045, 3.0)
-cello(b(20), 36, b(2) - .2, .045)
-# ---- 22-29  compression: a little more motion in the arpeggio
-progression(22, ['Am', 'C', 'G', 'F', 'Am', 'C', 'G'], .04, .022, arp_gain=.034)
-# ---- 29-34  noise: darker, lower, no arpeggio
-progression(29, ['Am', 'Dm', 'E', 'Am', 'Dm'], .038, .0, arp=False)
-bed(b(29), [45, 52, 57], b(5) - .3, .035, att=1.0)
-# ---- 34-40  error correction: resolve
-progression(34, ['F', 'C', 'G', 'Am', 'F', 'C'], .044, .026)
-# ---- 40-42  breath
-strings(b(40), [53, 60, 64, 69], b(2), .036, att=1.6)
-felt(b(40) + 1.0, 76, .045, 3.0)
-cello(b(40), 41, b(2) - .2, .045)
-# ---- 42-48  capacity: rising arpeggio
-progression(42, ['C', 'G', 'Am', 'F', 'C', 'G'], .044, .026, arp_gain=.036)
-# ---- 48-54  mutual information: warm strings
-progression(48, ['F', 'Am', 'G', 'C', 'F', 'Am'], .042, .034)
-# ---- 54-61  everywhere: the fullest passage
-progression(54, ['Am', 'F', 'C', 'G', 'Am', 'F', 'C'], .05, .036, arp_gain=.038)
-strings(b(54), [69, 72, 76, 81], b(7), .02, att=3.0)
-# ---- 61-66  morning, then the sources: resolve to A major
-progression(61, ['F', 'G', 'Am', 'C'], .046, .034)
-END = b(1) + TAIL + 1.0
-chordf(b(65), CH['Aadd9'] + [45, 76, 81], .055, 5.0)
-strings(b(65), [61, 64, 69, 73], END, .04, att=.8, rel=3.0)
-cello(b(65), 33, END - 1.0, .05, att=.3, rel=3.0)
-for k, m in enumerate([81, 85, 88, 93]):
-    felt(b(65) + 2.4 + k * .35, m, .035, 3.5, (k - 1.5) * .3)
 
 
 # ================================================================== sound effects from the cue sheet
@@ -275,14 +240,17 @@ def fx_stamp(t, **o):
 
 
 FX = {k[3:]: v for k, v in globals().items() if k.startswith('fx_')}
-cues = json.load(open(os.path.join(HERE, 'cues.json'), encoding='utf-8'))
-missing = sorted({c['name'] for c in cues} - FX.keys())
-if missing:
-    raise SystemExit(f'no sound for cues: {missing}')
-for c in cues:
-    o = {('midi_' if k == 'midi' else k): v for k, v in c.items() if k not in ('t', 'name')}
-    FX[c['name']](c['t'], **o)
-print(f'placed {len(cues)} sound effects')
+
+
+def place_cues(cues):
+    """Place every cue of the page's cue sheet; an unknown cue name is an error."""
+    missing = sorted({c['name'] for c in cues} - FX.keys())
+    if missing:
+        raise SystemExit(f'no sound for cues: {missing}')
+    for c in cues:
+        o = {('midi_' if k == 'midi' else k): v for k, v in c.items() if k not in ('t', 'name')}
+        FX[c['name']](c['t'], **o)
+    print(f'placed {len(cues)} sound effects')
 
 
 # ================================================================== mix + master
@@ -304,53 +272,52 @@ def ir(tau_bands, dur, pre=.02, seed=0, er=8):
     return out
 
 
-HALL = ir([((0, 300), 1.5), ((300, 1500), 1.3), ((1500, 5000), .9), ((5000, 16000), .4)], 4.2, .028, 1)
-PLATE = ir([((0, 500), .6), ((500, 4000), .7), ((4000, 16000), .5)], 2.0, .008, 2)
-ROOM = ir([((0, 400), .2), ((400, 6000), .18), ((6000, 16000), .09)], .7, .004, 3)
-
-
 def conv(bus, h):
     return np.stack([fftconvolve(BUS[bus][c], h[c])[:N].astype(F32) for c in range(2)])
 
 
-print('reverbs...')
-wet_music = conv('hall', HALL) * .6 + conv('plate', PLATE) * .35 + conv('room', ROOM) * .5
-wet_sfx = conv('sfxwet', PLATE) * .6
-music = BUS['mus'] + BUS['pad'] + wet_music
-sfx = BUS['sfx'] + wet_sfx
-mix = music * .95 + sfx
-mix = np.stack([hp(mix[c], 28) for c in range(2)])
-mix -= .3 * sosfiltfilt(butter(2, 110, 'low', fs=SR, output='sos'), mix, axis=1).astype(F32)
-mix -= .2 * sosfiltfilt(butter(2, 8000, 'high', fs=SR, output='sos'), mix, axis=1).astype(F32)
+def render(wav_path, mp3_path):
+    """Reverbs, mix, bus compression and look-ahead limiting; write the 16-bit mix and a loudness-normalized MP3."""
+    hall = ir([((0, 300), 1.5), ((300, 1500), 1.3), ((1500, 5000), .9), ((5000, 16000), .4)], 4.2, .028, 1)
+    plate = ir([((0, 500), .6), ((500, 4000), .7), ((4000, 16000), .5)], 2.0, .008, 2)
+    room = ir([((0, 400), .2), ((400, 6000), .18), ((6000, 16000), .09)], .7, .004, 3)
+    print('reverbs...')
+    wet_music = conv('hall', hall) * .6 + conv('plate', plate) * .35 + conv('room', room) * .5
+    wet_sfx = conv('sfxwet', plate) * .6
+    music = BUS['mus'] + BUS['pad'] + wet_music
+    sfx = BUS['sfx'] + wet_sfx
+    mix = music * .95 + sfx
+    mix = np.stack([hp(mix[c], 28) for c in range(2)])
+    mix -= .3 * sosfiltfilt(butter(2, 110, 'low', fs=SR, output='sos'), mix, axis=1).astype(F32)
+    mix -= .2 * sosfiltfilt(butter(2, 8000, 'high', fs=SR, output='sos'), mix, axis=1).astype(F32)
 
-mono = np.sqrt((mix[0] ** 2 + mix[1] ** 2) / 2)
-a = np.exp(-1 / (.2 * SR))
-env = np.sqrt(lfilter([1 - a], [1, -a], mono ** 2) + 1e-12)
-lvl = 20 * np.log10(env / (np.max(env) + 1e-9) + 1e-9)
-g = 10 ** (-np.maximum(0, lvl + 10) * (1 - 1 / 1.8) / 20)
-mix *= g.astype(F32)
-mix /= np.max(np.abs(mix)) + 1e-9
-L = int(.004 * SR)
-pk = maximum_filter1d(np.max(np.abs(mix), axis=0), size=2 * L + 1)
-g = np.minimum(1, .5 / np.maximum(pk, 1e-9))
-a = np.exp(-1 / (.09 * SR))
-gs = lfilter([1 - a], [1, -a], g)
-mix *= np.minimum(g, gs).astype(F32)
-end = int(TOTAL * SR)
-mix = mix[:, :end]
-mix *= np.minimum(1, (end - np.arange(end)) / (3.0 * SR)).astype(F32)
-mix /= np.max(np.abs(mix)) + 1e-9
-pcm = (mix.T * 32000).astype(np.int16)
-WAV = os.path.join(HERE, 'music.wav')
-MP3 = os.path.join(HERE, 'music.mp3')
-with wave.open(WAV, 'wb') as w:
-    w.setnchannels(2)
-    w.setsampwidth(2)
-    w.setframerate(SR)
-    w.writeframes(pcm.tobytes())
-LN = 'loudnorm=I=-16:TP=-1.5:LRA=13'
-m = subprocess.run(['ffmpeg', '-hide_banner', '-i', WAV, '-af', LN + ':print_format=json', '-f', 'null', '-'], capture_output=True, text=True).stderr
-m = json.loads(m[m.rindex('{'):m.rindex('}') + 1])
-LN += f":measured_I={m['input_i']}:measured_TP={m['input_tp']}:measured_LRA={m['input_lra']}:measured_thresh={m['input_thresh']}:offset={m['target_offset']}:linear=true"
-subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', WAV, '-af', LN + ',alimiter=limit=-1.8dB:level=false', '-ar', '44100', '-b:a', '192k', MP3], check=True)
-print(f'music: {TOTAL:.2f}s -> {MP3}')
+    mono = np.sqrt((mix[0] ** 2 + mix[1] ** 2) / 2)
+    a = np.exp(-1 / (.2 * SR))
+    env = np.sqrt(lfilter([1 - a], [1, -a], mono ** 2) + 1e-12)
+    lvl = 20 * np.log10(env / (np.max(env) + 1e-9) + 1e-9)
+    g = 10 ** (-np.maximum(0, lvl + 10) * (1 - 1 / 1.8) / 20)
+    mix *= g.astype(F32)
+    mix /= np.max(np.abs(mix)) + 1e-9
+    L = int(.004 * SR)
+    pk = maximum_filter1d(np.max(np.abs(mix), axis=0), size=2 * L + 1)
+    g = np.minimum(1, .5 / np.maximum(pk, 1e-9))
+    a = np.exp(-1 / (.09 * SR))
+    gs = lfilter([1 - a], [1, -a], g)
+    mix *= np.minimum(g, gs).astype(F32)
+    end = int(TOTAL * SR)
+    mix = mix[:, :end]
+    mix *= np.minimum(1, (end - np.arange(end)) / (3.0 * SR)).astype(F32)
+    mix /= np.max(np.abs(mix)) + 1e-9
+    pcm = (mix.T * 32000).astype(np.int16)
+    os.makedirs(os.path.dirname(wav_path) or '.', exist_ok=True)
+    with wave.open(wav_path, 'wb') as w:
+        w.setnchannels(2)
+        w.setsampwidth(2)
+        w.setframerate(SR)
+        w.writeframes(pcm.tobytes())
+    ln = 'loudnorm=I=-16:TP=-1.5:LRA=13'
+    m = subprocess.run(['ffmpeg', '-hide_banner', '-i', wav_path, '-af', ln + ':print_format=json', '-f', 'null', '-'], capture_output=True, text=True).stderr
+    m = json.loads(m[m.rindex('{'):m.rindex('}') + 1])
+    ln += f":measured_I={m['input_i']}:measured_TP={m['input_tp']}:measured_LRA={m['input_lra']}:measured_thresh={m['input_thresh']}:offset={m['target_offset']}:linear=true"
+    subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', wav_path, '-af', ln + ',alimiter=limit=-1.8dB:level=false', '-ar', '44100', '-b:a', '192k', mp3_path], check=True)
+    print(f'music: {TOTAL:.2f}s -> {mp3_path}')

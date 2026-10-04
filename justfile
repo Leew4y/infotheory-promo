@@ -43,13 +43,13 @@ scenes: build
 shots times="0,10": build
     bun scripts/export.ts --shots {{times}}
 
-# Dump the page's sound-effect cue sheet to audio/cues.json.
+# Dump the film's sound-effect cue sheet and resolved timeline to films/infotheory/ (the score reads both).
 cues: build
-    bun scripts/export.ts --cues audio/cues.json
+    bun scripts/export.ts --cues films/infotheory/cues.json --timeline films/infotheory/timeline.json
 
-# Synthesize the score + effects -> audio/music.wav, audio/music.mp3 (reads audio/cues.json).
-music:
-    uv run --project audio python audio/music.py
+# Synthesize the score + effects -> audio/music.wav, audio/music.mp3 (reads films/infotheory/cues.json and timeline.json).
+music: cues
+    uv run --project audio python films/infotheory/score.py
 
 # Full 1080p30 export with 4 headless Chrome workers -> out/infotheory.mp4
 export workers="4" crf="18": build
