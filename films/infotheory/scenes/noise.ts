@@ -1,5 +1,5 @@
 // 6. Chapter 04, noise: a line of bits with a few struck through; the binary symmetric channel; the question.
-import { text, label, ink, rule, arrow, bits, measure, background, statement, M, COL, C, F, scene, clamp, eout, sstep, hash1, win } from '../../../engine';
+import { text, label, ink, rule, arrow, bits, measure, background, statement, M, COL, C, F, scene, clamp, eout, sstep, hash1, win, bars } from '../../../engine';
 
 const N = 44;
 const SENT = 'INFORMATION';
@@ -8,7 +8,7 @@ const FLIP = Array.from({ length: N }, (_, i) => hash1(i + 0.5) < 0.1);
 const SRC = Array.from({ length: N }, (_, i) => (hash1(i * 2.3) < 0.5 ? '1' : '0')).join('');
 
 scene({
-  name: 'noise', kind: 'page', start: 29, len: 5, mb: 3, chapter: 4, ch: ['噪声', 'Noise'],
+  name: 'noise', kind: 'page', dur: bars(5), mb: 3, chapter: 4, ch: ['噪声', 'Noise'],
   subs: [
     [0.8, 4.4, '比特穿过信道，噪声把其中一些翻转。', 'Bits cross the channel; noise flips some of them.'],
     [5, 8.4, '十个错一个，收到的消息就面目全非。', 'One error in ten, and the message is mangled.'],

@@ -1,8 +1,8 @@
 // 0. First light over the horizon; two lines, then the title.
-import { text, rule, label, plate, C, F, scene, clamp, eout, sstep, win, W } from '../../../engine';
+import { text, rule, label, plate, C, F, scene, clamp, eout, sstep, win, W, bars } from '../../../engine';
 
 scene({
-  name: 'dawn', kind: 'plate', start: 0, len: 5, fi: 1.4, fo: 0.9, mb: 3,
+  name: 'dawn', kind: 'plate', dur: bars(5), fi: 1.4, fo: 0.9, mb: 3,
   subs: [],
   sfx: [[0, 'swell', { dur: 6 }], [2.2, 'tone', { midi: 57 }], [7, 'tone', { midi: 60 }], [11, 'chime', { midi: 69 }], [11.2, 'swell', { dur: 4 }]],
   cam: (lt, d) => ({ z: 1 + (0.04 * lt) / d }),

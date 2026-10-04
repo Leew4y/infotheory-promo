@@ -1,5 +1,5 @@
 // 7. Chapter 05, error correction: Hamming(7,4) in three ink circles; a bit flips, two circles go odd, it is found and fixed.
-import { text, label, circle, rule, bits, background, statement, row, M, C, F, scene, clamp, eout, sstep, win } from '../../../engine';
+import { text, label, circle, rule, bits, background, statement, row, M, C, F, scene, clamp, eout, sstep, win, bars } from '../../../engine';
 
 const D = [1, 0, 1, 1];
 const P = [D[0] ^ D[1] ^ D[3], D[0] ^ D[2] ^ D[3], D[1] ^ D[2] ^ D[3]];
@@ -13,7 +13,7 @@ const IN: Record<string, string[]> = { A: ['d1', 'd2', 'd4', 'p1'], B: ['d1', 'd
 const FLIP_T = 7.0, FIX_T = 12.0;
 
 scene({
-  name: 'hamming', kind: 'page', start: 34, len: 6, mb: 3, chapter: 5, ch: ['纠错', 'Error correction'],
+  name: 'hamming', kind: 'page', dur: bars(6), mb: 3, chapter: 5, ch: ['纠错', 'Error correction'],
   subs: [
     [0.8, 4.4, '4 个数据位，再加 3 个校验位。', 'Four data bits, plus three parity bits.'],
     [5, 8.2, '每个圆里的 1，都凑成偶数。', 'Inside every circle, the ones add up to an even number.'],

@@ -1,5 +1,5 @@
 // 12. Morning over the horizon with the closing lines (a plate), then a page of sources (its own page scene, so it keeps the paper grade).
-import { text, label, rule, background, plate, M, C, F, scene, clamp, eout, sstep, win, W, H, BAR } from '../../../engine';
+import { text, label, rule, background, plate, M, C, F, scene, clamp, eout, sstep, win, W, H, bars } from '../../../engine';
 
 const SOURCES: [string, string, string][] = [
   ['1948', 'C. E. Shannon', 'A Mathematical Theory of Communication. Bell System Technical Journal.'],
@@ -13,7 +13,7 @@ const SOURCES: [string, string, string][] = [
 ];
 
 scene({
-  name: 'morning', kind: 'plate', start: 61, len: 3.2, fi: 0.9, fo: 0.8, fade: C.bg, mb: 3,
+  name: 'morning', kind: 'plate', dur: bars(3.2), fi: 0.9, fo: 0.8, fade: C.bg, mb: 3,
   subs: [],
   sfx: [[0, 'swell', { dur: 6 }], [1.6, 'tone', { midi: 64 }], [5.6, 'tone', { midi: 60 }]],
   cam: (lt, d) => ({ z: 1 + (0.035 * lt) / d }),
@@ -29,7 +29,7 @@ scene({
 });
 
 scene({
-  name: 'sources', kind: 'page', start: 64.2, len: 1.8 + 4 / BAR, fi: 0.8, fo: 2.4, mb: 3,
+  name: 'sources', kind: 'page', dur: bars(1.8) + 4, fi: 0.8, fo: 2.4, mb: 3,
   subs: [],
   sfx: [[0.1, 'page'], ...SOURCES.map((_, i) => [0.6 + i * 0.5, 'tick'] as [number, string]), [6.6, 'chime', { midi: 69 }]],
   cam: (lt, d) => ({ z: 1 + (0.015 * lt) / d }),

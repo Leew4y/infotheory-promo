@@ -1,5 +1,5 @@
 // 3. Chapter 02, entropy: a distribution morphs from flat to a spike while H is read out; English letters.
-import { text, label, ink, rule, rollNumber, background, statement, M, COL, C, F, scene, clamp, lerp, eio, eout, sstep, win, ctx } from '../../../engine';
+import { text, label, ink, rule, rollNumber, background, statement, M, COL, C, F, scene, clamp, lerp, eio, eout, sstep, win, ctx, bars } from '../../../engine';
 
 const FLAT = [1, 1, 1, 1, 1, 1, 1, 1].map((v) => v / 8);
 const PEAK = [0.5, 0.2, 0.1, 0.08, 0.05, 0.04, 0.02, 0.01];
@@ -10,7 +10,7 @@ const LETTERS = 'ETAOINSHRDLCUMWFGYPBVKJXQZ';
 const FREQ = [12.7, 9.1, 8.2, 7.5, 7.0, 6.7, 6.3, 6.1, 6.0, 4.3, 4.0, 2.8, 2.8, 2.4, 2.4, 2.2, 2.0, 2.0, 1.9, 1.5, 1.0, 0.8, 0.15, 0.15, 0.1, 0.07];
 
 scene({
-  name: 'entropy', kind: 'page', start: 14, len: 6, mb: 3, chapter: 2, ch: ['熵', 'Entropy'],
+  name: 'entropy', kind: 'page', dur: bars(6), mb: 3, chapter: 2, ch: ['熵', 'Entropy'],
   subs: [
     [0.8, 4.4, '八种结果，等可能：每一次，你都完全猜不到。', 'Eight outcomes, equally likely: each time, you have no idea.'],
     [5, 8.8, '把每种结果的惊讶按概率平均，就是熵。', 'Average the surprise of each outcome by its probability: that is entropy.'],

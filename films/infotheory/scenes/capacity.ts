@@ -1,5 +1,5 @@
 // 9. Chapter 06, capacity: C = B log2(1 + S/N) in ink; the reliable and impossible regions hatched; the climb to the limit.
-import { text, label, ink, hatch, rule, dot, background, statement, row, M, COL, C, F, scene, clamp, lerp, eout, sstep, win, ctx } from '../../../engine';
+import { text, label, ink, hatch, rule, dot, background, statement, row, M, COL, C, F, scene, clamp, lerp, eout, sstep, win, ctx, bars } from '../../../engine';
 
 const X0 = COL + 60, X1 = 1740, Y0 = 740, Y1 = 300;
 const cap = (db: number) => Math.log2(1 + Math.pow(10, db / 10));
@@ -12,7 +12,7 @@ const CURVE: [number, number][] = Array.from({ length: 161 }, (_, i) => {
 const CLIMB: [string, string, string, number][] = [['1948', '香农', '证明极限存在', 0.2], ['1993', 'Turbo 码', '距极限 0.5 dB', 0.62], ['1996', 'LDPC 码', '距极限 0.04 dB', 0.84], ['2008', '极化码', '5G 采用', 0.96]];
 
 scene({
-  name: 'capacity', kind: 'page', start: 42, len: 6, mb: 3, chapter: 6, ch: ['容量', 'Capacity'],
+  name: 'capacity', kind: 'page', dur: bars(6), mb: 3, chapter: 6, ch: ['容量', 'Capacity'],
   subs: [
     [0.8, 4.6, '带宽和信噪比，决定一条信道每秒最多能送多少比特。', 'Bandwidth and signal-to-noise ratio set how many bits a channel can carry per second.'],
     [5.2, 9.2, '低于容量：错误率可以压到任意小。高于它：必然出错。', 'Below capacity, errors can be made as rare as you like. Above it, they are inevitable.'],

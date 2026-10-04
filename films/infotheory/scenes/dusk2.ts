@@ -1,8 +1,8 @@
 // 8. A breath: the sun about to rise, one sentence.
-import { text, dot, plate, C, F, scene, win, W } from '../../../engine';
+import { text, dot, plate, C, F, scene, win, W, bars } from '../../../engine';
 
 scene({
-  name: 'dusk2', kind: 'plate', start: 40, len: 2, fi: 0.9, fo: 0.9, mb: 3,
+  name: 'dusk2', kind: 'plate', dur: bars(2), fi: 0.9, fo: 0.9, mb: 3,
   subs: [],
   sfx: [[0, 'swell', { dur: 5 }], [1.0, 'tone', { midi: 64 }]],
   cam: (lt, d) => ({ z: 1 + (0.03 * lt) / d }),

@@ -1,5 +1,5 @@
 // 1. Preface: the question, set on paper, with four small ink drawings.
-import { text, label, ink, circle, dot, background, M, C, F, scene, clamp, eout, sstep, TAU } from '../../../engine';
+import { text, label, ink, circle, dot, background, M, C, F, scene, clamp, eout, sstep, TAU, bars } from '../../../engine';
 
 function helix(x: number, y: number, k: number, a: number): void {
   const L: [number, number][] = [], R: [number, number][] = [];
@@ -17,7 +17,7 @@ function helix(x: number, y: number, k: number, a: number): void {
 }
 
 scene({
-  name: 'preface', kind: 'page', start: 5, len: 3, fi: 0.8, fo: 0.6, mb: 3,
+  name: 'preface', kind: 'page', dur: bars(3), fi: 0.8, fo: 0.6, mb: 3,
   subs: [],
   sfx: [[0.1, 'page'], [0.8, 'ink'], [1.8, 'ink'], [2.8, 'ink'], [3.8, 'ink'], [4.4, 'tone', { midi: 64 }]],
   draw(lt) {

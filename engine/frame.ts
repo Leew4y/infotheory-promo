@@ -8,7 +8,7 @@ import { accumulate, glc, post, type Grade } from './gl';
 import { SC, sceneAt, camDrift } from './scene';
 import { film, TOTAL } from './film';
 import { style, type SubLine } from './style';
-import { clamp, W, H, win } from './util';
+import { clamp, sstep, W, H } from './util';
 
 export type { SubLine };
 export const SUBS = (): SubLine[] => SC.flatMap((s) => s.subs.map(([a, b, zh, en]) => ({ a: s.t0 + a, b: s.t0 + b, zh, en, plate: s.kind === 'plate' })));
@@ -33,8 +33,11 @@ export function drawLayer(t: number, jx: number, jy: number): void {
   ctx.translate(-W / 2, -H / 2);
   sc.draw(lt, sc.d, t);
   ctx.restore();
-  const fade = 1 - win(lt, 0, sc.d, sc.fi ?? S.motion.fadeIn, sc.fo ?? S.motion.fadeOut);
-  // `fade > 0` is false for NaN (fi or fo = 0, see the plan's 1b notes): no transition then
+  // Fade-in over the first `fi` seconds, fade-out over the last `fo`; 0 means none. With fi > 0 the first frame
+  // is entirely the fade colour: the scene rises out of it.
+  const fi = sc.fi ?? S.motion.fadeIn, fo = sc.fo ?? S.motion.fadeOut;
+  const shown = (fi > 0 ? sstep(0, fi, lt) : 1) * (fo > 0 ? 1 - sstep(sc.d - fo, sc.d, lt) : 1);
+  const fade = 1 - shown;
   if (fade > 0) {
     S.transition(fade, sc.fade ?? fill);
     scaleText(mark, 1 - fade);
