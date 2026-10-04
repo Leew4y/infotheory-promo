@@ -11,9 +11,13 @@ import { W, H } from './util';
 export const glc = document.createElement('canvas');
 glc.width = W;
 glc.height = H;
-const gl = glc.getContext('webgl2', { preserveDrawingBuffer: true, antialias: false, alpha: false, premultipliedAlpha: false })!;
-gl.getExtension('EXT_color_buffer_float');
-gl.getExtension('OES_texture_float_linear');
+const ctxGl = glc.getContext('webgl2', { preserveDrawingBuffer: true, antialias: false, alpha: false, premultipliedAlpha: false });
+if (!ctxGl) throw new Error('WebGL2 is not available: the frame pipeline needs it (check the GPU backend / --use-angle)');
+const gl: WebGL2RenderingContext = ctxGl;
+// half-float render targets (motion-blur accumulation, bloom) need EXT_color_buffer_float; linear filtering of them
+// needs OES_texture_float_linear. Without them the output would be silently wrong, so fail instead.
+for (const ext of ['EXT_color_buffer_float', 'OES_texture_float_linear'])
+  if (!gl.getExtension(ext)) throw new Error(`WebGL2 extension ${ext} is not available on this GPU backend`);
 
 const VS = `#version 300 es
 in vec2 p; out vec2 vUv; void main() { vUv = p * .5 + .5; gl_Position = vec4(p, 0., 1.); }`;
@@ -59,7 +63,7 @@ function compile(type: number, src: string): WebGLShader {
   const s = gl.createShader(type)!;
   gl.shaderSource(s, src);
   gl.compileShader(s);
-  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(s));
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(`shader compile failed: ${gl.getShaderInfoLog(s)}`);
   return s;
 }
 interface Prog { pr: WebGLProgram; u: Record<string, WebGLUniformLocation | null> }
@@ -69,7 +73,7 @@ function program(fs: string, names: string[]): Prog {
   gl.attachShader(pr, compile(gl.FRAGMENT_SHADER, fs));
   gl.bindAttribLocation(pr, 0, 'p');
   gl.linkProgram(pr);
-  if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) console.error(gl.getProgramInfoLog(pr));
+  if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) throw new Error(`shader link failed: ${gl.getProgramInfoLog(pr)}`);
   const u: Record<string, WebGLUniformLocation | null> = {};
   for (const n of ['uRes', ...names]) u[n] = gl.getUniformLocation(pr, n);
   return { pr, u };
@@ -99,6 +103,7 @@ function makeFbo(w: number, h: number): Fbo {
   const f = gl.createFramebuffer()!;
   gl.bindFramebuffer(gl.FRAMEBUFFER, f);
   gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+  if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw new Error(`half-float framebuffer ${w}x${h} is incomplete on this GPU backend`);
   return { t, f, w, h };
 }
 const SCENE_TEX = makeTex(W, H, false);

@@ -39,6 +39,10 @@ regress *args: build
 timeline: build
     bun scripts/export.ts --timeline films/infotheory/timeline.json
 
+# Failure-mode tests of the exporter (missing/short audio, launch and encoder failure, interrupt, deadline, concurrency).
+test-export: build
+    bun scripts/test-export.ts
+
 # Print the scene list with times.
 scenes: build
     bun scripts/export.ts --scenes

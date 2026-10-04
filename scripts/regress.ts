@@ -26,6 +26,7 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import puppeteer, { type Browser, type Page } from 'puppeteer-core';
+import { chromeArgs, findChrome, serveDist } from './chrome';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const argv = Bun.argv.slice(2);
@@ -45,8 +46,8 @@ const BASELINE = path.join(ROOT, 'films', FILM, 'regress-baseline.json');
 const REPORT = path.join(ROOT, 'out', 'regress', FILM, 'report.json');
 const PLATFORM = `${process.platform} ${process.arch}`;
 
-const CHROME = [process.env.CHROME_PATH, 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/usr/bin/google-chrome'].find((p) => p && existsSync(p));
-if (!CHROME) { console.error('Chrome not found (set CHROME_PATH)'); process.exit(2); }
+let CHROME = '';
+try { CHROME = findChrome(); } catch (e) { console.error((e as Error).message); process.exit(2); }
 if (!existsSync(path.join(DIST, 'index.html'))) { console.error(`${DIST}/index.html missing: run \`bun run build\``); process.exit(2); }
 const base = flag('update') ? null : existsSync(BASELINE) ? await Bun.file(BASELINE).json() : null;
 if (!flag('update') && !base) { console.error(`no baseline at ${BASELINE} (run with --update)`); process.exit(2); }
@@ -55,12 +56,7 @@ if (base && base.platform !== PLATFORM) {
   process.exit(2);
 }
 
-const ARGS = [
-  '--window-size=1920,1080', '--ignore-gpu-blocklist', '--mute-audio', '--no-first-run', '--no-default-browser-check',
-  '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows',
-  ...(flag('no-cpu2d-flag') ? [] : ['--disable-accelerated-2d-canvas']),
-  ...(flag('gpu') ? (process.platform === 'win32' ? ['--use-angle=d3d11'] : []) : ['--use-angle=swiftshader']),
-];
+const ARGS = chromeArgs(flag('gpu') ? 'platform' : 'swiftshader', { cpu2d: !flag('no-cpu2d-flag') });
 
 interface W { browser: Browser; page: Page }
 const hashFrame = (w: W, f: number): Promise<string> =>
@@ -72,15 +68,7 @@ const hashFrame = (w: W, f: number): Promise<string> =>
     return Array.from(d, (b) => b.toString(16).padStart(2, '0')).join('');
   }, f / FPS, FPS);
 
-const server = Bun.serve({
-  hostname: '127.0.0.1', port: 0,
-  async fetch(req) {
-    const p = decodeURIComponent(new URL(req.url).pathname);
-    if (p === '/favicon.ico') return new Response(null, { status: 204 });
-    const f = Bun.file(path.join(DIST, p === '/' ? 'index.html' : p));
-    return (await f.exists()) ? new Response(f) : new Response('not found', { status: 404 });
-  },
-});
+const server = serveDist(DIST);
 const ws: W[] = [];
 let code = 2;
 try {
@@ -91,7 +79,7 @@ try {
     ws.push(w);
     w.page.on('pageerror', (e) => console.error('page error:', e instanceof Error ? e.message : String(e)));
     w.page.on('console', (m) => m.type() === 'error' && console.error('console.error:', m.text()));
-    await w.page.goto(`http://127.0.0.1:${server.port}/?export=1`, { waitUntil: 'load' });
+    await w.page.goto(`${server.url}/?export=1`, { waitUntil: 'load' });
     await w.page.waitForFunction(() => typeof window.__frame === 'function' && window.__ready(), { timeout: 60_000 });
     return w;
   };
@@ -157,6 +145,6 @@ try {
   code = 2;
 } finally {
   await Promise.all(ws.map((w) => w.browser.close().catch(() => {})));
-  server.stop(true);
+  server.stop();
 }
 process.exit(code);
