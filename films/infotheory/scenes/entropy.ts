@@ -60,8 +60,8 @@ scene({
       const rows: [number, string, string][] = [[11.4, 'log₂ 26 = 4.70 bit', '若二十六个字母等可能'], [13.8, 'H₁ ≈ 4.14 bit', '按单字母频率'], [16.2, 'H ≈ 1 bit / 字母', '考虑上下文']];
       rows.forEach(([t0, f, lab], i) => {
         const a = aE * sstep(t0, t0 + 0.5, lt);
-        text(f, x0 + 330, 270 + i * 60, { font: F.math, size: 30, color: i === 2 ? C.accent : C.fg, alpha: a });
-        text(lab, x0 + 640, 270 + i * 60, { size: 20, color: C.muted, alpha: a });
+        text(f, x0 + 280, 270 + i * 60, { font: F.math, size: 30, color: i === 2 ? C.accent : C.fg, alpha: a });
+        text(lab, x0 + 570, 270 + i * 60, { size: 20, color: C.muted, alpha: a });
       });
     }
   },

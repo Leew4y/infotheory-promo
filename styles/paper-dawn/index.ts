@@ -2,7 +2,7 @@
  * "Paper and dawn": warm paper, ink lines, one rust accent, serif type; full-frame plates are a procedural dawn
  * horizon. No glows, no neon: everything reads as printed or photographed. The look of the information-theory film.
  */
-import { ctx, text, rule, label } from '../../engine/draw';
+import { ctx, text, rule, label, measure } from '../../engine/draw';
 import { glPlate } from '../../engine/gl';
 import { C, F, M, type StylePackage, type SubLine } from '../../engine/style';
 import { clamp, eout, mulberry, sstep, win, W, H } from '../../engine/util';
@@ -114,7 +114,7 @@ const paperDawn: StylePackage = {
     text(num, x, y, { font: F.latin, size: 26, color: C.accent, alpha: a, ls: 2 });
     rule(x + 52, y - 9, x + 52 + 40 * eout(clamp((lt - 0.3) / 0.8)), y - 9, C.accent, a, 1.5);
     text(ch[0], x + 108, y, { size: 26, weight: 600, color: C.fg, alpha: a, ls: 3 });
-    label(ch[1], x + 108 + ctx.measureText(ch[0]).width + 60, y - 1, a, C.muted, 17);
+    label(ch[1], x + 108 + measure(ch[0], 26, F.body, 600, 3) + 60, y - 1, a, C.muted, 17);
     label(`${num} / ${String(chapters).padStart(2, '0')}`, W - 150, H - 96, a * 0.9, C.muted, 16, 'right');
   },
 

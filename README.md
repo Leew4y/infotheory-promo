@@ -82,7 +82,7 @@ just export         # 4 个 Chrome 进程逐帧导出 → out/infotheory.mp4（c
 just all            # cues → music → export
 just check          # 类型检查
 just check-imports  # 依赖方向
-just validate       # 声明、时间轴、文字版面（--strict：安全区越界也算错误）
+just validate       # 声明、时间轴、渲染、文字版面（出画面或出 5% 安全区都是错误）
 just regress        # 像素回归（--update 重写基线）。基线只在录制它的平台上可比较（目前是 Windows x64），其他平台会直接退出并提示
 ```
 

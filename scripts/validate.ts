@@ -1,15 +1,15 @@
 /**
  * Static checks of a built film, for people and agents.
  *
- *   bun run build && bun scripts/validate.ts [--film infotheory] [--dist dist] [--strict] [--json]
+ *   bun run build && bun scripts/validate.ts [--film infotheory] [--dist dist] [--json]
  *
  * - page load: the page renders the requested film; film and scene declarations satisfy FilmSpec / SceneSpec
  *   (engine/schema.ts); no page errors
  * - timeline: scenes start at 0, are contiguous (no gap, no overlap) and end at the film's duration
  * - render: each sampled frame renders without error (this includes the bundled-font glyph check in text())
  * - layout: at 0 / 25 / 50 / 75 % and the last frame of every scene (no motion blur), every visible text box
- *   (alpha >= 0.02 after the scene's fade, after the camera transform) lies inside the frame (error) and inside the
- *   safe area, 5 % each side (warning; error with --strict). Five frames per scene are a sample: nothing is proved
+ *   (alpha >= 0.02 after the scene's fade, after the camera transform) lies inside the frame and inside the safe area
+ *   (5 % each side); both are errors. Five frames per scene are a sample: nothing is proved
  *   about the frames in between.
  * Diagnostics: { level, code, path, message }, also written to out/validate/<film>.json. With --json, stdout is only
  * the JSON list and the summary goes to stderr. Exit code 1 on any error, 2 if the tool itself could not run.
@@ -21,14 +21,14 @@ import { chromeArgs, findChrome, serveDist } from './chrome';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const argv = Bun.argv.slice(2);
-const VALUED = ['film', 'dist'], FLAGS = ['strict', 'json'];
+const VALUED = ['film', 'dist'], FLAGS = ['json'];
 for (let i = 0; i < argv.length; i++) {
   const k = argv[i].replace(/^--/, '');
   if (!argv[i].startsWith('--') || ![...VALUED, ...FLAGS].includes(k)) { console.error(`unknown argument: ${argv[i]}`); process.exit(2); }
   if (VALUED.includes(k)) i++;
 }
 const opt = (k: string, d: string) => (argv.includes(`--${k}`) ? argv[argv.indexOf(`--${k}`) + 1] : d);
-const STRICT = argv.includes('--strict'), JSON_OUT = argv.includes('--json');
+const JSON_OUT = argv.includes('--json');
 const FILM = opt('film', 'infotheory');
 const DIST = path.resolve(ROOT, opt('dist', 'dist'));
 const FPS = 30, W = 1920, H = 1080, SAFE = 0.05, MIN_ALPHA = 0.02;
@@ -37,7 +37,6 @@ const OUT = path.join(ROOT, 'out', 'validate', `${FILM}.json`);
 interface Diag { level: 'error' | 'warning'; code: string; path: string; message: string }
 const diags: Diag[] = [];
 const err = (code: string, p: string, message: string) => diags.push({ level: 'error', code, path: p, message });
-const warn = (code: string, p: string, message: string) => diags.push({ level: STRICT ? 'error' : 'warning', code, path: p, message });
 
 let CHROME = '';
 try { CHROME = findChrome(); } catch (e) { console.error((e as Error).message); process.exit(2); }
@@ -106,7 +105,7 @@ try {
             const where = `scene:${s.name}@${tag}(${t.toFixed(2)}s)`;
             const box = `[${b.x0.toFixed(0)},${b.y0.toFixed(0)}]-[${b.x1.toFixed(0)},${b.y1.toFixed(0)}]`;
             if (b.x0 < 0 || b.y0 < 0 || b.x1 > W || b.y1 > H) err('text-overflow', where, `"${b.s}" ${box} leaves the frame (alpha ${b.alpha.toFixed(2)})`);
-            else if (b.x0 < sx0 || b.y0 < sy0 || b.x1 > sx1 || b.y1 > sy1) warn('text-safe-area', where, `"${b.s}" ${box} is outside the ${SAFE * 100}% safe area (alpha ${b.alpha.toFixed(2)})`);
+            else if (b.x0 < sx0 || b.y0 < sy0 || b.x1 > sx1 || b.y1 > sy1) err('text-safe-area', where, `"${b.s}" ${box} is outside the ${SAFE * 100}% safe area (alpha ${b.alpha.toFixed(2)})`);
           }
         }
       }
