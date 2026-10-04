@@ -8,7 +8,7 @@
  *   __timeline()       the resolved timeline (frames and seconds per scene), written to timeline.json
  *   __layout(t)        text boxes of the frame at t (for scripts/validate.ts)
  *   __gpu()            WebGL renderer string
- *   __cues()           the sound-effect cue sheet (audio/music.py reads it as cues.json)
+ *   __cues()           the sound-effect cue sheet (the film's score reads it as cues.json)
  *   __scenes()         name/start/end of every scene (for the shot list)
  * A film's main.ts imports its film.ts and scenes, then calls boot().
  */

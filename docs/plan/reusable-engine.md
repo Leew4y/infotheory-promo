@@ -146,12 +146,19 @@ films/<id>/      一部片子：film.ts、scenes/、score.py
 - 场景只声明时长，起点按全局契约累计解析；输出 `timeline.json`。tail 仍归 `sources`，不拆分。
 - 浮点边界修正：现有 `sources` 起点为 `64.2 × 3 = 192.60000000000002`，解析后为第 5778 帧整，第 5778 帧从 `morning` 改归 `sources`。
   列出全部受影响的帧并人工确认。
-- `music.py` 读取 `timeline.json` 的场景区间，编曲以"场景 + 场景内小节"定位，不再用全局小节号。
-- `music.py` 输出经过最终处理（loudnorm 两遍 + limiter）的 WAV 母版；预览 MP3 与成片 AAC 都由它派生。
+- 配乐读取 `timeline.json` 的场景区间，编曲以"场景 + 场景内小节"定位，不再用全局小节号。
+- 配乐输出经过最终处理（loudnorm 两遍 + limiter）的 WAV 母版；预览 MP3 与成片 AAC 都由它派生。
 - `just music` 依赖 `just cues`。
 
 命令：`just timeline <film>`、`just regress <film>`、`just music`。
 退出条件：总帧数不变（6060 帧，202 秒）；除已列出的帧外逐像素一致；母版 WAV 的时长等于影片时长，积分响度 −16 LUFS ±0.5，真峰值 ≤ −1.5 dBTP。
+
+1b 实施记录（分支 `engine/1b-timeline`）：
+- 场景声明 `dur`（秒；本片写成 `bars(n)`），`FilmMeta` 改为 `{ id, fps, bpm, chapters }`，起点按帧累加；`tail` 留在 `sources` 的时长里（`bars(1.8) + 4`）。
+- 受影响的帧只有第 5778 帧：从 `morning` 的最后一帧变为 `sources` 的第一帧，两者都是完全淡到米白的过渡帧，切点提前一帧，目视无差别。回归在更新基线前恰好报这 1 帧不同，基线已重录。cue 表不变（134 条）。
+- 淡入淡出改为显式分支（`fi`/`fo` 为 0 即无淡化），本片无 0 值，像素不变。`fi > 0` 时场景首帧为纯淡化色，这是淡入的本意，保留。
+- 配乐拆为 `audio/synth.py`（可复用）与 `films/infotheory/score.py`（编曲，`at(scene, bars)` 定位并对齐到采样点）；拆分后未母版化的混音与旧 `music.py` 逐字节相同。
+- 母版：`audio/music.wav` 202.000 s，−16.00 LUFS，真峰值 −7.20 dBTP（loudnorm 复测 −16.00 / −7.23）；`score.py` 在超标时直接失败。导出改用 WAV 母版。
 
 **1c · 导出可靠性、字体、平台（行为变化）。**
 - 导出：实现全局契约中的导出产物规则；去掉 `-shortest`。
