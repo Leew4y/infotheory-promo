@@ -47,10 +47,13 @@ cp out/0c-capture/sample-*.jpg spikes/0d-macos/
 0d 的上述步骤跑完后，如果方便，再切到分支 `engine/1c-export` 跑一遍新的检查（字体已随仓库分发、导出有失败保护）：
 
 ```bash
-git switch engine/1c-export && bun install && bun run build
+git switch engine/1c-export && bun install && uv sync --project audio
+just music                                                  # 生成 audio/music.wav（导出与失败用例都需要它）
+bun run build
 bun scripts/validate.ts                                    # 0 error 即通过
-bun scripts/test-export.ts                                 # 8/8 即通过（需要先 just music 生成音频，或看缺音频用例的报错）
+bun scripts/test-export.ts                                 # 全部 ok 即通过（macOS 上多一个真实 SIGINT 用例）
 bun scripts/export.ts --from 30 --to 36 --out out/mac-1c.mp4
+just dev                                                    # 打开 http://127.0.0.1:5174：字体加载完才能播放，画面应与 windows-reference 一致
 ```
 
 把输出贴回即可；`just regress` 在 macOS 上会提示"基线不可比较"，这是预期的。

@@ -42,3 +42,16 @@ export function noise1(x: number, seed = 0): number {
   return (a + (b - a) * u) * 2 - 1;
 }
 export const fmtTime = (s: number): string => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+/** CSS font-family list: commas outside quotes separate families; quotes and surrounding space removed. */
+export function parseFamilies(font: string): string[] {
+  const out: string[] = [];
+  let cur = '', q = '';
+  for (const c of font) {
+    if (q) { if (c === q) q = ''; else cur += c; continue; }
+    if (c === '"' || c === "'") { q = c; continue; }
+    if (c === ',') { out.push(cur.trim().replace(/\s+/g, ' ')); cur = ''; continue; }
+    cur += c;
+  }
+  out.push(cur.trim().replace(/\s+/g, ' '));
+  return out.filter(Boolean);
+}
