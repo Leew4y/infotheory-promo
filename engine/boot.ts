@@ -123,7 +123,9 @@ export function boot(o: BootOptions): void {
       if (!useAudio) clock0 = performance.now() - au.currentTime * 1000;
       if (!playing) draw(au.currentTime);
     };
+    // nothing is drawn before the bundled fonts are in: no frame may use a system font
     const draw = (T: number) => {
+      if (!fontsReady) return;
       frame(T);
       fill.style.width = `${(T / TOTAL) * 100}%`;
       tm.textContent = fmtTime(T);
@@ -140,6 +142,7 @@ export function boot(o: BootOptions): void {
       if (playing) requestAnimationFrame(loop);
     }
     function play() {
+      if (!fontsReady) return;
       playing = true;
       pp.textContent = '❚❚';
       au.play().catch(() => {
@@ -159,6 +162,7 @@ export function boot(o: BootOptions): void {
       hideT = window.setTimeout(() => ui.classList.add('hide'), 2200);
     }
     document.getElementById('go')!.onclick = () => {
+      if (!fontsReady) return; // the start card stays (with the error, if fonts failed)
       document.getElementById('start')?.remove();
       const t0 = params.get('t');
       if (t0) setT(parseFloat(t0));

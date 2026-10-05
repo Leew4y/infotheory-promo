@@ -14,10 +14,10 @@ glc.height = H;
 const ctxGl = glc.getContext('webgl2', { preserveDrawingBuffer: true, antialias: false, alpha: false, premultipliedAlpha: false });
 if (!ctxGl) throw new Error('WebGL2 is not available: the frame pipeline needs it (check the GPU backend / --use-angle)');
 const gl: WebGL2RenderingContext = ctxGl;
-// half-float render targets (motion-blur accumulation, bloom) need EXT_color_buffer_float; linear filtering of them
-// needs OES_texture_float_linear. Without them the output would be silently wrong, so fail instead.
-for (const ext of ['EXT_color_buffer_float', 'OES_texture_float_linear'])
-  if (!gl.getExtension(ext)) throw new Error(`WebGL2 extension ${ext} is not available on this GPU backend`);
+// Rendering into the half-float targets (motion-blur accumulation, bloom) needs EXT_color_buffer_float; without it
+// the output would be silently wrong, so fail. (Filtering half-float textures is core WebGL2; OES_texture_float_linear
+// only concerns 32-bit float textures, which this pipeline does not use.)
+if (!gl.getExtension('EXT_color_buffer_float')) throw new Error('WebGL2 extension EXT_color_buffer_float is not available on this GPU backend');
 
 const VS = `#version 300 es
 in vec2 p; out vec2 vUv; void main() { vUv = p * .5 + .5; gl_Position = vec4(p, 0., 1.); }`;

@@ -2,7 +2,7 @@
  * Canvas2D drawing primitives: text, rules, pen strokes, circles, hatching, arrows, bits. Default colours and fonts
  * come from the active style (style.ts); the look itself lives in the style package.
  */
-import { clamp, lerp, hash1, TAU, W, H } from './util';
+import { clamp, lerp, hash1, parseFamilies, TAU, W, H } from './util';
 import { C, F, style } from './style';
 
 export const cv = document.getElementById('c') as HTMLCanvasElement;
@@ -26,27 +26,43 @@ export function scaleText(mark: number, k: number): void {
 
 /**
  * Glyph coverage of the bundled fonts (set by boot from the film's font manifest). Every string text() draws is
- * checked once per font chain and style: each character must be covered by a bundled family in the chain, otherwise
- * text() throws, so an export can never fall back to a system font silently.
+ * checked once per font chain and style, and text() throws unless:
+ *   - every family named in the chain is a bundled family (case-insensitive); only a trailing CSS generic family
+ *     (serif, monospace, ...) may stand outside, and it is never reached because of the next rule;
+ *   - every character is covered by at least one bundled family of the chain (for italic, the family's italic face
+ *     if bundled, else its normal face, which the browser slants).
+ * Since the browser picks, per character, the first family in the chain that has the glyph, the glyph then always
+ * comes from a bundled font: no system font can be used.
  */
-interface Coverage { charset: Set<string>; missing: Map<string, string> }
+interface Coverage { charset: Set<string>; missing: Map<string, string>; families: Set<string> }
 let coverage: Coverage | null = null;
 const checked = new Set<string>();
+const norm = (family: string) => family.trim().toLowerCase();
 export function setCoverage(m: { charset: string; fonts: { family: string; style: string; missing: string }[] }): void {
-  coverage = { charset: new Set(m.charset), missing: new Map(m.fonts.map((f) => [`${f.family}|${f.style}`, f.missing])) };
+  coverage = {
+    charset: new Set(m.charset),
+    missing: new Map(m.fonts.map((f) => [`${norm(f.family)}|${f.style}`, f.missing])),
+    families: new Set(m.fonts.map((f) => norm(f.family))),
+  };
   checked.clear();
 }
-const families = (font: string): string[] => font.split(',').map((x) => x.trim().replace(/^["']|["']$/g, ''));
+const GENERIC = new Set(['serif', 'sans-serif', 'monospace', 'cursive', 'fantasy', 'system-ui', 'math', 'emoji', 'fangsong', 'ui-serif', 'ui-sans-serif', 'ui-monospace', 'ui-rounded']);
 function checkGlyphs(s: string, font: string, style: string): void {
   if (!coverage) return;
   const key = `${style}|${font}|${s}`;
   if (checked.has(key)) return;
   const cov = coverage;
+  const fams = parseFamilies(font);
+  fams.forEach((fam, i) => {
+    const generic = GENERIC.has(norm(fam));
+    if (generic && i !== fams.length - 1) throw new Error(`font chain ${font}: the generic family "${fam}" must come last`);
+    if (!generic && !cov.families.has(norm(fam))) throw new Error(`font chain ${font}: "${fam}" is not a bundled font (bundled: ${[...cov.families].join(', ')})`);
+  });
   const st = style === 'italic' ? 'italic' : 'normal';
   for (const ch of s) {
     if (/\s/.test(ch)) continue;
-    const ok = cov.charset.has(ch) && families(font).some((fam) => {
-      const miss = cov.missing.get(`${fam}|${st}`) ?? cov.missing.get(`${fam}|normal`);
+    const ok = cov.charset.has(ch) && fams.some((fam) => {
+      const miss = cov.missing.get(`${norm(fam)}|${st}`) ?? cov.missing.get(`${norm(fam)}|normal`);
       return miss !== undefined && !miss.includes(ch);
     });
     if (!ok) {
