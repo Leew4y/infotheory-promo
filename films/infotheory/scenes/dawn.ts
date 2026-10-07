@@ -7,7 +7,7 @@ scene({
   sfx: [[0, 'swell', { dur: 6 }], [2.2, 'tone', { midi: 57 }], [7, 'tone', { midi: 60 }], [11, 'chime', { midi: 69 }], [11.2, 'swell', { dur: 4 }]],
   cam: (lt, d) => ({ z: 1 + (0.04 * lt) / d }),
   draw(lt) {
-    plate({ time: lt, light: 0.1 + (0.08 * lt) / 15, sun: 0 });
+    plate({ time: lt, progress: 0.1 + (0.08 * lt) / 15, highlight: 0 });
     const cx = W / 2;
     const a1 = win(lt, 2, 6.6, 0.9, 0.7);
     text('有些东西看不见，摸不着，', cx, 500, { size: 54, weight: 500, color: C.fgOnDark, alpha: a1, align: 'center', ls: 5 });

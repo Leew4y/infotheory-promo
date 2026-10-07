@@ -41,11 +41,18 @@ export interface Fonts {
   mono: string;
 }
 
-/** Parameters of the full-frame plate background; each style interprets them (the dawn style: time of day, sun height). */
+/**
+ * What a scene asks of the full-frame plate background, in style-neutral terms; each style decides how to draw it
+ * (paper-dawn: progress = time of day, highlight = sun height; nebula: progress = gas brightness and density,
+ * highlight = a bright star).
+ */
 export interface PlateParams {
+  /** Seconds, for slow drift (clouds, gas); any origin. */
   time?: number;
-  light?: number;
-  sun?: number;
+  /** 0–1: where the film is in its story, from the opening (dim, early) to the close (full, late). */
+  progress?: number;
+  /** 0–1: the strength of a focal light in the background; 0 for none. */
+  highlight?: number;
 }
 
 export interface SubLine {

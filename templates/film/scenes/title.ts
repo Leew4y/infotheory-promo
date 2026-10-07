@@ -6,7 +6,7 @@ scene({
   subs: [],
   cam: (lt, d) => ({ z: 1 + (0.03 * lt) / d }),
   draw(lt) {
-    plate({ time: lt, light: 0.4, sun: 0.1 });
+    plate({ time: lt, progress: 0.4, highlight: 0.1 });
     const a = sstep(0.8, 2.0, lt);
     const rise = (1 - eout(clamp((lt - 0.8) / 1.2))) * 16;
     text('新片标题', W / 2, 520 + rise, { size: 120, weight: 500, color: C.fgOnDark, alpha: a, align: 'center', ls: 24 });

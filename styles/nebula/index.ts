@@ -54,7 +54,8 @@ const nebula: StylePackage = {
   layout: { margin: 170, column: 1010 },
 
   background: () => glPlate(NEBULA_FS, 1, { time: 0, tint: GAS }),
-  plate: (u) => glPlate(NEBULA_FS, 2, { time: u.time, p: u.light, q: u.sun, tint: GAS }),
+  // progress brightens and thickens the gas, highlight lights a star
+  plate: (u) => glPlate(NEBULA_FS, 2, { time: u.time, p: u.progress, q: u.highlight, tint: GAS }),
 
   /** Slides in from the left behind a short cyan bar; the English line in small mono capitals. */
   statement(zh, en, lt, t0 = 0.4, y = 300, size = 54) {

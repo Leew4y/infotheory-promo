@@ -7,7 +7,7 @@ scene({
   sfx: [[0, 'swell', { dur: 5 }], [1.0, 'tone', { midi: 60 }]],
   cam: (lt, d) => ({ z: 1 + (0.03 * lt) / d }),
   draw(lt) {
-    plate({ time: lt + 40, light: 0.32, sun: 0 });
+    plate({ time: lt + 40, progress: 0.32, highlight: 0 });
     const a = win(lt, 0.8, 5.6, 0.8, 0.7);
     dot(W / 2, 430, 5, C.accent2, a);
     text('信息，是被消除的不确定。', W / 2, 520, { size: 52, weight: 500, color: C.fgOnDark, alpha: a, align: 'center', ls: 6 });

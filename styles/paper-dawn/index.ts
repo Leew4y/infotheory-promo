@@ -75,7 +75,8 @@ const paperDawn: StylePackage = {
   layout: { margin: 150, column: 1000 },
 
   background: () => paper(),
-  plate: (u) => glPlate(PLATE_FS, 3, { time: u.time, p: u.light, q: u.sun }),
+  // progress is the time of day (first light -> morning), highlight the sun's height above the horizon
+  plate: (u) => glPlate(PLATE_FS, 3, { time: u.time, p: u.progress, q: u.highlight }),
 
   statement(zh, en, lt, t0 = 0.4, y = 300, size = 54) {
     const k = clamp((lt - t0) / 0.9);

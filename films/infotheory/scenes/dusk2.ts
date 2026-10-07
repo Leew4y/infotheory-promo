@@ -7,7 +7,7 @@ scene({
   sfx: [[0, 'swell', { dur: 5 }], [1.0, 'tone', { midi: 64 }]],
   cam: (lt, d) => ({ z: 1 + (0.03 * lt) / d }),
   draw(lt) {
-    plate({ time: lt + 90, light: 0.55, sun: 0.03 });
+    plate({ time: lt + 90, progress: 0.55, highlight: 0.03 });
     const a = win(lt, 0.8, 5.6, 0.8, 0.7);
     dot(W / 2, 300, 5, C.accent2, a);
     text('只要肯多花几个比特，噪声就不是终点。', W / 2, 390, { size: 50, weight: 500, color: C.fgOnDark, alpha: a, align: 'center', ls: 5 });
