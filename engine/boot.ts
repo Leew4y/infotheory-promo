@@ -6,6 +6,7 @@
  *   __frame(t, fps)    render time t with motion blur, return a JPEG data URL
  *   __duration         film length in seconds
  *   __film             the film's id
+ *   __style            the active style's id (?style=<id>, else the film's first style)
  *   __timeline()       the resolved timeline (frames and seconds per scene), written to timeline.json
  *   __layout(t)        text boxes of the frame at t (for scripts/validate.ts)
  *   __gpu()            WebGL renderer string
@@ -17,6 +18,7 @@ import { cv, recordText, setCoverage, type TextBox } from './draw';
 import { frame } from './frame';
 import { gpuName } from './gl';
 import { SC, sceneAt } from './scene';
+import { style } from './style';
 import { clamp, fmtTime } from './util';
 import { film, FPS, FRAMES, TOTAL } from './film';
 
@@ -26,6 +28,7 @@ declare global {
     __frame: (t: number, fps?: number) => string;
     __duration: number;
     __film: string;
+    __style: string;
     __timeline: () => { film: string; fps: number; bpm: number; frames: number; duration: number; scenes: { name: string; kind: string; f0: number; f1: number; start: number; end: number }[] };
     __gpu: () => string;
     __cues: () => { t: number; name: string; [k: string]: number | string }[];
@@ -35,13 +38,13 @@ declare global {
   }
 }
 
-/** One bundled font face: films/<id>/fonts/manifest.json, written by scripts/fonts.ts. */
+/** One bundled font face: films/<film>/fonts/<style>/manifest.json, written by scripts/fonts.ts. */
 export interface FontEntry { family: string; style: string; weight: string; file: string }
-export interface FontManifest { film: string; charset: string; fonts: (FontEntry & { missing: string })[] }
+export interface FontManifest { film: string; style: string; charset: string; fonts: (FontEntry & { missing: string })[] }
 
 export interface BootOptions {
-  /** The film's font manifest and the bundled URL of each file in it (from import.meta.glob). */
-  fonts: FontManifest;
+  /** The film's font manifests, one per style, and the bundled URL of each file, keyed "<style>/<file>" (from import.meta.glob). */
+  fonts: FontManifest[];
   fontUrls: Record<string, string>;
   /** Start-card text once fonts are ready. */
   readyText?: string;
@@ -51,18 +54,23 @@ export function boot(o: BootOptions): void {
   const EXPORT = /[?&]export=1/.test(location.search);
   const params = new URLSearchParams(location.search);
 
-  // Fonts: only the film's bundled subsets, loaded explicitly. A face that fails to load is an error: __ready()
-  // throws, so the tools stop instead of rendering with a system fallback.
+  // Fonts: only the active style's bundled subsets for this film, loaded explicitly. A missing bundle or a face that
+  // fails to load is an error: __ready() throws, so the tools stop instead of rendering with a system fallback.
   let fontsReady = false;
   let fontError: string | null = null;
-  setCoverage(o.fonts);
-  Promise.all(o.fonts.fonts.map(async (f) => {
-    const url = o.fontUrls[f.file];
+  const sid = style().id;
+  const manifest = o.fonts.find((m) => m.style === sid && m.film === film().id);
+  // with no bundle, nothing loads and the .then below reports it
+  const fonts: FontManifest = manifest ?? { film: film().id, style: sid, charset: '', fonts: [] };
+  setCoverage(fonts);
+  Promise.all(fonts.fonts.map(async (f) => {
+    const url = o.fontUrls[`${sid}/${f.file}`];
     if (!url) throw new Error(`font file ${f.file} is in the manifest but not bundled`);
     const face = new FontFace(f.family, `url(${url}) format('woff2')`, { style: f.style, weight: f.weight });
     document.fonts.add(await face.load());
   }))
     .then(() => {
+      if (!manifest) throw new Error(`no bundled fonts for film "${film().id}" in style "${sid}" (run: bun scripts/fonts.ts --style ${sid})`);
       fontsReady = true;
       const l = document.getElementById('load');
       if (l) l.textContent = o.readyText ?? '字体已就绪 · 建议全屏观看（F）';
@@ -79,13 +87,14 @@ export function boot(o: BootOptions): void {
     if (fontError) throw new Error(fontError);
     return fontsReady;
   };
-  window.__fonts = () => o.fonts;
+  window.__fonts = () => fonts;
   window.__frame = (t, fps = 30) => {
     frame(t, fps, 3);
     return cv.toDataURL('image/jpeg', 0.95);
   };
   window.__duration = TOTAL;
   window.__film = film().id;
+  window.__style = sid;
   window.__timeline = () => ({
     film: film().id, fps: FPS, bpm: film().bpm, frames: FRAMES, duration: TOTAL,
     scenes: SC.map((s) => ({ name: s.name, kind: s.kind, f0: s.f0, f1: s.f1, start: s.t0, end: s.t0 + s.d })),

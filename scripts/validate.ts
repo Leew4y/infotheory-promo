@@ -1,7 +1,7 @@
 /**
  * Static checks of a built film, for people and agents.
  *
- *   bun run build && bun scripts/validate.ts [--film infotheory] [--dist dist] [--json]
+ *   bun run build && bun scripts/validate.ts [--film infotheory] [--style <id>] [--dist dist] [--json]
  *
  * - page load: the page renders the requested film; film and scene declarations satisfy FilmSpec / SceneSpec
  *   (engine/schema.ts); no page errors
@@ -21,7 +21,7 @@ import { chromeArgs, findChrome, serveDist } from './chrome';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const argv = Bun.argv.slice(2);
-const VALUED = ['film', 'dist'], FLAGS = ['json'];
+const VALUED = ['film', 'style', 'dist'], FLAGS = ['json'];
 for (let i = 0; i < argv.length; i++) {
   const k = argv[i].replace(/^--/, '');
   if (!argv[i].startsWith('--') || ![...VALUED, ...FLAGS].includes(k)) { console.error(`unknown argument: ${argv[i]}`); process.exit(2); }
@@ -30,6 +30,8 @@ for (let i = 0; i < argv.length; i++) {
 const opt = (k: string, d: string) => (argv.includes(`--${k}`) ? argv[argv.indexOf(`--${k}`) + 1] : d);
 const JSON_OUT = argv.includes('--json');
 const FILM = opt('film', 'infotheory');
+/** One of the film's styles (?style=<id>); omitted: the film's default. */
+const STYLE = opt('style', '');
 const DIST = path.resolve(ROOT, opt('dist', 'dist'));
 const FPS = 30, W = 1920, H = 1080, SAFE = 0.05, MIN_ALPHA = 0.02;
 const OUT = path.join(ROOT, 'out', 'validate', `${FILM}.json`);
@@ -60,7 +62,7 @@ try {
     // module evaluation errors fire during goto
     const thrown = new Promise<never>((_, reject) => page.once('pageerror', () => reject(new Error('page threw during load'))));
     thrown.catch(() => {});
-    await Promise.race([page.goto(`${server.url}/?export=1`, { waitUntil: 'load' }), thrown]);
+    await Promise.race([page.goto(`${server.url}/?export=1${STYLE ? `&style=${encodeURIComponent(STYLE)}` : ''}`, { waitUntil: 'load' }), thrown]);
     await Promise.race([page.waitForFunction(() => typeof window.__layout === 'function' && window.__ready(), { timeout: 30_000 }), thrown]);
     ready = true;
   } catch (e) {

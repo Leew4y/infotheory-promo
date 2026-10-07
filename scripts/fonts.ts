@@ -1,7 +1,7 @@
 /**
  * Bundled fonts: download a style's pinned font sources, subset them to the film's characters, check coverage.
  *
- *   bun scripts/fonts.ts [--film infotheory] [--style paper-dawn] [--lock]
+ *   bun scripts/fonts.ts [--film infotheory] [--style paper-dawn] [--lock]     (one bundle per film and style)
  *
  * 1. Sources come from styles/<style>/fonts.lock.json (URL pinned to an upstream commit, licence, sha256). Missing
  *    files are downloaded to .cache/fonts/ through a temporary file and only kept if the sha256 matches; the licence
@@ -12,7 +12,7 @@
  *    films/<film>/fonts.extra.txt if present (for text generated at run time, e.g. String.fromCodePoint(...)).
  * 3. Each source is subset to that set with a pinned fontTools (pyftsubset via `uv tool run`, WOFF2, all name records
  *    kept so the copyright and licence notices stay in the fonts) into a temporary directory; only when every face
- *    succeeded does it replace films/<film>/fonts/, together with each family's OFL text (LICENSE-<family>.txt) and
+ *    succeeded does it replace films/<film>/fonts/<style>/, together with each family's OFL text (LICENSE-<family>.txt) and
  *    manifest.json: family, style, weight range, role, file, sha256, source, licence, generator, and the characters
  *    of the set each face lacks. A failure leaves the existing fonts untouched.
  * Needs uv. Exit code 1 on any download, checksum or tool failure.
@@ -29,7 +29,7 @@ const FILM = opt('film', 'infotheory');
 const STYLE = opt('style', 'paper-dawn');
 const LOCK = path.join(ROOT, 'styles', STYLE, 'fonts.lock.json');
 const CACHE = path.join(ROOT, '.cache', 'fonts');
-const OUT = path.join(ROOT, 'films', FILM, 'fonts');
+const OUT = path.join(ROOT, 'films', FILM, 'fonts', STYLE);
 const EXTRA = path.join(ROOT, 'films', FILM, 'fonts.extra.txt');
 // the subsetting toolchain is pinned: the same inputs give byte-identical subsets on any machine with these versions
 const GENERATOR = { fonttools: '4.66.1', brotli: '1.2.0' };

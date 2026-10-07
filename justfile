@@ -19,9 +19,10 @@ dev:
 build:
     bun run build
 
-# Download the style's pinned fonts (to .cache/fonts) and write the film's subsets + manifest (films/infotheory/fonts).
-fonts:
-    bun scripts/fonts.ts
+# Download a style's pinned fonts (to .cache/fonts) and write the film's subsets + manifest for it
+# (films/infotheory/fonts/<style>/), e.g. `just fonts --style nebula`; default paper-dawn.
+fonts *args:
+    bun scripts/fonts.ts {{args}}
 
 # Type-check the engine, styles, films and scripts.
 check:
@@ -31,7 +32,8 @@ check:
 check-imports:
     bun scripts/check-imports.ts
 
-# Schema, timeline, rendering and text-layout checks of the built film (text outside the frame or the 5% safe area is an error).
+# Schema, timeline, rendering and text-layout checks of the built film (text outside the frame or the 5% safe area is an error);
+# `just validate --style <id>` checks another of the film's styles.
 validate *args: build
     bun scripts/validate.ts {{args}}
 
@@ -51,9 +53,9 @@ test-export: build
 scenes: build
     bun scripts/export.ts --scenes
 
-# Write single frames for checking, e.g. `just shots 5,20.5,60`.
-shots times="0,10": build
-    bun scripts/export.ts --shots {{times}}
+# Write single frames for checking, e.g. `just shots 5,20.5,60` or `just shots 5,60 --style nebula`.
+shots times="0,10" *args: build
+    bun scripts/export.ts --shots {{times}} {{args}}
 
 # Dump the film's sound-effect cue sheet and resolved timeline to films/infotheory/ (the score reads both).
 cues: build
@@ -63,9 +65,9 @@ cues: build
 music: cues
     uv run --project audio python films/infotheory/score.py
 
-# Full 1080p30 export with 4 headless Chrome workers -> out/infotheory.mp4
-export workers="4" crf="18": build
-    bun scripts/export.ts --workers {{workers}} --crf {{crf}}
+# Full 1080p30 export with 4 headless Chrome workers -> out/infotheory.mp4 (`just export 4 18 --style nebula` -> out/infotheory-nebula.mp4)
+export workers="4" crf="18" *args: build
+    bun scripts/export.ts --workers {{workers}} --crf {{crf}} {{args}}
 
 # Everything: cues -> music -> video.
 all: cues music export
