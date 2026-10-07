@@ -4,6 +4,7 @@
 // the first listed by default, another with ?style=<id> in the page URL.
 import { defineFilm, selectStyle } from '../../engine';
 import paperDawn from '../../styles/paper-dawn';
+import nebula from '../../styles/nebula';
 
-selectStyle([paperDawn]);
+selectStyle([paperDawn, nebula]);
 export default defineFilm({ id: 'infotheory', fps: 30, bpm: 80, chapters: 8 });
