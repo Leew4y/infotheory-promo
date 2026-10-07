@@ -1,7 +1,9 @@
 /**
  * Failure-mode tests for scripts/export.ts (the output contract in its header).
  *
- *   bun run build && just music && bun scripts/test-export.ts
+ *   just build <id> && just music <id> && bun scripts/test-export.ts --film <id>
+ *
+ * The film is only the test subject: any film with a score works (its ranges 30–60 s must exist).
  *
  * Each case runs an export into out/test-export/ against an existing target file holding a sentinel. Every job has
  * its own hard watchdog (kills the whole process tree), and each case checks: the exit code, that it ended within
@@ -18,6 +20,8 @@ import path from 'node:path';
 import { killTree } from './chrome';
 
 const ROOT = path.resolve(import.meta.dir, '..');
+const FILM = Bun.argv.includes('--film') ? Bun.argv[Bun.argv.indexOf('--film') + 1] ?? '' : '';
+if (!FILM) { console.error('--film <id> is required'); process.exit(2); }
 const DIR = path.join(ROOT, 'out', 'test-export');
 const TARGET = path.join(DIR, 'target.mp4');
 const FIX = path.join(ROOT, 'scripts', 'test-fixtures');
@@ -25,7 +29,7 @@ const SENTINEL = 'SENTINEL: the previous export';
 const stub = (f: string) => JSON.stringify(['bun', path.join(FIX, f)]);
 rmSync(DIR, { recursive: true, force: true });
 mkdirSync(DIR, { recursive: true });
-if (!existsSync(path.join(ROOT, 'audio', 'music.wav'))) { console.error('audio/music.wav missing: run `just music` first'); process.exit(2); }
+if (!existsSync(path.join(ROOT, 'out', FILM, 'music.wav'))) { console.error(`out/${FILM}/music.wav missing: run \`just music ${FILM}\` first`); process.exit(2); }
 
 /** Command lines of running processes that belong to these tests. */
 async function ours(): Promise<string[]> {
@@ -54,7 +58,7 @@ interface Case {
   keepLock?: boolean;
 }
 type Job = ReturnType<typeof Bun.spawn>;
-const start = (c: Case): Job => Bun.spawn(['bun', path.join(ROOT, 'scripts', 'export.ts'), '--out', TARGET, ...c.args], { env: { ...process.env, ...(c.env ?? {}) }, stdout: 'pipe', stderr: 'pipe' });
+const start = (c: Case): Job => Bun.spawn(['bun', path.join(ROOT, 'scripts', 'export.ts'), '--film', FILM, '--out', TARGET, ...c.args], { env: { ...process.env, ...(c.env ?? {}) }, stdout: 'pipe', stderr: 'pipe' });
 async function finish(c: Case, job: Job, t0: number): Promise<{ ok: boolean; notes: string[] }> {
   let killed = false;
   const watchdog = setTimeout(async () => { killed = true; await killTree(job.pid); }, (c.within + 30) * 1000);

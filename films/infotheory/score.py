@@ -1,7 +1,7 @@
 """Score for the information-theory film: A minor, 80 BPM, a quiet chamber score (felt piano, string bed, cello, no drums).
 
-    just cues    (the page writes films/infotheory/cues.json and timeline.json)
-    just music   -> audio/music.wav, audio/music.mp3
+    just cues infotheory    (the page writes films/infotheory/cues.json and timeline.json)
+    just music infotheory   -> out/infotheory/music.wav (master), out/infotheory/music.mp3 (preview)
 
 Positions are relative to scenes: at('surprise') is the first bar of the surprise chapter, at('dawn') + 2.2 is 2.2 s
 into the dawn plate. Change a scene's length on the page, re-run `just cues`, and the score follows.
@@ -69,4 +69,5 @@ for k, m in enumerate([81, 85, 88, 93]):
     felt(resolve + 2.4 + k * .35, m, .035, 3.5, (k - 1.5) * .3)
 
 synth.place_cues(synth.load_json(os.path.join(HERE, 'cues.json')))
-synth.render(os.path.join(ROOT, 'audio', 'music.wav'), os.path.join(ROOT, 'audio', 'music.mp3'))
+OUT = os.path.join(ROOT, 'out', os.path.basename(HERE))
+synth.render(os.path.join(OUT, 'music.wav'), os.path.join(OUT, 'music.mp3'))

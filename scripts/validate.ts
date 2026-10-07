@@ -1,7 +1,7 @@
 /**
  * Static checks of a built film, for people and agents.
  *
- *   bun run build && bun scripts/validate.ts [--film infotheory] [--style <id>] [--dist dist] [--json]
+ *   just build <id> && bun scripts/validate.ts --film <id> [--style <id>] [--dist dist/<id>] [--json]
  *
  * Without --style every style of the film is checked (the page's __styles, default first); with it, that one.
  * - page load: the page renders the requested film; film and scene declarations satisfy FilmSpec / SceneSpec
@@ -12,7 +12,7 @@
  *   (alpha >= 0.02 after the scene's fade, after the camera transform) lies inside the frame and inside the safe area
  *   (5 % each side); both are errors. Five frames per scene are a sample: nothing is proved
  *   about the frames in between.
- * Diagnostics: { level, code, path, message }, also written to out/validate/<film>.json. With --json, stdout is only
+ * Diagnostics: { level, code, path, message }, also written to out/<film>/validate.json. With --json, stdout is only
  * the JSON list and the summary goes to stderr. Exit code 1 on any error, 2 if the tool itself could not run.
  */
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -30,12 +30,13 @@ for (let i = 0; i < argv.length; i++) {
 }
 const opt = (k: string, d: string) => (argv.includes(`--${k}`) ? argv[argv.indexOf(`--${k}`) + 1] : d);
 const JSON_OUT = argv.includes('--json');
-const FILM = opt('film', 'infotheory');
+const FILM = opt('film', '');
+if (!FILM) { console.error('--film <id> is required (one of films/*)'); process.exit(2); }
 /** One of the film's styles (?style=<id>); omitted: all of them. */
 const STYLE = opt('style', '');
-const DIST = path.resolve(ROOT, opt('dist', 'dist'));
+const DIST = path.resolve(ROOT, opt('dist', `dist/${FILM}`));
 const FPS = 30, W = 1920, H = 1080, SAFE = 0.05, MIN_ALPHA = 0.02;
-const OUT = path.join(ROOT, 'out', 'validate', `${FILM}.json`);
+const OUT = path.join(ROOT, 'out', FILM, 'validate.json');
 
 interface Diag { level: 'error' | 'warning'; style: string; code: string; path: string; message: string }
 const diags: Diag[] = [];
@@ -45,7 +46,7 @@ const err = (code: string, p: string, message: string) => diags.push({ level: 'e
 
 let CHROME = '';
 try { CHROME = findChrome(); } catch (e) { console.error((e as Error).message); process.exit(2); }
-if (!existsSync(path.join(DIST, 'index.html'))) { console.error(`${DIST}/index.html missing: run \`bun run build\``); process.exit(2); }
+if (!existsSync(path.join(DIST, 'index.html'))) { console.error(`${DIST}/index.html missing: run \`just build ${FILM}\``); process.exit(2); }
 
 const server = serveDist(DIST);
 let browser: Browser | null = null;
@@ -65,7 +66,7 @@ try {
     let ready = false;
     try {
       // fails fast when the page throws (e.g. a declaration fails its schema), names no or another style, or is not ready
-      await loadFilm(page, server.url, id, 30_000);
+      await loadFilm(page, server.url, FILM, id, 30_000);
       ready = true;
     } catch (e) {
       err('page-load', 'page', `film did not load: ${e instanceof Error ? e.message : String(e)}`);

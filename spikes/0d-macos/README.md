@@ -22,7 +22,7 @@ mkdir -p spikes/0d-macos
 
 # 1. 依赖与构建
 bun install
-bun run build
+just build infotheory
 
 # 2. GPU 能力检查 + 三张样张（spikes/0d-macos/frames/*.png）
 bun spikes/0d-macos/gpu-check.ts
@@ -48,15 +48,16 @@ cp out/0c-capture/sample-*.jpg spikes/0d-macos/
 
 ```bash
 uv sync --project audio
-just music                                                  # 生成 audio/music.wav（导出与失败用例都需要它）
-bun run build
-bun scripts/validate.ts                                    # 0 error 即通过
-bun scripts/test-export.ts                                 # 全部 ok 即通过（macOS 上多一个真实 SIGINT 用例）
-bun scripts/export.ts --from 30 --to 36 --out out/mac-1c.mp4
-just dev                                                    # 打开 http://127.0.0.1:5174：字体加载完才能播放，画面应与 windows-reference 一致
+just music infotheory                       # 生成 out/infotheory/music.wav（导出与失败用例都需要它）
+just validate infotheory                    # 两套风格都 0 error 即通过
+just test-export infotheory                 # 全部 ok 即通过（macOS 上多一个真实 SIGINT 用例）
+bun scripts/export.ts --film infotheory --from 30 --to 36 --out out/mac-1c.mp4
+bun scripts/export.ts --film infotheory --from 30 --to 36 --style nebula --out out/mac-1c-nebula.mp4
+just new-film macdemo nebula && just fonts macdemo && just validate macdemo && just export macdemo 4 18 --noaudio
+just dev infotheory                         # 打开 http://127.0.0.1:5174：字体加载完才能播放，画面应与 windows-reference 一致；加 ?style=nebula 看第二套风格
 ```
 
-把输出贴回即可；`just regress` 在 macOS 上会提示"基线不可比较"，这是预期的。
+把输出贴回即可（`films/macdemo/` 不用提交）；`just regress` 在 macOS 上会提示"基线不可比较"，这是预期的。
 
 ## 需要人眼看的
 

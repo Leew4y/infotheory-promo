@@ -1,17 +1,18 @@
 /**
  * Offline export (the design follows abstract-algebra-promo's export.mjs, driven here through puppeteer-core):
  *
- *   bun scripts/export.ts [--workers 4] [--from 0] [--to <end>] [--crf 18] [--out out/infotheory.mp4]
- *                         [--audio audio/music.wav | --noaudio] [--deadline <seconds>]
- *   bun scripts/export.ts --shots 5,20.5,60 [--dir out/shots]     write single frames (JPEG) for checking
- *   bun scripts/export.ts --cues films/infotheory/cues.json       dump the sound-effect cue sheet for the score
- *   bun scripts/export.ts --timeline films/infotheory/timeline.json  dump the resolved timeline (scene frames / seconds)
- *   bun scripts/export.ts --scenes                                print the scene list with start/end times
- *   every form takes [--style <id>]: one of the film's styles (?style=<id>); omitted: the film's default
+ *   bun scripts/export.ts --film <id> [--workers 4] [--from 0] [--to <end>] [--crf 18] [--out out/<id>/<id>.mp4]
+ *                         [--audio out/<id>/music.wav | --noaudio] [--deadline <seconds>]
+ *   bun scripts/export.ts --film <id> --shots 5,20.5,60 [--dir out/<id>/shots]  write single frames (JPEG) for checking
+ *   bun scripts/export.ts --film <id> --cues [films/<id>/cues.json]          dump the sound-effect cue sheet for the score
+ *   bun scripts/export.ts --film <id> --timeline [films/<id>/timeline.json]  dump the resolved timeline (scene frames / seconds)
+ *   bun scripts/export.ts --film <id> --scenes                               print the scene list with start/end times
+ *   every form takes [--style <id>]: one of the film's styles (?style=<id>); omitted: the film's default.
+ *   The page is the film's build, dist/<id>/ (just build <id>).
  *
  * Every worker is its own headless Chrome rendering exact frame times through the page's ?export=1 hooks.
- * Frames are handed out one at a time and written to ffmpeg in order. Needs `bun run build` first (the page is
- * served from dist/), Chrome, and ffmpeg / ffprobe on PATH.
+ * Frames are handed out one at a time and written to ffmpeg in order. Needs `just build <id>` first (the page is
+ * served from dist/<id>/), Chrome, and ffmpeg / ffprobe on PATH.
  *
  * Output contract (docs/plan/reusable-engine.md, "全局契约 / 导出产物"):
  *   - the range is snapped to the film's frame grid (fps from the page): frames round(from*fps) .. round(to*fps);
@@ -41,12 +42,14 @@ import puppeteer, { type Browser, type Page } from 'puppeteer-core';
 import { chromeArgs, findChrome, loadFilm, killTree, serveDist } from './chrome';
 
 const ROOT = path.resolve(import.meta.dir, '..');
-const DIST = path.join(ROOT, 'dist');
 const argv = Bun.argv.slice(2);
 const opt = (k: string, d?: string): string | undefined => {
   const i = argv.indexOf(`--${k}`);
   return i >= 0 && argv[i + 1] !== undefined && !/^--[a-z]/.test(argv[i + 1]) ? argv[i + 1] : d;
 };
+const FILM = opt('film') ?? '';
+if (!FILM) { console.error('--film <id> is required (one of films/*)'); process.exit(2); }
+const DIST = path.join(ROOT, 'dist', FILM);
 const flag = (k: string): boolean => argv.includes(`--${k}`);
 const fail = (exit: number, message: string): never => { throw Object.assign(new Error(message), { exit }); };
 
@@ -54,9 +57,9 @@ const CRF = opt('crf', '18')!;
 const SINGLE = flag('shots') || flag('cues') || flag('timeline') || flag('scenes');
 const WORKERS = SINGLE ? 1 : Math.max(1, +(opt('workers', '4') ?? 4));
 const STYLE = opt('style');
-const OUT = path.resolve(ROOT, opt('out', STYLE ? `out/infotheory-${STYLE}.mp4` : 'out/infotheory.mp4')!);
+const OUT = path.resolve(ROOT, opt('out', `out/${FILM}/${FILM}${STYLE ? `-${STYLE}` : ''}.mp4`)!);
 // the loudness-normalized WAV master from the score (the MP3 is only for the preview player)
-const AUDIO = path.resolve(ROOT, opt('audio', 'audio/music.wav')!);
+const AUDIO = path.resolve(ROOT, opt('audio', `out/${FILM}/music.wav`)!);
 const NOAUDIO = flag('noaudio');
 // a command prefix: a plain path, or a JSON array such as ["bun", "stub.ts"] (test hooks)
 const cmdPrefix = (v: string | undefined, d: string): string[] => (v ? (v.startsWith('[') ? JSON.parse(v) : [v]) : [d]);
@@ -213,7 +216,7 @@ async function launch(id: number, chrome: string, url: string, fps: () => number
   const page = await browser.newPage();
   page.on('pageerror', (e: unknown) => console.error(`worker ${id} page error:`, e instanceof Error ? e.message : String(e)));
   page.on('console', (m) => { if (m.type() === 'error') console.error(`worker ${id} console.error:`, m.text()); });
-  await loadFilm(page, url, STYLE ?? '');
+  await loadFilm(page, url, FILM, STYLE ?? '');
   const frame = async (t: number): Promise<Buffer> => {
     const durl: string = await page.evaluate((t, f) => window.__frame(t, f), t, fps());
     return Buffer.from(durl.slice(durl.indexOf(',') + 1), 'base64');
@@ -225,13 +228,13 @@ let code = 0;
 let committed = false; // set once the rename has published the export
 let deadlineTimer: ReturnType<typeof setTimeout> | null = null;
 try {
-  if (!existsSync(path.join(DIST, 'index.html'))) fail(2, 'dist/index.html missing: run `bun run build` first');
+  if (!existsSync(path.join(DIST, 'index.html'))) fail(2, `dist/${FILM}/index.html missing: run \`just build ${FILM}\` first`);
   let chrome = '';
   try { chrome = findChrome(); } catch (e) { fail(2, (e as Error).message); }
   const video = !SINGLE;
   const deadline = opt('deadline') !== undefined ? +opt('deadline')! : 0; // 0: set once the frame count is known
   if (video) {
-    if (!NOAUDIO && !existsSync(AUDIO)) fail(2, `audio ${AUDIO} not found: run \`just music\`, or pass --noaudio for a silent export`);
+    if (!NOAUDIO && !existsSync(AUDIO)) fail(2, `audio ${AUDIO} not found: run \`just music ${FILM}\`, or pass --noaudio for a silent export`);
     mkdirSync(path.dirname(OUT), { recursive: true });
     lockPath = takeLock(OUT);
     if (deadline > 0) deadlineTimer = setTimeout(() => cancel(`deadline of ${deadline}s exceeded`), deadline * 1000);
@@ -253,20 +256,20 @@ try {
     console.log(`total ${tl.duration.toFixed(2)}s`);
   } else if (flag('cues') || flag('timeline')) {
     if (flag('timeline')) {
-      const tf = path.resolve(ROOT, opt('timeline', 'films/infotheory/timeline.json')!);
+      const tf = path.resolve(ROOT, opt('timeline', `films/${FILM}/timeline.json`)!);
       mkdirSync(path.dirname(tf), { recursive: true });
       writeFileSync(tf, JSON.stringify(tl, null, 1));
       console.log(`wrote timeline (${tl.scenes.length} scenes, ${tl.frames} frames) to ${tf}`);
     }
     if (flag('cues')) {
-      const file = path.resolve(ROOT, opt('cues', 'films/infotheory/cues.json')!);
+      const file = path.resolve(ROOT, opt('cues', `films/${FILM}/cues.json`)!);
       const cues = await workers[0].evaluate(() => window.__cues());
       mkdirSync(path.dirname(file), { recursive: true });
       writeFileSync(file, JSON.stringify(cues, null, 1));
       console.log(`wrote ${cues.length} cues to ${file}`);
     }
   } else if (flag('shots')) {
-    const dir = path.resolve(ROOT, opt('dir', STYLE ? `out/shots-${STYLE}` : 'out/shots')!);
+    const dir = path.resolve(ROOT, opt('dir', `out/${FILM}/shots${STYLE ? `-${STYLE}` : ''}`)!);
     mkdirSync(dir, { recursive: true });
     for (const t of opt('shots', '0')!.split(',').map(Number)) {
       const f = path.join(dir, `t${t.toFixed(2).padStart(7, '0')}.jpg`);

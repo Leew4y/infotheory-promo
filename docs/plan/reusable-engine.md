@@ -257,6 +257,15 @@ films/<id>/      一部片子：film.ts、scenes/、score.py
 退出条件：用 `new-film` 建第二部片子（约 20 秒），build、validate、无声导出通过；infotheory 两套风格 regress 逐像素不变；
 `just music infotheory` 生成的母版与改动前逐字节相同；影片互相导入被 `check-imports` 拒绝；字体子集重新生成无差异。
 
+A1 实施记录（分支 `engine/a1-films`）：
+- 页面外壳 `index.html` 通用，Vite 按 `FILM`（由 `just dev|build <film>` 传入）选入口，未知片名报错并列出可选；`boot()` 接收片名与标语，开始卡片与标签页标题由片子提供。
+- 工具一律要求 `--film`（`validate`、`regress`、`export`、`fonts`、`test-export`），共用的 `loadFilm` 同时核对片名与风格；`package.json` 不再有 `dev` / `build` 脚本。
+- `fonts/catalog.json` 收拢两套风格的字体来源（11 条，去重后 STIX Two 只出现一次）；风格改为 `fonts.json` 引用 id。两套风格的子集重新生成后逐字节不变。
+- 配乐成品移到 `out/<film>/`（`score.py` 按自身目录名决定），预览从那里取 `music.mp3`；`just music infotheory` 的母版 sha256 与改动前相同。
+- `templates/film/`（标题、一页正文、结尾，20 秒，无配乐）与 `just new-film`；`check-imports` 把 `templates/` 当作片子检查，片子之间、片子到模板的导入被拒（反例已测）。
+- 结果：`new-film demo nebula` → `fonts` → `validate`（0 error）→ 无声导出 600 帧 / 20.000 s，测试片不入库；infotheory `validate` 两套风格 0 error，regress 两套 231/231，
+  test-export 17/17，`tsc`、`check-imports` 通过；预览（标题、字体、音乐路径）在浏览器里确认。spikes 改为读 `dist/infotheory/`，0d 运行说明随之更新。
+
 **A1b · 全幅背景参数与风格无关（一个小 PR）。**
 - `PlateParams { time, light, sun }` 是黎明风格的词汇，场景被迫按它传参。改为语义参数：`progress`（0–1，在叙事中的位置）、
   `intensity`（0–1，画面强弱）、`warmth`（−1 冷 … 1 暖，可选），加 `time`（秒，用于缓慢流动）。每个风格自己决定怎么画。

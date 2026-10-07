@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "dev",
-      "runtimeExecutable": "bun",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeExecutable": "just",
+      "runtimeArgs": ["dev", "infotheory"],
       "port": 5174
     }
   ]

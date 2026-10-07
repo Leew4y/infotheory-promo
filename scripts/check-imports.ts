@@ -5,7 +5,9 @@
  *
  * engine/**          may import only engine/** (and packages)
  * styles/<id>/**     may import engine/** and its own styles/<id>/**; not films/, not other styles
- * films/<id>/**      may import engine/index.ts (the public API), styles/<x>/index.ts, and its own films/<id>/**
+ * films/<id>/**      may import engine/index.ts (the public API), styles/<x>/index.ts, and its own films/<id>/**;
+ *                    not another film, not templates/
+ * templates/<id>/**  the same rules as a film (a template is copied into films/ by just new-film)
  *
  * Runtime imports (static, re-exports, dynamic with a literal specifier) come from Bun's own import scanner, which
  * handles any syntax and ignores comments and strings. Type-only imports, which the scanner drops, are found by a
@@ -78,13 +80,13 @@ function verdict(top: string, file: string, target: string): string | null {
   }
   if (tt === 'engine' && target !== 'engine/index.ts') return `films may import only the engine's public API engine/index.ts, not ${target}`;
   if (tt === 'styles' && !/^styles\/[^/]+\/index\.ts$/.test(target)) return `films may import a style only through styles/<id>/index.ts, not ${target}`;
-  if (tt === 'films' && tid !== fid) return `films/${fid} may not import another film (${target})`;
-  if (!['engine', 'styles', 'films'].includes(tt)) return `films may not import ${target}`;
+  if ((tt === 'films' || tt === 'templates') && !(tt === top && tid === fid)) return `${top}/${fid} may import only its own ${top}/${fid}/, not ${target}`;
+  if (!['engine', 'styles', 'films', 'templates'].includes(tt)) return `${top} may not import ${target}`;
   return null;
 }
 
 let filesChecked = 0;
-for (const top of ['engine', 'styles', 'films']) {
+for (const top of ['engine', 'styles', 'films', 'templates']) {
   let files: string[] = [];
   try { files = walk(path.join(ROOT, top)); } catch { continue; }
   for (const f of files) {

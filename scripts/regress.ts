@@ -2,7 +2,7 @@
  * Pixel regression: render a fixed frame set through the page's ?export=1 hooks and compare the canvas's raw RGBA
  * (SHA-256 per frame, no JPEG/PNG encoding) with a committed baseline.
  *
- *   bun run build && bun scripts/regress.ts [--film infotheory] [--style <id>] [--update] [--dist dist] [--workers 4]
+ *   just build <id> && bun scripts/regress.ts --film <id> [--style <id>] [--update] [--dist dist/<id>] [--workers 4]
  *                                           [--gpu] [--no-cpu2d-flag] [--allow-new]
  *
  * One baseline per style: films/<film>/regress/<style>.json. Without --style every style of the film is run (the page's
@@ -21,10 +21,10 @@
  * The baseline is only comparable on the platform that recorded it (system fonts and SwiftShader can differ across
  * OS / CPU) and for the film the page actually renders; otherwise the run stops with exit code 2.
  * To rebuild the baseline from another commit:
- *   git worktree add ../base <commit> && (cd ../base && bun install && bun run build)
- *   bun scripts/regress.ts --dist ../base/dist --update
+ *   git worktree add ../base <commit> && (cd ../base && bun install && just build <id>)
+ *   bun scripts/regress.ts --film <id> --dist ../base/dist/<id> --update
  * Exit code (the worst over the styles run): 0 PASS (or baseline written), 1 FAIL / INCOMPLETE, 2 setup error or not
- * comparable. Writes out/regress/<film>/<style>.json.
+ * comparable. Writes out/<film>/regress/<style>.json.
  */
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -41,18 +41,19 @@ for (let i = 0; i < argv.length; i++) {
 }
 const opt = (k: string, d: string) => (argv.includes(`--${k}`) ? argv[argv.indexOf(`--${k}`) + 1] : d);
 const flag = (k: string) => argv.includes(`--${k}`);
-const FILM = opt('film', 'infotheory');
-const DIST = path.resolve(ROOT, opt('dist', 'dist'));
+const FILM = opt('film', '');
+if (!FILM) { console.error('--film <id> is required (one of films/*)'); process.exit(2); }
+const DIST = path.resolve(ROOT, opt('dist', `dist/${FILM}`));
 const WORKERS = +opt('workers', '4');
 const FPS = 30;
 const STYLE = opt('style', '');
 const baselineOf = (style: string) => path.join(ROOT, 'films', FILM, 'regress', `${style}.json`);
-const reportOf = (style: string) => path.join(ROOT, 'out', 'regress', FILM, `${style}.json`);
+const reportOf = (style: string) => path.join(ROOT, 'out', FILM, 'regress', `${style}.json`);
 const PLATFORM = `${process.platform} ${process.arch}`;
 
 let CHROME = '';
 try { CHROME = findChrome(); } catch (e) { console.error((e as Error).message); process.exit(2); }
-if (!existsSync(path.join(DIST, 'index.html'))) { console.error(`${DIST}/index.html missing: run \`bun run build\``); process.exit(2); }
+if (!existsSync(path.join(DIST, 'index.html'))) { console.error(`${DIST}/index.html missing: run \`just build ${FILM}\``); process.exit(2); }
 
 const ARGS = chromeArgs(flag('gpu') ? 'platform' : 'swiftshader', { cpu2d: !flag('no-cpu2d-flag') });
 
@@ -81,7 +82,7 @@ try {
   await Promise.all(Array.from({ length: WORKERS }, launch));
   const page = ws[0].page;
   /** Load every worker's page in one style ('' = the film's default). */
-  const load = (id: string) => Promise.all(ws.map((w) => loadFilm(w.page, server.url, id)));
+  const load = (id: string) => Promise.all(ws.map((w) => loadFilm(w.page, server.url, FILM, id)));
 
   /** Regress one style; returns its exit code. */
   const runStyle = async (id: string): Promise<number> => {

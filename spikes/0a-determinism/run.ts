@@ -1,7 +1,7 @@
 /**
  * Phase 0a: is the existing renderer deterministic on raw pixels?
  *
- *   bun run build && bun spikes/0a-determinism/run.ts [--out spikes/0a-determinism/result.json]
+ *   just build infotheory && bun spikes/0a-determinism/run.ts [--out spikes/0a-determinism/result.json]
  *
  * Renders a fixed set of frames through the page's ?export=1 hook and hashes the canvas's raw RGBA
  * (getImageData, before any JPEG/PNG encoding). Runs: two cold starts in order, one shuffled with repeated
@@ -12,7 +12,7 @@ import path from 'node:path';
 import puppeteer, { type Browser, type Page } from 'puppeteer-core';
 
 const ROOT = path.resolve(import.meta.dir, '../..');
-const DIST = path.join(ROOT, 'dist');
+const DIST = path.join(ROOT, 'dist', 'infotheory');
 const FPS = 30;
 const argv = Bun.argv.slice(2);
 const outArg = argv.indexOf('--out');
@@ -25,7 +25,7 @@ const CHROME = [
   '/usr/bin/google-chrome',
 ].find((p) => p && existsSync(p));
 if (!CHROME) throw new Error('Chrome not found (set CHROME_PATH)');
-if (!existsSync(path.join(DIST, 'index.html'))) throw new Error('dist/index.html missing: run `bun run build` first');
+if (!existsSync(path.join(DIST, 'index.html'))) throw new Error('dist/index.html missing: run `just build infotheory` first');
 
 const server = Bun.serve({
   hostname: '127.0.0.1',

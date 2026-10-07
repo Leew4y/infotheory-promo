@@ -9,7 +9,7 @@ import path from 'node:path';
 import puppeteer from 'puppeteer-core';
 
 const ROOT = path.resolve(import.meta.dir, '../..');
-const DIST = path.join(ROOT, 'dist');
+const DIST = path.join(ROOT, 'dist', 'infotheory');
 const argv = Bun.argv.slice(2);
 const FRAME = +argv[0];
 const REPEATS = +(argv[1] ?? 4);

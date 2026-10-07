@@ -45,6 +45,8 @@ export interface FontEntry { family: string; style: string; weight: string; file
 export interface FontManifest { film: string; style: string; charset: string; fonts: (FontEntry & { missing: string })[] }
 
 export interface BootOptions {
+  /** The page title and the player's start card: name, tagline (one line under it), browser tab title (default: "name · tagline"). */
+  title: { name: string; tagline?: string; page?: string };
   /** The film's font manifests, one per style, and the bundled URL of each file, keyed "<style>/<file>" (from import.meta.glob). */
   fonts: FontManifest[];
   fontUrls: Record<string, string>;
@@ -54,6 +56,10 @@ export interface BootOptions {
 
 export function boot(o: BootOptions): void {
   const EXPORT = /[?&]export=1/.test(location.search);
+  document.title = o.title.page ?? (o.title.tagline ? `${o.title.name} · ${o.title.tagline}` : o.title.name);
+  const h1 = document.getElementById('title'), tag = document.getElementById('tagline');
+  if (h1) h1.textContent = o.title.name;
+  if (tag) tag.textContent = o.title.tagline ?? '';
   const params = new URLSearchParams(location.search);
 
   // Fonts: only the active style's bundled subsets for this film, loaded explicitly. A missing bundle or a face that
