@@ -201,6 +201,22 @@ films/<id>/      一部片子：film.ts、scenes/、score.py
 第二套风格包（由 `nebula` 背景扩展而来，色板、字体、版式、转场均不同），用页面场景与全幅背景场景两类代表场景验证：
 不改场景代码即可切换；`just validate` 无 error；人眼确认两套风格可明显区分。
 
+验收记录（分支 `style/second-package`，2026-10-07）：
+- 切换：影片在 `film.ts` 列出可用风格（`selectStyle([paperDawn, nebula])`，第一个默认），页面 URL 的 `?style=<id>` 是唯一切换点，
+  同时决定 `useStyle` 与字体包；未知 id 直接报错。`validate`、`export`、`shots` 加 `--style`；导出时核对页面实际风格。
+  `regress` 只针对默认风格，基线记录风格 id，页面风格不符即报错。
+- 字体按"影片 × 风格"分开打包（`films/<film>/fonts/<style>/`），启动时只加载当前风格的包，缺包报错；paper-dawn 的子集搬迁后逐字节不变。
+  nebula 字体：Noto Sans SC、Inter（正 / 斜）、JetBrains Mono（google/fonts @9710da1，sha256 锁定，并与 GitHub 的 git blob 哈希核对一致），公式沿用 STIX Two。
+- nebula 风格（`styles/nebula/`）：页边距 170、右栏 1010（与 paper-dawn 不同，用来检验版式解耦）；深色点阵底、星云全幅页（`light` → 亮度与密度，`sun` → 亮星）、
+  光圈转场、右上等宽章节标签与顶部进度线、居中底条字幕；页面带光晕的调色。
+- 验收暴露的场景耦合（都已修，在场景里改而不是迁就风格）：
+  1. 四处写死的右边界 `1740` / `1770` 改为 `W - M` 起算（paper-dawn 逐像素不变）；
+  2. `noise` 的比特行按固定步长从左边距排起，在 paper-dawn 下本就伸进右边距 30 px，换成 170 边距后出安全区；改为铺满 `[M, W − M]`，
+     paper-dawn 的 15 个 `noise` 帧变化（人眼检查后重录基线）。
+- 结果：两套风格 `validate` 均 0 error / 0 warning；regress 231/231；test-export 17/17；nebula 6 秒带音频导出成功；
+  对照样张（同一时刻，页面 / 全幅 / 转场）见 PR 说明。场景代码对风格没有任何分支。
+- 未覆盖：`PlateParams` 仍是 `{time, light, sun}` 这套黎明词汇，nebula 只是重新解释；若以后风格需要更多背景参数，再讨论把它做成风格自定义。
+
 ### 阶段 2 · demo 片基础能力
 
 分三个 PR。

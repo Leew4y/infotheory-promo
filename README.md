@@ -8,10 +8,16 @@
 ## 外观：纸与黎明
 
 - **两种页面**。章节页是米白纸面（带纤维纹理和轻微暗角），图表全部是细墨线，唯一的强调色是朱红 `#C9663D`，次要色是石板蓝和灰绿。章节之间和首尾是全幅的黎明地平线：程序生成的天空渐变、地平线上的暖色光带、弧形的暗色大地、薄雾和一轮初升的太阳，加胶片颗粒。
-- **字体**。中文 Noto Serif SC 500 字重；英文 Gelasio 小字与斜体；公式 STIX Two Text（STIX Two Math 兜底）；比特用 Inconsolata。全部随仓库分发（OFL，许可证在 `films/infotheory/fonts/`）。标签是小型大写加字距。
+- **字体**。中文 Noto Serif SC 500 字重；英文 Gelasio 小字与斜体；公式 STIX Two Text（STIX Two Math 兜底）；比特用 Inconsolata。全部随仓库分发（OFL，许可证在 `films/infotheory/fonts/paper-dawn/`）。标签是小型大写加字距。
 - **版式**。左右各 150 px 的编辑式网格：左上角章节号加细线加章名，右下角页码 `01 / 08`，左栏是本章的一句论断，右栏是图表；说明文案排在左下，前面一段朱红短线，英文斜体在下一行。
 - **动画**。墨线一笔笔画出来，文字淡入并上浮 12 px，页面只有缓慢推近；转场是经纸面或暗色的溶解，没有闪切、震动和白闪。
 - **后期**。章节页只有细颗粒和很轻的暗角；地平线页多一点颗粒、暗角和太阳周围的光晕。没有辉光、没有色差。
+
+## 第二套外观：星云（nebula）
+
+同一套场景代码换一个风格包：`just dev` 后打开 `http://127.0.0.1:5174/?style=nebula`，导出用 `just export 4 18 --style nebula`（→ `out/infotheory-nebula.mp4`）。
+深蓝黑底加固定点阵和稀疏星点，全幅页是缓慢流动的星云；无衬线字（Noto Sans SC、Inter、JetBrains Mono，公式仍是 STIX Two）；
+青色强调、琥珀色辅助，页面线条带一点光晕；转场是从四周收拢的光圈；章节号 `CH 01 / 08` 和章名在右上，顶部一条章节进度细线；文案居中在半透明底条上。
 
 ## 内容
 
@@ -50,14 +56,15 @@ engine/               与片子无关
   schema.ts           FilmSpec / SceneSpec（zod），注册时校验
   boot.ts             页面入口：预览播放器与导出钩子 __frame/__layout/__cues/__timeline/__duration/__scenes/__film
 styles/paper-dawn/    "纸与黎明"风格包：色板、字体链、纸面、地平线着色器、调色、版式块、叠加层；fonts.lock.json 锁定字体来源
+styles/nebula/        "星云"风格包（同样的接口，另一套外观）
 films/infotheory/     信息论短片
-  film.ts             帧率、BPM、章节数与所用风格
+  film.ts             帧率、BPM、章节数与可用风格（第一个是默认，页面 URL 加 ?style=<id> 切换）
   main.ts             入口：film → scenes → boot()
   scenes/*.ts         一场景一文件，index.ts 决定顺序
   score.py            配乐编曲：按"场景 + 场景内小节"定位，读 timeline.json 与 cues.json
   cues.json           页面导出的音效 cue 表（生成文件）
   timeline.json       页面导出的解析后时间轴（生成文件）
-  fonts/              随仓库分发的字体子集（just fonts 生成）与 manifest.json
+  fonts/<style>/      每个风格一套随仓库分发的字体子集（just fonts --style <id> 生成）与 manifest.json
   regress-baseline.json  像素回归基线
 index.html            页面：一个 1920×1080 的 canvas、开始卡片、播放条
 scripts/export.ts     导出：N 个 headless Chrome 各自渲染精确帧时刻，按序写入 ffmpeg；先写临时文件、校验后替换成片；也出检查帧、cue 表和时间轴
@@ -74,22 +81,22 @@ justfile              一键命令
 
 ## 运行
 
-需要 bun、uv、Chrome 或 Edge、PATH 上的 ffmpeg。字体随仓库分发（OFL：Noto Serif SC、Gelasio、STIX Two Text / Math、Inconsolata），按片子用到的字裁剪成子集放在 `films/infotheory/fonts/`；改了文案之后运行 `just fonts`（会下载完整字体到 `.cache/fonts`，需要联网）。渲染时任何一个字没有随仓库字体覆盖都会直接报错。
+需要 bun、uv、Chrome 或 Edge、PATH 上的 ffmpeg。字体随仓库分发（OFL：Noto Serif SC、Gelasio、STIX Two Text / Math、Inconsolata），按片子用到的字、每个风格各裁剪一套子集放在 `films/infotheory/fonts/<style>/`；改了文案之后对每个风格运行 `just fonts --style <id>`（会下载完整字体到 `.cache/fonts`，需要联网）。渲染时任何一个字没有随仓库字体覆盖都会直接报错。
 
 ```
 just setup          # bun install + uv sync
 just dev            # 预览 http://127.0.0.1:5174 ：空格播放/暂停，←/→ 5 秒，, . 单帧，[ ] 跳场景，F 全屏
-just shots 5,20.5   # 写检查帧到 out/shots/
+just shots 5,20.5   # 写检查帧到 out/shots/（加 --style nebula 写到 out/shots-nebula/）
 just cues           # 页面 → films/infotheory/cues.json 与 timeline.json
 just music          # cues → 配乐 → audio/music.wav（母版，导出用）与 audio/music.mp3（预览用）
 just export         # 4 个 Chrome 进程逐帧导出 → out/infotheory.mp4（crf 18）
 just all            # cues → music → export
 just check          # 类型检查
 just check-imports  # 依赖方向
-just validate       # 声明、时间轴、渲染、文字版面（出画面或出 5% 安全区都是错误）
-just fonts          # 文案改动后重新生成字体子集
+just validate       # 声明、时间轴、渲染、文字版面（出画面或出 5% 安全区都是错误）；--style <id> 检查另一个风格
+just fonts          # 文案改动后重新生成字体子集（默认 paper-dawn；--style nebula）
 just test-export    # 导出失败用例
-just regress        # 像素回归（--update 重写基线）。基线只在录制它的平台上可比较（目前是 Windows x64），其他平台会直接退出并提示
+just regress        # 像素回归（--update 重写基线），只针对默认风格。基线只在录制它的平台上可比较（目前是 Windows x64），其他平台会直接退出并提示
 ```
 
 预览需要 `audio/music.mp3` 存在（先 `just cues` 再 `just music`），否则页面按内部时钟播放、无声。
