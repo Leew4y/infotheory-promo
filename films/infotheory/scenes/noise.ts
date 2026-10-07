@@ -23,7 +23,8 @@ scene({
     const lit = (lt - 0.8) * 8.3;
     const shown = [...SRC].map((b, i) => (FLIP[i] && lit - i > 2.5 ? (b === '1' ? '0' : '1') : b)).join('');
     const hi = FLIP.map((f, i) => (f && lit - i > 2.5 ? i : -1)).filter((i) => i >= 0);
-    bits(shown, M + 12, 440, 30, lit, 1, hi, 1.27);
+    // the row spans the text column: first and last bit 12 px inside the margins
+    bits(shown, M + 12, 440, 30, lit, 1, hi, (W - 2 * M - 24) / (N - 1) / 30);
     label('Sent · 发送', M, 396, sstep(0.6, 1.2, lt), C.muted, 15);
     label(`p = 0.1 · one in ten flips`, W - M, 396, sstep(4.4, 5, lt), C.accent, 15, 'right');
     // the word
