@@ -1,5 +1,5 @@
 // 6. Chapter 04, noise: a line of bits with a few struck through; the binary symmetric channel; the question.
-import { text, label, ink, rule, arrow, bits, measure, background, statement, M, COL, C, F, scene, clamp, eout, sstep, hash1, win, bars } from '../../../engine';
+import { text, label, ink, rule, arrow, bits, measure, background, statement, M, COL, C, F, scene, clamp, eout, sstep, hash1, win, bars, W } from '../../../engine';
 
 const N = 44;
 const SENT = 'INFORMATION';
@@ -25,7 +25,7 @@ scene({
     const hi = FLIP.map((f, i) => (f && lit - i > 2.5 ? i : -1)).filter((i) => i >= 0);
     bits(shown, M + 12, 440, 30, lit, 1, hi, 1.27);
     label('Sent · 发送', M, 396, sstep(0.6, 1.2, lt), C.muted, 15);
-    label(`p = 0.1 · one in ten flips`, 1770, 396, sstep(4.4, 5, lt), C.accent, 15, 'right');
+    label(`p = 0.1 · one in ten flips`, W - M, 396, sstep(4.4, 5, lt), C.accent, 15, 'right');
     // the word
     const kw = sstep(7.0, 7.6, lt);
     text(SENT, M, 560, { font: F.latin, size: 46, color: C.fg, alpha: kw, ls: 8 });

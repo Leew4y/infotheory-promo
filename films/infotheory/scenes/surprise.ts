@@ -1,7 +1,7 @@
 // 2. Chapter 01, surprise: I = −log2 p drawn in ink; a coin, a sunrise, a lottery ticket.
-import { text, label, ink, circle, dot, rule, arrow, background, statement, M, COL, C, F, scene, clamp, lerp, eout, sstep, win, bars } from '../../../engine';
+import { text, label, ink, circle, dot, rule, arrow, background, statement, M, COL, C, F, scene, clamp, lerp, eout, sstep, win, bars, W } from '../../../engine';
 
-const X0 = COL + 60, X1 = 1740, Y0 = 740, Y1 = 300;
+const X0 = COL + 60, X1 = W - M - 30, Y0 = 740, Y1 = 300;
 const px = (p: number) => lerp(X0, X1, p);
 const py = (b: number) => lerp(Y0, Y1, clamp(b / 8));
 
