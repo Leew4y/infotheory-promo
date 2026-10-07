@@ -232,27 +232,43 @@ films/<id>/      一部片子：film.ts、scenes/、score.py
 
 ### 阶段 A · 多影片与 agent 风格设计（2026-10-07 插入，先于阶段 2）
 
-目标：每部新片的背景、版式与场景由 agent 按 brief 设计；人描述需求、在方向上做选择、看拼板。分两个 PR。
+目标：每部新片的背景、版式与场景由 agent 按 brief 设计；人描述需求、在方向上做选择、看拼板。
 
-**A1 · 多影片。**
-- 每部片子一个目录 `films/<id>/`：`film.ts`、`main.ts`、`scenes/`、`fonts/<style>/`、`regress/<style>.json`，配乐可选。
-  片子之间不得互相导入（`check-imports` 增加这条规则）。
-- 构建：一个 HTML 外壳，按影片选入口，产物在 `dist/<film>/`。所有命令带影片参数：`just dev|build|validate|regress|fonts|shots|export <film>`；
-  脚本里不再写死片名，输出路径 `out/<film>…`。不带参数时默认 `infotheory`，仅为兼容。
-- 没有配乐的片子用 `--noaudio` 导出（现有契约）；配乐与旁白留给 2b。
-- `just new-film <id> --style <id>`：生成最小骨架（标题、一页正文、结尾三个场景），立即可 build / validate / 无声导出；目录已存在则拒绝。
+划分原则（2026-10-07 与 Develata 讨论后定）：**风格是可复用的库；画面（场景）与音乐跟着内容走，留在影片里。**
+- 复用的库：`engine/`（渲染内核与绘图原语）、`styles/<id>/`（风格包）、`fonts/`（字体源目录）、`audio/synth.py`（合成器与乐器）、
+  `templates/`（新片骨架）。库之间、影片之间都不互相导入。
+- 影片 `films/<id>/`：场景、配乐编曲、音效 cue、时间轴、按"影片 × 风格"的字体子集与回归基线。它们按场景名与小节互相引用，是一体的。
+- 暂不拆：场景积木库、音乐素材库、可配置的字幕语言。等第二部片子真的复用时再抽，与"新原语进 engine 前必须有两部片子用到"同一规则。
+- 信息论片保留为参考片，不迁移成新结构；它的数值与像素在本阶段保持不变（regress 证明）。
 
-退出条件：用 `new-film` 建第二部片子（约 20 秒），build、validate、无声导出通过；infotheory 两套风格 regress 不变；
-一部片子导入另一部片子的模块被 `check-imports` 拒绝。
+**A1 · 多影片与库的边界（一个 PR）。**
+- 页面外壳通用：`index.html` 不再写死影片入口，按影片选择；产物在 `dist/<film>/`。
+- 所有命令带影片参数：`just dev|build|validate|regress|fonts|shots|cues|music|export <film>`；`scripts/` 与 `justfile` 里不再写死片名，
+  默认值只在 `justfile` 一处（`infotheory`）。输出路径 `out/<film>/…`。
+- `audio/` 只放合成器库；配乐成品（`music.wav` 母版、`music.mp3` 预览）写到 `out/<film>/`，预览播放器从那里取；
+  `films/<id>/score.py` 仍是该片的编曲。
+- 字体源目录 `fonts/catalog.json`：每个字体族一条（上游 URL 固定到提交、sha256、许可证、可用字重与样式），所有风格共用；
+  风格的字体声明改为引用目录 id（去掉各风格重复的 `fonts.lock.json`）。字体子集仍按"影片 × 风格"写在 `films/<id>/fonts/<style>/` 并入库，
+  构建不需要联网；两部片子的子集各自独立。
+- `check-imports`：影片之间不得互相导入；风格之间、库之间同样。
+- `templates/film/` + `just new-film <id> --style <id>`：最小骨架（标题、一页正文、结尾三个场景，无配乐），立即可 build / validate / 无声导出；目录已存在则拒绝。
+- 0d 的 macOS 运行说明随路径与命令变化更新。
+
+退出条件：用 `new-film` 建第二部片子（约 20 秒），build、validate、无声导出通过；infotheory 两套风格 regress 逐像素不变；
+`just music infotheory` 生成的母版与改动前逐字节相同；影片互相导入被 `check-imports` 拒绝；字体子集重新生成无差异。
+
+**A1b · 全幅背景参数与风格无关（一个小 PR）。**
+- `PlateParams { time, light, sun }` 是黎明风格的词汇，场景被迫按它传参。改为语义参数：`progress`（0–1，在叙事中的位置）、
+  `intensity`（0–1，画面强弱）、`warmth`（−1 冷 … 1 暖，可选），加 `time`（秒，用于缓慢流动）。每个风格自己决定怎么画。
+- 信息论片四个全幅场景改传参；paper-dawn 与 nebula 内部做映射，使两套风格 regress 都逐像素不变。
 
 **A2 · 风格设计流程（agent 主导，人做选择）。**
 - 入库的设计产物：
   - `films/<id>/brief.md`：主题、受众、调性关键词、时长、必须出现的内容、参考（文字描述）、禁忌。2c 再把它收成 `Brief` schema。
   - `styles/<id>/STYLE.md`：情绪、色板及理由、字体、背景概念、版式网格、动效与转场、与已有风格的区别、明确不做的事。
   - `films/<id>/review/`：每轮拼板的生成命令与自评（按评审清单逐条）、人的意见。拼板图本身不入库，可用命令重现。
-- 字体目录：`styles/_fonts/catalog.json` 预选一批 OFL 字体（中文衬线、无衬线、风格化各若干，拉丁文与等宽若干），
-  固定上游提交与 sha256，清单与一次性下载经 Develata 确认。agent 只从目录里选；需要新字体时提出，确认后加入目录。
-  风格的 `fonts.lock.json` 改为引用目录条目。
+- 字体目录扩充：在 A1 的 `fonts/catalog.json` 里预选一批 OFL 字体（中文衬线、无衬线、风格化各若干，拉丁文与等宽若干），
+  清单与一次性下载经 Develata 确认。agent 只从目录里选；需要新字体时提出，确认后加入目录。
 - `just new-style <id>`：从最小模板生成风格包（接口齐全、纯色背景、空的着色器模板、`STYLE.md` 骨架）。
 - `just sheet <film> [--style a,b]`：拼板。每个风格取固定的代表时刻：每类场景的中段、全幅页、转场中点、带字幕的帧；
   并排输出 JPEG，另附 JSON（时刻、场景、风格、路径）。供 agent 自检和人看。
@@ -270,7 +286,7 @@ films/<id>/      一部片子：film.ts、scenes/、score.py
 - 新会话里，agent 只靠 skill 和这些命令，从一份新 brief 做出一套新风格和第二部短片（约 30 秒、4–6 个场景）；
 - `validate` 0 error（含对比度、重叠）；拼板与 paper-dawn、nebula 并排，Develata 认为明显不同且符合 brief；`review/` 记录完整；
 - 每条新校验至少有一个会触发它的失败用例；
-- 引擎改动只限本阶段列出的契约（多影片、字体目录、拼板、两条新校验）。
+- 引擎改动只限本阶段列出的契约（多影片、字体目录、背景参数、拼板、两条新校验）。
 
 ### 阶段 2 · demo 片基础能力
 
