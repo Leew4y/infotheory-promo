@@ -216,6 +216,18 @@ films/<id>/      一部片子：film.ts、scenes/、score.py
 - 结果：两套风格 `validate` 均 0 error / 0 warning；regress 231/231；test-export 17/17；nebula 6 秒带音频导出成功；
   对照样张（同一时刻，页面 / 全幅 / 转场）见 PR 说明。场景代码对风格没有任何分支。
 - 未覆盖：`PlateParams` 仍是 `{time, light, sun}` 这套黎明词汇，nebula 只是重新解释；若以后风格需要更多背景参数，再讨论把它做成风格自定义。
+- 工具覆盖所有风格（Develata 决定）：`just validate`、`just regress`、`just fonts` 默认跑影片的全部风格（页面 `__styles`；字体按影片导入的
+  `styles/<id>`），`--style <id>` 只跑一个；回归基线每个风格一份（`films/<film>/regress/<style>.json`）。
+
+风格解耦验收评审修正（Codex，gpt-6-astra max：1 BLOCKER / 4 SHOULD_FIX / 2 NICE_TO_HAVE，逐条核实后全部处理）：
+- 页面风格身份：三个工具共用 `scripts/chrome.ts` 的 `loadFilm`：页面必须报出风格（`__style` / `__styles`），显式请求时必须一致，
+  否则失败（旧构建、过期 `dist/`）；加载时抛错或 `__ready()` 抛错立即失败并带原文，不再等满超时。回归 `--update` 也走同一检查，
+  基线文件按风格命名且记录风格，不可能写出无风格基线。反例已测：07e9620 的旧构建 validate / regress 均拒绝，未知风格 id 报原文。
+- 字体：每个作业的字符集与覆盖脚本文件按 (影片, 风格, pid) 私有，结束删除，两个风格并发生成不会互相覆盖。
+- nebula 转场：先画 alpha 遮罩再用 `source-in` 填色，任何 CSS 颜色（含 `oklch()`、`color(display-p3 …)`）都可用，不再解析序列化字符串。
+- nebula 着色器：`smoothstep(1.2, -.4, d)`（edge0 > edge1，GLSL ES 3.00 未定义）改为 `1 - smoothstep(-.4, 1.2, d)`，数学等价；nebula 基线重录。
+- `entropy` 的 26 列字母步长改为 `min(28, 可用宽度 / 26)`，paper-dawn 仍为 28（逐像素不变），nebula 为 27.7（原本伸进右边距 8 px）；更宽的右栏不再出安全区。
+- 已有证据：nebula 基线录制后由另一轮独立 worker 乱序渲染比对 231/231，帧渲染与 seek 顺序无关。
 
 ### 阶段 2 · demo 片基础能力
 

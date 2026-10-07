@@ -3,6 +3,7 @@
  *
  *   bun run build && bun scripts/validate.ts [--film infotheory] [--style <id>] [--dist dist] [--json]
  *
+ * Without --style every style of the film is checked (the page's __styles, default first); with it, that one.
  * - page load: the page renders the requested film; film and scene declarations satisfy FilmSpec / SceneSpec
  *   (engine/schema.ts); no page errors
  * - timeline: scenes start at 0, are contiguous (no gap, no overlap) and end at the film's duration
@@ -17,7 +18,7 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import puppeteer, { type Browser } from 'puppeteer-core';
-import { chromeArgs, findChrome, serveDist } from './chrome';
+import { chromeArgs, findChrome, loadFilm, serveDist } from './chrome';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const argv = Bun.argv.slice(2);
@@ -30,15 +31,17 @@ for (let i = 0; i < argv.length; i++) {
 const opt = (k: string, d: string) => (argv.includes(`--${k}`) ? argv[argv.indexOf(`--${k}`) + 1] : d);
 const JSON_OUT = argv.includes('--json');
 const FILM = opt('film', 'infotheory');
-/** One of the film's styles (?style=<id>); omitted: the film's default. */
+/** One of the film's styles (?style=<id>); omitted: all of them. */
 const STYLE = opt('style', '');
 const DIST = path.resolve(ROOT, opt('dist', 'dist'));
 const FPS = 30, W = 1920, H = 1080, SAFE = 0.05, MIN_ALPHA = 0.02;
 const OUT = path.join(ROOT, 'out', 'validate', `${FILM}.json`);
 
-interface Diag { level: 'error' | 'warning'; code: string; path: string; message: string }
+interface Diag { level: 'error' | 'warning'; style: string; code: string; path: string; message: string }
 const diags: Diag[] = [];
-const err = (code: string, p: string, message: string) => diags.push({ level: 'error', code, path: p, message });
+/** The style being checked ('default' until the default page has loaded and named it). */
+let cur = STYLE || 'default';
+const err = (code: string, p: string, message: string) => diags.push({ level: 'error', style: cur, code, path: p, message });
 
 let CHROME = '';
 try { CHROME = findChrome(); } catch (e) { console.error((e as Error).message); process.exit(2); }
@@ -47,6 +50,7 @@ if (!existsSync(path.join(DIST, 'index.html'))) { console.error(`${DIST}/index.h
 const server = serveDist(DIST);
 let browser: Browser | null = null;
 let scenesChecked = 0, framesChecked = 0, boxesChecked = 0, toolError: string | null = null;
+const checked: string[] = [];
 try {
   browser = await puppeteer.launch({
     executablePath: CHROME, headless: true, defaultViewport: { width: W, height: H, deviceScaleFactor: 1 },
@@ -56,20 +60,23 @@ try {
   page.on('pageerror', (e) => err('page-error', 'page', e instanceof Error ? e.message : String(e)));
   page.on('console', (m) => m.type() === 'error' && err('console-error', 'page', m.text()));
 
-  let ready = false;
-  try {
-    // stop waiting as soon as the page throws (e.g. a declaration fails its schema); listen before loading, since
-    // module evaluation errors fire during goto
-    const thrown = new Promise<never>((_, reject) => page.once('pageerror', () => reject(new Error('page threw during load'))));
-    thrown.catch(() => {});
-    await Promise.race([page.goto(`${server.url}/?export=1${STYLE ? `&style=${encodeURIComponent(STYLE)}` : ''}`, { waitUntil: 'load' }), thrown]);
-    await Promise.race([page.waitForFunction(() => typeof window.__layout === 'function' && window.__ready(), { timeout: 30_000 }), thrown]);
-    ready = true;
-  } catch (e) {
-    err('page-load', 'page', `film did not load: ${e instanceof Error ? e.message : String(e)}`);
-  }
+  /** Load the film in one style (`id` '' = the default) and check it; returns the page's style list when it loaded. */
+  const checkStyle = async (id: string): Promise<string[] | null> => {
+    let ready = false;
+    try {
+      // fails fast when the page throws (e.g. a declaration fails its schema), names no or another style, or is not ready
+      await loadFilm(page, server.url, id, 30_000);
+      ready = true;
+    } catch (e) {
+      err('page-load', 'page', `film did not load: ${e instanceof Error ? e.message : String(e)}`);
+    }
 
-  if (ready) {
+    if (!ready) return null;
+    const pageStyle: string = await page.evaluate(() => window.__style);
+    const styles: string[] = await page.evaluate(() => window.__styles);
+    for (const d of diags) if (d.style === cur) d.style = pageStyle;
+    cur = pageStyle;
+    checked.push(pageStyle);
     const pageFilm: string | undefined = await page.evaluate(() => window.__film);
     if (pageFilm !== FILM) err('film-mismatch', 'page', `the built page renders film "${pageFilm}", not "${FILM}"`);
     else {
@@ -112,6 +119,14 @@ try {
         }
       }
     }
+    return styles;
+  };
+
+  if (STYLE) await checkStyle(STYLE);
+  else {
+    const styles = await checkStyle('');
+    const def = checked[0];
+    for (const id of styles ?? []) if (id !== def) { cur = id; await checkStyle(id); }
   }
 } catch (e) {
   toolError = e instanceof Error ? e.message : String(e);
@@ -122,14 +137,14 @@ try {
 }
 
 mkdirSync(path.dirname(OUT), { recursive: true });
-writeFileSync(OUT, JSON.stringify({ film: FILM, scenesChecked, framesChecked, boxesChecked, diagnostics: diags }, null, 1));
+writeFileSync(OUT, JSON.stringify({ film: FILM, styles: checked, scenesChecked, framesChecked, boxesChecked, diagnostics: diags }, null, 1));
 const errors = diags.filter((d) => d.level === 'error').length, warnings = diags.length - errors;
-const summary = `${errors ? 'FAIL' : 'PASS'} validate ${FILM}: ${scenesChecked} scenes, ${framesChecked} frames, ${boxesChecked} text boxes, ${errors} error(s), ${warnings} warning(s) -> ${OUT}`;
+const summary = `${errors ? 'FAIL' : 'PASS'} validate ${FILM} [${checked.join(', ') || 'no style loaded'}]: ${scenesChecked} scenes, ${framesChecked} frames, ${boxesChecked} text boxes, ${errors} error(s), ${warnings} warning(s) -> ${OUT}`;
 if (JSON_OUT) {
   console.log(JSON.stringify(diags, null, 1));
   console.error(summary);
 } else {
-  for (const d of diags.slice(0, 40)) console.log(`${d.level}: ${d.code} ${d.path}: ${d.message}`);
+  for (const d of diags.slice(0, 40)) console.log(`${d.level}: [${d.style}] ${d.code} ${d.path}: ${d.message}`);
   console.log(summary);
 }
 process.exit(toolError ? 2 : errors ? 1 : 0);

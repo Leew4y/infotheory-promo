@@ -13,7 +13,7 @@ float stars(vec2 px, float scale, float thresh){
   return exp(-d * d * .45) * (h - thresh) / (1. - thresh);
 }
 vec3 page(vec2 uv, vec2 px){
-  vec3 c = mix(vec3(.030,.040,.070), vec3(.050,.066,.110), smoothstep(1.2, -.4, length(uv - vec2(-.35, .25))));
+  vec3 c = mix(vec3(.030,.040,.070), vec3(.050,.066,.110), 1. - smoothstep(-.4, 1.2, length(uv - vec2(-.35, .25))));
   float n = fbm(uv * 1.4 + vec2(uTime * .004, 0.));
   c += uTint * smoothstep(.45, 1., n) * .06;
   vec2 g = mod(px + 20., 40.) - 20.;

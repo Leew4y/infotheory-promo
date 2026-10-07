@@ -98,6 +98,7 @@ export const F = {} as Fonts;
 export let M = 0;
 export let COL = 0;
 let active: StylePackage | null = null;
+let listed: string[] = [];
 
 export function useStyle(s: StylePackage): void {
   check(GradeSpec, s.grade, `style "${s.id}" grade`);
@@ -115,6 +116,7 @@ export function useStyle(s: StylePackage): void {
  */
 export function selectStyle(styles: StylePackage[]): StylePackage {
   if (!styles.length) throw new Error('selectStyle: the film lists no styles');
+  listed = styles.map((x) => x.id);
   const want = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('style');
   const s = want === null ? styles[0] : styles.find((x) => x.id === want);
   if (!s) {
@@ -126,6 +128,11 @@ export function selectStyle(styles: StylePackage[]): StylePackage {
   }
   useStyle(s);
   return s;
+}
+
+/** Ids of the film's styles (selectStyle's list; just the active one if the film called useStyle directly). */
+export function styleIds(): string[] {
+  return listed.length ? [...listed] : [style().id];
 }
 
 export function style(): StylePackage {

@@ -19,8 +19,8 @@ dev:
 build:
     bun run build
 
-# Download a style's pinned fonts (to .cache/fonts) and write the film's subsets + manifest for it
-# (films/infotheory/fonts/<style>/), e.g. `just fonts --style nebula`; default paper-dawn.
+# Download the styles' pinned fonts (to .cache/fonts) and write the film's subsets + manifest per style
+# (films/infotheory/fonts/<style>/): every style the film imports, or one with `just fonts --style nebula`.
 fonts *args:
     bun scripts/fonts.ts {{args}}
 
@@ -32,12 +32,12 @@ check:
 check-imports:
     bun scripts/check-imports.ts
 
-# Schema, timeline, rendering and text-layout checks of the built film (text outside the frame or the 5% safe area is an error);
-# `just validate --style <id>` checks another of the film's styles.
+# Schema, timeline, rendering and text-layout checks of the built film in every one of its styles (text outside the frame
+# or the 5% safe area is an error); `just validate --style <id>` checks one.
 validate *args: build
     bun scripts/validate.ts {{args}}
 
-# Pixel regression against films/<film>/regress-baseline.json (SwiftShader + CPU 2D canvas).
+# Pixel regression of every style against films/<film>/regress/<style>.json (SwiftShader + CPU 2D canvas); --style <id> for one.
 regress *args: build
     bun scripts/regress.ts {{args}}
 

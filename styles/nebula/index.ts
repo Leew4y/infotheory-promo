@@ -4,7 +4,7 @@
  * Fades close in from the edges like an iris; chapter labels and the page count sit top right in mono; captions are
  * centred on a translucent band. The counterpart of paper-dawn for the style-decoupling acceptance.
  */
-import { ctx, text, rule, label, measure, rgba } from '../../engine/draw';
+import { ctx, text, rule, label, measure } from '../../engine/draw';
 import { glPlate } from '../../engine/gl';
 import { C, F, M, type StylePackage, type SubLine } from '../../engine/style';
 import { clamp, eout, sstep, win, W, H } from '../../engine/util';
@@ -12,17 +12,15 @@ import { NEBULA_FS } from './shader';
 
 const GAS: [number, number, number] = [0.30, 0.62, 0.86];
 
-/** Any CSS colour with its alpha multiplied by `a` (the canvas normalises it to #rrggbb or rgba(r, g, b, a)). */
-function withAlpha(color: string, a: number): string {
-  ctx.save();
-  ctx.fillStyle = color;
-  const n = String(ctx.fillStyle);
-  ctx.restore();
-  if (n.startsWith('#')) return rgba(n, a);
-  const m = n.match(/^rgba?\(([^)]+)\)$/);
-  if (!m) throw new Error(`nebula transition: cannot read colour "${color}"`);
-  const [r, g, b, a0 = '1'] = m[1].split(',').map((s) => s.trim());
-  return `rgba(${r},${g},${b},${clamp(+a0 * a)})`;
+// the iris is drawn as an alpha mask, then filled with the fade colour (any CSS colour, its own alpha kept)
+let MASK: HTMLCanvasElement | null = null;
+function mask(): CanvasRenderingContext2D {
+  if (!MASK) {
+    MASK = document.createElement('canvas');
+    MASK.width = W;
+    MASK.height = H;
+  }
+  return MASK.getContext('2d')!;
 }
 
 const nebula: StylePackage = {
@@ -87,12 +85,21 @@ const nebula: StylePackage = {
   transition(amount, color) {
     const R = Math.hypot(W, H) / 2;
     const ri = (1 - amount) * 1.2 * R;
-    const g = ctx.createRadialGradient(W / 2, H / 2, ri, W / 2, H / 2, ri + 0.45 * R);
-    g.addColorStop(0, withAlpha(color, amount * amount));
-    g.addColorStop(1, withAlpha(color, 1));
-    ctx.fillStyle = g;
+    const m = mask();
+    m.globalCompositeOperation = 'copy';
+    const g = m.createRadialGradient(W / 2, H / 2, ri, W / 2, H / 2, ri + 0.45 * R);
+    g.addColorStop(0, `rgba(0,0,0,${amount * amount})`);
+    g.addColorStop(1, 'rgba(0,0,0,1)');
+    m.fillStyle = g;
+    m.fillRect(0, 0, W, H);
+    m.globalCompositeOperation = 'source-in';
+    m.fillStyle = color;
+    m.fillRect(0, 0, W, H);
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalAlpha = 1;
-    ctx.fillRect(0, 0, W, H);
+    ctx.drawImage(MASK!, 0, 0);
+    ctx.restore();
   },
 
   /** Top right: "CH 01 / 08" in mono, the chapter title under it, a thin progress rule across the top. */
