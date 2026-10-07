@@ -104,7 +104,9 @@ GPU 路径只用于生产，差异上限按来源 2 记录。
 **0d · macOS 实机。**
 协作者在 macOS 上运行 `spikes/` 中的短样片（含 WebGL 背景与录屏素材），记录 GPU 后端、扩展可用性、帧率与画面是否正常。
 实验脚本按平台选择 ANGLE 后端（Windows 用 `d3d11`，其他平台交给浏览器默认），启动时检查 WebGL2、`EXT_color_buffer_float` 与 framebuffer 完整性，缺失即报错。
-0d 可与阶段 1 并行，但阶段 1 合并前必须完成。
+0d 可与阶段 1 并行，原定阶段 1 合并前必须完成。
+2026-10-07 修订（Develata 决定）：0d 未交回时先合并阶段 0–1，标注为"Windows 已验证、macOS 待验证"；0d 改在 `main` 上运行，
+暴露的问题另开 PR 修复。理由：0d 可能暴露的问题集中在启动参数、GPU 后端与进程清理（`scripts/`），不涉及三层结构。
 
 **决策门。**
 - 0a、0b、0c 全部通过 → 保留自研渲染器，进入阶段 1。
@@ -181,7 +183,7 @@ films/<id>/      一部片子：film.ts、scenes/、score.py
 - 字体：`styles/paper-dawn/fonts.lock.json` 锁定 google/fonts @9710da1 的来源与 sha256；`just fonts` 下载到 `.cache/fonts`、裁剪子集（共约 410 KiB）并写 manifest，重跑结果逐字节相同。页面只加载这些字体，任一加载失败则 `__ready()` 抛错；删除 15 秒强制就绪。`text()` 按字体链逐字检查覆盖，缺字直接抛错（预览、validate、导出都生效）。Georgia → Gelasio（字宽兼容），Cambria Math → STIX Two Text + STIX Two Math，Consolas → Inconsolata。所有字体都不含 ₚ，黑洞熵公式改写为等价的 `S = kc³A / 4Għ`。反例：缺字、字体文件损坏、字体文件缺失都按预期失败。
 - 排版：章节标签英文部分按标题实际字体量宽度后摆放（原来会重叠，如 无处不在 / EVERYWHERE）；entropy 注释列左移 50 px；capacity 的 S/N (dB) 移到轴下方。安全区恢复为 error，`validate` 0 error、0 warning。
 - 回归基线重录两次：字体替换（194/231 帧变化）、排版修正（147/231 帧变化），每次都先看新旧样张。
-- 未完成：macOS 上的预览与导出（0d，等协作者）。
+- 未完成：macOS 上的预览与导出（0d，等协作者；合并后在 `main` 上运行，见 0d 一节的修订）。
 
 1c 评审修正（Codex，gpt-6-astra max：6 BLOCKER / 10 SHOULD_FIX，逐条核实后处理）：
 - 关掉 puppeteer 自带的信号处理（它直接 `process.exit(130)`，跳过清理）；截止时间覆盖整个作业直到最终探测，取消时立即杀 ffmpeg / ffprobe 以解除阻塞的写入和探测，rename 前再查一次取消。
