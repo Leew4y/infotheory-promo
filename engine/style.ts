@@ -109,6 +109,19 @@ export function useStyle(s: StylePackage): void {
   COL = s.layout.column;
 }
 
+/**
+ * Install one of a film's styles: `?style=<id>` in the page URL picks it, otherwise the first one listed.
+ * The one switch point: boot() loads the font bundle of whichever style this installed. An unknown id throws.
+ */
+export function selectStyle(styles: StylePackage[]): StylePackage {
+  if (!styles.length) throw new Error('selectStyle: the film lists no styles');
+  const want = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('style');
+  const s = want === null ? styles[0] : styles.find((x) => x.id === want);
+  if (!s) throw new Error(`style "${want}" is not one of this film's styles (${styles.map((x) => x.id).join(', ')})`);
+  useStyle(s);
+  return s;
+}
+
 export function style(): StylePackage {
   if (!active) throw new Error('no style installed: call useStyle() in the film module before its scenes');
   return active;

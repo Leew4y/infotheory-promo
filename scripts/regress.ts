@@ -87,6 +87,9 @@ try {
   const page = ws[0].page;
   const pageFilm: string | undefined = await page.evaluate(() => window.__film);
   if (pageFilm !== FILM) throw new Error(`the built page renders film "${pageFilm}", not "${FILM}"`);
+  // the baseline is the film's default style (the page is opened without ?style=)
+  const pageStyle: string = await page.evaluate(() => window.__style);
+  if (base?.style !== undefined && base.style !== pageStyle) throw new Error(`the baseline is style "${base.style}", the page renders "${pageStyle}"`);
   const scenes: { name: string; start: number; end: number }[] = await page.evaluate(() => window.__scenes());
   const duration: number = await page.evaluate(() => window.__duration);
   const gpu: string = await page.evaluate(() => window.__gpu());
@@ -107,7 +110,7 @@ try {
   let next = 0;
   await Promise.all(ws.map(async (w) => { while (next < frames.length) { const f = frames[next++]; hashes[f] = await hashFrame(w, f); } }));
   const seconds = +((performance.now() - t0) / 1000).toFixed(1);
-  const meta = { film: FILM, platform: PLATFORM, chrome, gpu, args: ARGS, fps: FPS, duration, frames: frames.length };
+  const meta = { film: FILM, style: pageStyle, platform: PLATFORM, chrome, gpu, args: ARGS, fps: FPS, duration, frames: frames.length };
 
   if (flag('update')) {
     mkdirSync(path.dirname(BASELINE), { recursive: true });

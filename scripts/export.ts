@@ -7,6 +7,7 @@
  *   bun scripts/export.ts --cues films/infotheory/cues.json       dump the sound-effect cue sheet for the score
  *   bun scripts/export.ts --timeline films/infotheory/timeline.json  dump the resolved timeline (scene frames / seconds)
  *   bun scripts/export.ts --scenes                                print the scene list with start/end times
+ *   every form takes [--style <id>]: one of the film's styles (?style=<id>); omitted: the film's default
  *
  * Every worker is its own headless Chrome rendering exact frame times through the page's ?export=1 hooks.
  * Frames are handed out one at a time and written to ffmpeg in order. Needs `bun run build` first (the page is
@@ -52,7 +53,8 @@ const fail = (exit: number, message: string): never => { throw Object.assign(new
 const CRF = opt('crf', '18')!;
 const SINGLE = flag('shots') || flag('cues') || flag('timeline') || flag('scenes');
 const WORKERS = SINGLE ? 1 : Math.max(1, +(opt('workers', '4') ?? 4));
-const OUT = path.resolve(ROOT, opt('out', 'out/infotheory.mp4')!);
+const STYLE = opt('style');
+const OUT = path.resolve(ROOT, opt('out', STYLE ? `out/infotheory-${STYLE}.mp4` : 'out/infotheory.mp4')!);
 // the loudness-normalized WAV master from the score (the MP3 is only for the preview player)
 const AUDIO = path.resolve(ROOT, opt('audio', 'audio/music.wav')!);
 const NOAUDIO = flag('noaudio');
@@ -211,8 +213,10 @@ async function launch(id: number, chrome: string, url: string, fps: () => number
   const page = await browser.newPage();
   page.on('pageerror', (e: unknown) => console.error(`worker ${id} page error:`, e instanceof Error ? e.message : String(e)));
   page.on('console', (m) => { if (m.type() === 'error') console.error(`worker ${id} console.error:`, m.text()); });
-  await page.goto(`${url}/?export=1`, { waitUntil: 'load' });
+  await page.goto(`${url}/?export=1${STYLE ? `&style=${encodeURIComponent(STYLE)}` : ''}`, { waitUntil: 'load' });
   await page.waitForFunction(() => typeof window.__frame === 'function' && window.__ready(), { timeout: 60_000 });
+  const pageStyle = await page.evaluate(() => window.__style);
+  if (STYLE && pageStyle !== STYLE) throw new Error(`the page renders style "${pageStyle}", not "${STYLE}" (stale dist/? run bun run build)`);
   const frame = async (t: number): Promise<Buffer> => {
     const durl: string = await page.evaluate((t, f) => window.__frame(t, f), t, fps());
     return Buffer.from(durl.slice(durl.indexOf(',') + 1), 'base64');
@@ -265,7 +269,7 @@ try {
       console.log(`wrote ${cues.length} cues to ${file}`);
     }
   } else if (flag('shots')) {
-    const dir = path.resolve(ROOT, opt('dir', 'out/shots')!);
+    const dir = path.resolve(ROOT, opt('dir', STYLE ? `out/shots-${STYLE}` : 'out/shots')!);
     mkdirSync(dir, { recursive: true });
     for (const t of opt('shots', '0')!.split(',').map(Number)) {
       const f = path.join(dir, `t${t.toFixed(2).padStart(7, '0')}.jpg`);
