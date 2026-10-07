@@ -5,8 +5,8 @@
 
 ## 前置条件
 
-- 分支 `plan/reusable-engine`（PR Leew4y/infotheory-promo#2）。
-- bun、ffmpeg（在 PATH 上）、Google Chrome（安装在 `/Applications`；装在别处时设 `CHROME_PATH`）。
+- 分支 `main`（PR Leew4y/infotheory-promo#2 合入后；合入前用 `plan/reusable-engine`，内容相同）。
+- bun、uv、just、ffmpeg（在 PATH 上）、Google Chrome（安装在 `/Applications`；装在别处时设 `CHROME_PATH`）。
 - 约 2 GB 空闲磁盘（诊断素材写到 `out/`，已被 git 忽略）。
 - 跑性能测试时尽量关掉其他重负载程序，插电运行。
 
@@ -42,12 +42,12 @@ RESULT_DIR=spikes/0d-macos bun spikes/0b-media/run.ts export --page diag --fmt j
 cp out/0c-capture/sample-*.jpg spikes/0d-macos/
 ```
 
-## 补充：在 1c 分支上（PR #5 合入前）
+## 6. 阶段 1 的检查（字体随仓库分发、导出有失败保护）
 
-0d 的上述步骤跑完后，如果方便，再切到分支 `engine/1c-export` 跑一遍新的检查（字体已随仓库分发、导出有失败保护）：
+接着上面的步骤，在同一分支上运行：
 
 ```bash
-git switch engine/1c-export && bun install && uv sync --project audio
+uv sync --project audio
 just music                                                  # 生成 audio/music.wav（导出与失败用例都需要它）
 bun run build
 bun scripts/validate.ts                                    # 0 error 即通过
@@ -66,7 +66,7 @@ just dev                                                    # 打开 http://127.
 
 ## 交回
 
-把 `spikes/0d-macos/` 下的所有文件提交到 `plan/reusable-engine` 分支并推送；没有推送权限的话，打包发回。
+把 `spikes/0d-macos/` 下的所有文件提交到新分支（如 `spike/0d-macos`）并推送、对 `main` 开 PR；没有推送权限的话，打包发回。
 在提交说明或消息里附上：哪些步骤失败、报错原文、人眼检查的结论。
 
 ## 参考：Windows 上的结果
