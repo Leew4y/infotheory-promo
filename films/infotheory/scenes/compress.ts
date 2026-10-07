@@ -1,5 +1,5 @@
 // 5. Chapter 03, compression: a Huffman tree drawn in ink, the same message in two codes, the entropy floor.
-import { text, label, ink, circle, rule, bits, background, statement, row, M, COL, C, F, scene, clamp, lerp, eout, sstep, win, bars } from '../../../engine';
+import { text, label, ink, circle, rule, bits, background, statement, row, M, COL, C, F, scene, clamp, lerp, eout, sstep, win, bars, W } from '../../../engine';
 
 interface Node { id: string; p: number; x: number; y: number; kids?: [string, string]; born: number; code?: string }
 const NODES: Record<string, Node> = {
@@ -57,7 +57,7 @@ scene({
       }
     }
     label('Huffman coding · 霍夫曼编码', COL + 60, 240, aT * sstep(0.4, 1, lt), C.muted, 15);
-    text('平均码长 2.45 bit', 1740, 240, { font: F.math, size: 24, color: C.accent, alpha: aT * sstep(8.4, 9, lt), align: 'right' });
+    text('平均码长 2.45 bit', W - M - 30, 240, { font: F.math, size: 24, color: C.accent, alpha: aT * sstep(8.4, 9, lt), align: 'right' });
     // the message in two codes
     const aM = win(lt, 10, 21, 0.5, 0.01);
     if (aM > 0) {

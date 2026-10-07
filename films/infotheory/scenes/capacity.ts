@@ -1,7 +1,7 @@
 // 9. Chapter 06, capacity: C = B log2(1 + S/N) in ink; the reliable and impossible regions hatched; the climb to the limit.
-import { text, label, ink, hatch, rule, dot, background, statement, row, M, COL, C, F, scene, clamp, lerp, eout, sstep, win, ctx, bars } from '../../../engine';
+import { text, label, ink, hatch, rule, dot, background, statement, row, M, COL, C, F, scene, clamp, lerp, eout, sstep, win, ctx, bars, W } from '../../../engine';
 
-const X0 = COL + 60, X1 = 1740, Y0 = 740, Y1 = 300;
+const X0 = COL + 60, X1 = W - M - 30, Y0 = 740, Y1 = 300;
 const cap = (db: number) => Math.log2(1 + Math.pow(10, db / 10));
 const px = (db: number) => lerp(X0, X1, (db + 10) / 40);
 const py = (c: number) => lerp(Y0, Y1, clamp(c / 10));
