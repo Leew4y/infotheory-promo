@@ -214,7 +214,7 @@ films/<id>/      一部片子：film.ts、scenes/、score.py
   2. `noise` 的比特行按固定步长从左边距排起，在 paper-dawn 下本就伸进右边距 30 px，换成 170 边距后出安全区；改为铺满 `[M, W − M]`，
      paper-dawn 的 15 个 `noise` 帧变化（人眼检查后重录基线）。
 - 结果：两套风格 `validate` 均 0 error / 0 warning；regress 231/231；test-export 17/17；nebula 6 秒带音频导出成功；
-  对照样张（同一时刻，页面 / 全幅 / 转场）见 PR 说明。场景代码对风格没有任何分支。
+  对照样张（同一时刻，页面 / 全幅 / 转场；`just shots <t> --style <id>` 可重现，不入库）待 Develata 人眼确认"明显可区分"。场景代码对风格没有任何分支。
 - 未覆盖：`PlateParams` 仍是 `{time, light, sun}` 这套黎明词汇，nebula 只是重新解释；若以后风格需要更多背景参数，再讨论把它做成风格自定义。
 - 工具覆盖所有风格（Develata 决定）：`just validate`、`just regress`、`just fonts` 默认跑影片的全部风格（页面 `__styles`；字体按影片导入的
   `styles/<id>`），`--style <id>` 只跑一个；回归基线每个风格一份（`films/<film>/regress/<style>.json`）。
