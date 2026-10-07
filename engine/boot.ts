@@ -7,6 +7,7 @@
  *   __duration         film length in seconds
  *   __film             the film's id
  *   __style            the active style's id (?style=<id>, else the film's first style)
+ *   __styles           ids of all the film's styles, the default first
  *   __timeline()       the resolved timeline (frames and seconds per scene), written to timeline.json
  *   __layout(t)        text boxes of the frame at t (for scripts/validate.ts)
  *   __gpu()            WebGL renderer string
@@ -18,7 +19,7 @@ import { cv, recordText, setCoverage, type TextBox } from './draw';
 import { frame } from './frame';
 import { gpuName } from './gl';
 import { SC, sceneAt } from './scene';
-import { style } from './style';
+import { style, styleIds } from './style';
 import { clamp, fmtTime } from './util';
 import { film, FPS, FRAMES, TOTAL } from './film';
 
@@ -29,6 +30,7 @@ declare global {
     __duration: number;
     __film: string;
     __style: string;
+    __styles: string[];
     __timeline: () => { film: string; fps: number; bpm: number; frames: number; duration: number; scenes: { name: string; kind: string; f0: number; f1: number; start: number; end: number }[] };
     __gpu: () => string;
     __cues: () => { t: number; name: string; [k: string]: number | string }[];
@@ -95,6 +97,7 @@ export function boot(o: BootOptions): void {
   window.__duration = TOTAL;
   window.__film = film().id;
   window.__style = sid;
+  window.__styles = styleIds();
   window.__timeline = () => ({
     film: film().id, fps: FPS, bpm: film().bpm, frames: FRAMES, duration: TOTAL,
     scenes: SC.map((s) => ({ name: s.name, kind: s.kind, f0: s.f0, f1: s.f1, start: s.t0, end: s.t0 + s.d })),

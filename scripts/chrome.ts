@@ -68,3 +68,24 @@ export function serveDist(dist: string): { url: string; stop: () => void } {
   });
   return { url: `http://127.0.0.1:${server.port}`, stop: () => server.stop(true) };
 }
+
+/**
+ * Open the built film in export mode, in one of its styles ('' = the default), and wait until it can render.
+ * Fails fast and with the page's own message when the page throws while loading (e.g. an unknown style id), when it
+ * names no style or another style than requested (a stale dist/), or when __ready() throws (e.g. a missing font bundle).
+ */
+export async function loadFilm(page: import('puppeteer-core').Page, url: string, style: string, timeout = 60_000): Promise<{ style: string; styles: string[] }> {
+  const thrown = new Promise<never>((_, reject) => page.once('pageerror', (e) => reject(new Error(`page threw while loading: ${e instanceof Error ? e.message : String(e)}`))));
+  thrown.catch(() => {});
+  await Promise.race([page.goto(`${url}/?export=1${style ? `&style=${encodeURIComponent(style)}` : ''}`, { waitUntil: 'load' }), thrown]);
+  await Promise.race([page.waitForFunction(() => typeof window.__frame === 'function', { timeout }), thrown]);
+  const got = await page.evaluate(() => ({ style: window.__style, styles: window.__styles }));
+  if (typeof got.style !== 'string' || !got.style || !Array.isArray(got.styles)) throw new Error('the page names no style (__style / __styles missing: a build from before style selection? run bun run build)');
+  if (style && got.style !== style) throw new Error(`the page renders style "${got.style}", not "${style}" (stale dist/? run bun run build)`);
+  const ready = await Promise.race([page.waitForFunction(() => {
+    try { return window.__ready() ? 'ok' : false; } catch (e) { return `error: ${e instanceof Error ? e.message : String(e)}`; }
+  }, { timeout }), thrown]);
+  const r = await ready.jsonValue();
+  if (r !== 'ok') throw new Error(`the page is not ready: ${r}`);
+  return got;
+}

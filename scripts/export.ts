@@ -38,7 +38,7 @@ import { closeSync, existsSync, mkdirSync, openSync, readFileSync, renameSync, r
 import { hostname } from 'node:os';
 import path from 'node:path';
 import puppeteer, { type Browser, type Page } from 'puppeteer-core';
-import { chromeArgs, findChrome, killTree, serveDist } from './chrome';
+import { chromeArgs, findChrome, loadFilm, killTree, serveDist } from './chrome';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const DIST = path.join(ROOT, 'dist');
@@ -213,10 +213,7 @@ async function launch(id: number, chrome: string, url: string, fps: () => number
   const page = await browser.newPage();
   page.on('pageerror', (e: unknown) => console.error(`worker ${id} page error:`, e instanceof Error ? e.message : String(e)));
   page.on('console', (m) => { if (m.type() === 'error') console.error(`worker ${id} console.error:`, m.text()); });
-  await page.goto(`${url}/?export=1${STYLE ? `&style=${encodeURIComponent(STYLE)}` : ''}`, { waitUntil: 'load' });
-  await page.waitForFunction(() => typeof window.__frame === 'function' && window.__ready(), { timeout: 60_000 });
-  const pageStyle = await page.evaluate(() => window.__style);
-  if (STYLE && pageStyle !== STYLE) throw new Error(`the page renders style "${pageStyle}", not "${STYLE}" (stale dist/? run bun run build)`);
+  await loadFilm(page, url, STYLE ?? '');
   const frame = async (t: number): Promise<Buffer> => {
     const durl: string = await page.evaluate((t, f) => window.__frame(t, f), t, fps());
     return Buffer.from(durl.slice(durl.indexOf(',') + 1), 'base64');

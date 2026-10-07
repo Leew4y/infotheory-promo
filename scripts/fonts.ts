@@ -1,7 +1,9 @@
 /**
  * Bundled fonts: download a style's pinned font sources, subset them to the film's characters, check coverage.
  *
- *   bun scripts/fonts.ts [--film infotheory] [--style paper-dawn] [--lock]     (one bundle per film and style)
+ *   bun scripts/fonts.ts [--film infotheory] [--style <id>] [--lock]     (one bundle per film and style)
+ *
+ * Without --style: every style the film imports (styles/<id> in any .ts under films/<film>/), one after another.
  *
  * 1. Sources come from styles/<style>/fonts.lock.json (URL pinned to an upstream commit, licence, sha256). Missing
  *    files are downloaded to .cache/fonts/ through a temporary file and only kept if the sha256 matches; the licence
@@ -26,7 +28,33 @@ const ROOT = path.resolve(import.meta.dir, '..');
 const argv = Bun.argv.slice(2);
 const opt = (k: string, d: string) => (argv.includes(`--${k}`) ? argv[argv.indexOf(`--${k}`) + 1] : d);
 const FILM = opt('film', 'infotheory');
-const STYLE = opt('style', 'paper-dawn');
+
+/** The styles a film imports: films may import a style only as styles/<id>/index.ts (scripts/check-imports.ts). */
+function filmStyles(): string[] {
+  const dir = path.join(ROOT, 'films', FILM), ids: string[] = [];
+  const tr = new Bun.Transpiler({ loader: 'ts' });
+  const walk = (d: string): string[] => readdirSync(d).flatMap((n) => {
+    const p = path.join(d, n);
+    return statSync(p).isDirectory() ? walk(p) : /.ts$/.test(n) ? [p] : [];
+  });
+  for (const file of walk(dir))
+    for (const imp of tr.scanImports(readFileSync(file, 'utf8'))) {
+      const rel = path.relative(ROOT, path.resolve(path.dirname(file), imp.path)).split(path.sep);
+      if (rel[0] === 'styles' && rel[1] && !ids.includes(rel[1])) ids.push(rel[1]);
+    }
+  return ids;
+}
+if (!argv.includes('--style')) {
+  const ids = filmStyles();
+  if (!ids.length) { console.error(`films/${FILM} imports no style`); process.exit(1); }
+  for (const id of ids) {
+    console.log(`== ${FILM} / ${id}`);
+    const p = Bun.spawnSync([process.execPath, import.meta.path, ...argv, '--style', id], { stdout: 'inherit', stderr: 'inherit' });
+    if (p.exitCode !== 0) process.exit(p.exitCode ?? 1);
+  }
+  process.exit(0);
+}
+const STYLE = opt('style', '');
 const LOCK = path.join(ROOT, 'styles', STYLE, 'fonts.lock.json');
 const CACHE = path.join(ROOT, '.cache', 'fonts');
 const OUT = path.join(ROOT, 'films', FILM, 'fonts', STYLE);
@@ -93,12 +121,12 @@ for (const f of [...walk(path.join(ROOT, 'films', FILM)), ...walk(path.join(ROOT
 if (existsSync(EXTRA)) for (const ch of readFileSync(EXTRA, 'utf8')) chars.add(ch);
 for (const ws of ['\n', '\r', '\t', '\b', '\f', '\v', '\0']) chars.delete(ws);
 const text = [...chars].sort().join('');
-const textFile = path.join(CACHE, `${FILM}-chars.txt`);
+const textFile = path.join(CACHE, `${FILM}-${STYLE}-${process.pid}-chars.txt`);
 writeFileSync(textFile, text, 'utf8');
 console.log(`character set: ${chars.size} characters (${[...chars].filter((c) => c.charCodeAt(0) > 0x7e).length} beyond ASCII)${existsSync(EXTRA) ? `, including ${EXTRA}` : ''}`);
 
 // ---- 3. subset into a temporary directory, then replace the film's fonts
-const pyFile = path.join(CACHE, 'coverage.py');
+const pyFile = path.join(CACHE, `coverage-${process.pid}.py`);
 writeFileSync(pyFile, `
 import json, sys
 from fontTools.ttLib import TTFont
@@ -144,4 +172,6 @@ try {
   console.log(`-> ${path.join(OUT, 'manifest.json')}`);
 } finally {
   rmSync(TMP, { recursive: true, force: true });
+  rmSync(textFile, { force: true });
+  rmSync(pyFile, { force: true });
 }

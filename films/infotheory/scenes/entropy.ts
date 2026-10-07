@@ -1,5 +1,5 @@
 // 3. Chapter 02, entropy: a distribution morphs from flat to a spike while H is read out; English letters.
-import { text, label, ink, rule, rollNumber, background, statement, M, COL, C, F, scene, clamp, lerp, eio, eout, sstep, win, ctx, bars } from '../../../engine';
+import { text, label, ink, rule, rollNumber, background, statement, M, COL, C, F, scene, clamp, lerp, eio, eout, sstep, win, ctx, bars, W } from '../../../engine';
 
 const FLAT = [1, 1, 1, 1, 1, 1, 1, 1].map((v) => v / 8);
 const PEAK = [0.5, 0.2, 0.1, 0.08, 0.05, 0.04, 0.02, 0.01];
@@ -49,7 +49,8 @@ scene({
     // English letters
     const aE = win(lt, 9.4, 18, 0.6, 0.01);
     if (aE > 0) {
-      const x0 = COL + 20, y0 = 720, w = 28, hmax = 380;
+      // 26 columns of at most 28 px, ending inside the right margin
+      const x0 = COL + 20, y0 = 720, w = Math.min(28, (W - M - x0) / 26), hmax = 380;
       rule(x0 - 6, y0, x0 + 26 * w, y0, C.rule, aE, 1.5);
       [...LETTERS].forEach((ch, i) => {
         const a = aE * sstep(9.6 + i * 0.05, 9.9 + i * 0.05, lt);
