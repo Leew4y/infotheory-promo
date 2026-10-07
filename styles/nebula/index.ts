@@ -12,6 +12,19 @@ import { NEBULA_FS } from './shader';
 
 const GAS: [number, number, number] = [0.30, 0.62, 0.86];
 
+/** Any CSS colour with its alpha multiplied by `a` (the canvas normalises it to #rrggbb or rgba(r, g, b, a)). */
+function withAlpha(color: string, a: number): string {
+  ctx.save();
+  ctx.fillStyle = color;
+  const n = String(ctx.fillStyle);
+  ctx.restore();
+  if (n.startsWith('#')) return rgba(n, a);
+  const m = n.match(/^rgba?\(([^)]+)\)$/);
+  if (!m) throw new Error(`nebula transition: cannot read colour "${color}"`);
+  const [r, g, b, a0 = '1'] = m[1].split(',').map((s) => s.trim());
+  return `rgba(${r},${g},${b},${clamp(+a0 * a)})`;
+}
+
 const nebula: StylePackage = {
   id: 'nebula',
   palette: {
@@ -67,13 +80,16 @@ const nebula: StylePackage = {
     text(s.toUpperCase(), x, y, { font: F.mono, size: size * 0.92, ls: size * 0.1, color, alpha: a, align });
   },
 
-  /** An iris: the fade colour closes in from the edges and covers everything at amount 1. */
+  /**
+   * An iris: the fade colour closes in from the edges. Continuous at both ends: at amount -> 0 the soft edge starts
+   * beyond the corners (nothing covered), at amount 1 the inside is opaque too. `color` may be any CSS colour.
+   */
   transition(amount, color) {
     const R = Math.hypot(W, H) / 2;
-    const r = R * (1 - amount) * 1.05;
-    const g = ctx.createRadialGradient(W / 2, H / 2, r * 0.55, W / 2, H / 2, r + 1);
-    g.addColorStop(0, rgba(color, amount * amount));
-    g.addColorStop(1, rgba(color, 1));
+    const ri = (1 - amount) * 1.2 * R;
+    const g = ctx.createRadialGradient(W / 2, H / 2, ri, W / 2, H / 2, ri + 0.45 * R);
+    g.addColorStop(0, withAlpha(color, amount * amount));
+    g.addColorStop(1, withAlpha(color, 1));
     ctx.fillStyle = g;
     ctx.globalAlpha = 1;
     ctx.fillRect(0, 0, W, H);

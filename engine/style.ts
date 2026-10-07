@@ -117,7 +117,13 @@ export function selectStyle(styles: StylePackage[]): StylePackage {
   if (!styles.length) throw new Error('selectStyle: the film lists no styles');
   const want = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('style');
   const s = want === null ? styles[0] : styles.find((x) => x.id === want);
-  if (!s) throw new Error(`style "${want}" is not one of this film's styles (${styles.map((x) => x.id).join(', ')})`);
+  if (!s) {
+    const msg = `style "${want}" is not one of this film's styles (${styles.map((x) => x.id).join(', ')})`;
+    // the player's start card shows it too (this runs before boot(), so nothing else would)
+    const card = typeof document === 'undefined' ? null : document.getElementById('load');
+    if (card) card.textContent = msg;
+    throw new Error(msg);
+  }
   useStyle(s);
   return s;
 }
