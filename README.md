@@ -99,6 +99,7 @@ just all <film>               # cues → music → export
 just check                    # 类型检查
 just check-imports            # 依赖方向
 just validate <film>          # 所有风格：声明、时间轴、渲染、文字版面（出画面、出 5% 安全区、文字互相重叠、对比度低于 WCAG AA 都是错误）；--style <id> 只查一个
+just sheet <film>             # 对照拼图：同一批代表时刻、每个风格一列 → out/<film>/sheet/sheet.jpg（--style a,b；--times t1,t2）
 just test-validate            # 版面检查的故意出错用例（用模板临时建一部片子，结束后删除）
 just fonts <film>             # 文案改动后重新生成所有风格的字体子集（--style <id> 只生成一个）
 just font-catalog             # 下载并校验字体库里的全部字体（约 80 MB 缓存）；新增字体需 Develata 确认后用 --lock 登记

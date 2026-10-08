@@ -62,6 +62,10 @@ test-export film=film: (build film)
 test-validate:
     bun scripts/test-validate.ts
 
+# Contact sheet: the same representative moments in every style of the film (out/<film>/sheet/sheet.jpg + sheet.json); --style a,b, --times t1,t2.
+sheet film=film *args: (build film)
+    bun scripts/sheet.ts --film {{film}} {{args}}
+
 # Print the scene list with times.
 scenes film=film: (build film)
     bun scripts/export.ts --film {{film}} --scenes

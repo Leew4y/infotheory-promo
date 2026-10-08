@@ -13,7 +13,7 @@
  *   __contrast(t)      measured contrast of every fully visible text box of the frame at t (for scripts/validate.ts)
  *   __gpu()            WebGL renderer string
  *   __cues()           the sound-effect cue sheet (the film's score reads it as cues.json)
- *   __scenes()         name/start/end of every scene (for the shot list)
+ *   __scenes()         name, kind, start/end, fade lengths and caption times (film seconds) of every scene
  * A film's main.ts imports its film.ts and scenes, then calls boot().
  */
 import { cv, recordText, setCoverage, type TextBox } from './draw';
@@ -36,7 +36,7 @@ declare global {
     __timeline: () => { film: string; fps: number; bpm: number; frames: number; duration: number; scenes: { name: string; kind: string; f0: number; f1: number; start: number; end: number }[] };
     __gpu: () => string;
     __cues: () => { t: number; name: string; [k: string]: number | string }[];
-    __scenes: () => { name: string; start: number; end: number }[];
+    __scenes: () => { name: string; kind: string; start: number; end: number; fadeIn: number; fadeOut: number; subs: [number, number][] }[];
     __layout: (t: number, fps?: number) => TextBox[];
     __contrast: (t: number, fps?: number) => ContrastBox[];
     __fonts: () => FontManifest;
@@ -121,7 +121,11 @@ export function boot(o: BootOptions): void {
   window.__gpu = gpuName;
   window.__cues = () =>
     SC.flatMap((s) => (s.sfx ?? []).map(([t, name, o]) => ({ t: +(s.t0 + t).toFixed(4), name, ...(o ?? {}) }))).sort((a, b) => a.t - b.t);
-  window.__scenes = () => SC.map((s) => ({ name: s.name, start: +s.t0.toFixed(3), end: +(s.t0 + s.d).toFixed(3) }));
+  window.__scenes = () => SC.map((s) => ({
+    name: s.name, kind: s.kind, start: +s.t0.toFixed(3), end: +(s.t0 + s.d).toFixed(3),
+    fadeIn: s.fi ?? style().motion.fadeIn, fadeOut: s.fo ?? style().motion.fadeOut,
+    subs: s.subs.map(([a, b]) => [+(s.t0 + a).toFixed(3), +(s.t0 + b).toFixed(3)] as [number, number]),
+  }));
 
   const au = document.getElementById('au') as HTMLAudioElement;
 
