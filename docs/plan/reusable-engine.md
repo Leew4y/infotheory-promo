@@ -307,6 +307,10 @@ A1 / A1b 评审修正（Codex，gpt-6-astra max：1 BLOCKER / 8 SHOULD_FIX / 2 N
   muted #8F8A80→#5F5C55、accent #C9663D→#9E421C（保持饱和度压暗）、alt2 #7C8C68→#58634A；页码不再带 0.9 透明度；
   风格接口新增 `backdrop(cx, cy, w, h, a)`（全幅背景上的文字衬底，高斯式衰减、无可见边缘），信息论片 4 个全幅场景与模板标题页调用它。
   两套风格 validate 0 error；回归基线重录（paper-dawn 全部帧、nebula 仅衬底所在帧变化），每次先看对照样张。
+- 已完成（2026-10-08）：`just sheet`（代表时刻自动选取：首个全幅页、前三个页面场景、带字幕帧、淡出中点、末场景；每个风格一列，附 JSON）；
+  `templates/style/` + `just new-style`（接口齐全的最小风格包与 `STYLE.md` 骨架；模板风格配模板片 validate 0 error 已测）；
+  `check-imports` 把 `templates/style/` 按风格包规则检查；`AGENTS.md`（`CLAUDE.md` 只引用它）与 `.claude/skills/design-style/SKILL.md`。
+  未完成：退出条件里的"新会话独立完成一部片子"需要在一个新会话（Claude 或 Codex）里实测。
 - 评审清单：层级是否清楚；对比度与可读性；背景是否抢文字；颜色数量与强调色用法；字体搭配；动效是否克制统一；
   与已有风格是否明显不同；是否符合 brief 的调性。
 - 流程写成项目 skill（`.claude/skills/design-style/`，AGENTS.md 引用，Codex 共用）：

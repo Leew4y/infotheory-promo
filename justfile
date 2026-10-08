@@ -18,6 +18,10 @@ setup:
 new-film id style:
     bun scripts/new-film.ts {{id}} --style {{style}}
 
+# Start a new style package from templates/style/ (index.ts, shader.ts, fonts.json, STYLE.md), e.g. `just new-style ink-wash`.
+new-style id:
+    bun scripts/new-style.ts {{id}}
+
 # Live preview at http://127.0.0.1:5174 (space play/pause, arrows seek, [ ] scenes, , . frame step); ?style=<id> picks a style.
 dev $FILM=film:
     bunx vite

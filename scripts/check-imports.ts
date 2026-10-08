@@ -7,7 +7,8 @@
  * styles/<id>/**     may import engine/** and its own styles/<id>/**; not films/, not other styles
  * films/<id>/**      may import engine/index.ts (the public API), styles/<x>/index.ts, and its own films/<id>/**;
  *                    not another film, not templates/
- * templates/<id>/**  the same rules as a film (a template is copied into films/ by just new-film)
+ * templates/film/** the rules of a film (copied into films/ by just new-film)
+ * templates/style/** the rules of a style package (copied into styles/ by just new-style)
  *
  * Runtime imports (static, re-exports, dynamic with a literal specifier) come from Bun's own import scanner, which
  * handles any syntax and ignores comments and strings. Type-only imports, which the scanner drops, and Vite's
@@ -95,10 +96,11 @@ function verdict(top: string, file: string, target: string): string | null {
   const [tt, tid] = target.split('/');
   const [, fid] = file.split('/');
   if (top === 'engine') return tt === 'engine' ? null : 'engine may import only engine/';
-  if (top === 'styles') {
-    if (tt === 'films') return 'styles may not import films/';
-    if (tt === 'styles' && tid !== fid) return `styles/${fid} may not import another style (${target})`;
-    if (tt !== 'engine' && tt !== 'styles') return `styles may import only engine/ and their own package (${target})`;
+  // templates/style/ is a style package (copied into styles/ by just new-style): the style rules, its own folder only
+  if (top === 'styles' || (top === 'templates' && fid === 'style')) {
+    if (tt === 'films') return `${top}/${fid} may not import films/`;
+    if ((tt === 'styles' || tt === 'templates') && !(tt === top && tid === fid)) return `${top}/${fid} may not import another style or template (${target})`;
+    if (tt !== 'engine' && tt !== top) return `${top}/${fid} may import only engine/ and its own package (${target})`;
     return null;
   }
   if (tt === 'engine' && target !== 'engine/index.ts') return `films may import only the engine's public API engine/index.ts, not ${target}`;

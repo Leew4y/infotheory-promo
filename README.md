@@ -59,6 +59,7 @@ styles/paper-dawn/    "纸与黎明"风格包：色板、字体链、纸面、�
 styles/nebula/        "星云"风格包（同样的接口，另一套外观）
 fonts/catalog.json    字体库（42 个字体文件，全部 OFL）：上游来源（固定到提交）、sha256、字重、许可证与选用标签；风格按 id 引用
 templates/film/       新片骨架（标题、一页正文、结尾，无配乐），just new-film 复制它
+templates/style/      新风格包骨架（接口齐全、可通过全部检查），just new-style 复制它
 films/infotheory/     信息论短片（参考片）
   film.ts             帧率、BPM、章节数与可用风格（第一个是默认，页面 URL 加 ?style=<id> 切换）
   main.ts             入口：film → scenes → boot()
@@ -90,6 +91,7 @@ justfile              一键命令
 ```
 just setup                    # bun install + uv sync
 just new-film demo nebula     # 从模板新建 films/demo/（风格 nebula），之后 just fonts demo
+just new-style ink-wash       # 从模板新建风格包 styles/ink-wash/（含 STYLE.md 设计说明骨架）
 just dev <film>               # 预览 http://127.0.0.1:5174 ：空格播放/暂停，←/→ 5 秒，, . 单帧，[ ] 跳场景，F 全屏；?style=<id> 切换风格
 just shots <film> 5,20.5      # 写检查帧到 out/<film>/shots/（加 --style nebula 写到 shots-nebula/）
 just cues <film>              # 页面 → films/<film>/cues.json 与 timeline.json
