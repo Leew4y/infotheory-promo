@@ -290,6 +290,10 @@ A1 / A1b 评审修正（Codex，gpt-6-astra max：1 BLOCKER / 8 SHOULD_FIX / 2 N
   - `films/<id>/review/`：每轮拼板的生成命令与自评（按评审清单逐条）、人的意见。拼板图本身不入库，可用命令重现。
 - 字体目录扩充：在 A1 的 `fonts/catalog.json` 里预选一批 OFL 字体（中文衬线、无衬线、风格化各若干，拉丁文与等宽若干），
   清单与一次性下载经 Develata 确认。agent 只从目录里选；需要新字体时提出，确认后加入目录。
+  已完成（2026-10-08，Develata 确认"除霞鹜文楷外全部"）：新增 31 个文件——中文展示 6 款（站酷小薇、站酷庆科黄油体、站酷快乐体、马善政楷书、志莽行书、龙藏体，
+  实测都覆盖 GB2312 全部 6763 字，标签 `gb2312`）、拉丁无衬线 4 族、衬线 5 族、等宽 3 族、展示 1 族；共 42 个文件，每条带选用标签。
+  `scripts/font-catalog.ts --lock` 下载新条目，先与 GitHub 报告的 git blob id 核对再记录 sha256，并用固定版本的 fontTools 测出字重；
+  记录走字体库锁（`scripts/font-lib.ts`），`fonts.ts` 只接受已登记的条目。同一字体族的静态字重（如 IBM Plex Mono 500）子集文件名带字重。
 - `just new-style <id>`：从最小模板生成风格包（接口齐全、纯色背景、空的着色器模板、`STYLE.md` 骨架）。
 - `just sheet <film> [--style a,b]`：拼板。每个风格取固定的代表时刻：每类场景的中段、全幅页、转场中点、带字幕的帧；
   并排输出 JPEG，另附 JSON（时刻、场景、风格、路径）。供 agent 自检和人看。

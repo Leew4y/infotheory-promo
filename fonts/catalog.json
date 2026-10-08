@@ -1,5 +1,5 @@
 {
- "comment": "The shared font library: every bundled font face, pinned to an upstream commit with its sha256 and licence. Styles reference entries by id (styles/<id>/fonts.json). scripts/fonts.ts downloads to .cache/fonts, checks sha256, subsets per film and style. sha256 is filled in on first download (--lock) and then enforced. Adding a font needs Develata's confirmation.",
+ "comment": "The shared font library: every bundled font file, pinned to an upstream commit with its sha256 and licence, plus tags for choosing (script: zh / latin / math; class: serif / sans / mono / script / display; gb2312: a CJK display face measured to cover all 6763 GB2312 hanzi but not much beyond, so a style chains it before a full CJK face such as Noto). Styles reference entries by id (styles/<id>/fonts.json). scripts/font-catalog.ts --lock downloads a new entry, checks it against the blob id GitHub reports and records its sha256 and weight; scripts/fonts.ts subsets per film and style. Adding a font needs Develata’s confirmation.",
  "fonts": [
   {
    "id": "noto-serif-sc",
@@ -10,7 +10,13 @@
    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/notoserifsc/NotoSerifSC%5Bwght%5D.ttf",
    "license": "OFL-1.1",
    "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/notoserifsc/OFL.txt",
-   "sha256": "050080d9255a86808f2945bffac582b31ef32bc36411ce29563b4961670c66f9"
+   "sha256": "050080d9255a86808f2945bffac582b31ef32bc36411ce29563b4961670c66f9",
+   "tags": [
+    "zh",
+    "serif",
+    "body",
+    "heading"
+   ]
   },
   {
    "id": "gelasio",
@@ -21,7 +27,12 @@
    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/gelasio/Gelasio%5Bwght%5D.ttf",
    "license": "OFL-1.1",
    "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/gelasio/OFL.txt",
-   "sha256": "4daecea457258c9ebeb8bc99ed3fd24353618bfad3ea4b93fa0b5d0468fc04e4"
+   "sha256": "4daecea457258c9ebeb8bc99ed3fd24353618bfad3ea4b93fa0b5d0468fc04e4",
+   "tags": [
+    "latin",
+    "serif",
+    "body"
+   ]
   },
   {
    "id": "gelasio-italic",
@@ -32,7 +43,12 @@
    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/gelasio/Gelasio-Italic%5Bwght%5D.ttf",
    "license": "OFL-1.1",
    "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/gelasio/OFL.txt",
-   "sha256": "52559e845a4d33514e5f93bb9ae7dbeae1894a53f2c565a15f18af40cd337c09"
+   "sha256": "52559e845a4d33514e5f93bb9ae7dbeae1894a53f2c565a15f18af40cd337c09",
+   "tags": [
+    "latin",
+    "serif",
+    "body"
+   ]
   },
   {
    "id": "stix-two-text",
@@ -43,7 +59,12 @@
    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/stixtwotext/STIXTwoText%5Bwght%5D.ttf",
    "license": "OFL-1.1",
    "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/stixtwotext/OFL.txt",
-   "sha256": "7962b8b7811e6a896c9a91a0bccbb5241047770eb24d4997c5cb5fe21d5c0df2"
+   "sha256": "7962b8b7811e6a896c9a91a0bccbb5241047770eb24d4997c5cb5fe21d5c0df2",
+   "tags": [
+    "latin",
+    "math",
+    "serif"
+   ]
   },
   {
    "id": "stix-two-text-italic",
@@ -54,7 +75,12 @@
    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/stixtwotext/STIXTwoText-Italic%5Bwght%5D.ttf",
    "license": "OFL-1.1",
    "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/stixtwotext/OFL.txt",
-   "sha256": "88c0e2e316eaff56eddc9e51e4850317e2a1e490bbf758b2dec4793aedba9c74"
+   "sha256": "88c0e2e316eaff56eddc9e51e4850317e2a1e490bbf758b2dec4793aedba9c74",
+   "tags": [
+    "latin",
+    "math",
+    "serif"
+   ]
   },
   {
    "id": "inconsolata",
@@ -65,7 +91,11 @@
    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/inconsolata/Inconsolata%5Bwdth%2Cwght%5D.ttf",
    "license": "OFL-1.1",
    "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/inconsolata/OFL.txt",
-   "sha256": "23ded25b447074d00659392bf9b1123d89df55cb07b0ad9bfef3366d199b5fcb"
+   "sha256": "23ded25b447074d00659392bf9b1123d89df55cb07b0ad9bfef3366d199b5fcb",
+   "tags": [
+    "latin",
+    "mono"
+   ]
   },
   {
    "id": "stix-two-math",
@@ -76,7 +106,11 @@
    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/stixtwomath/STIXTwoMath-Regular.ttf",
    "license": "OFL-1.1",
    "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/stixtwomath/OFL.txt",
-   "sha256": "562551b15b836e6e01d1b7350909baf3c8c8d83260c1190fbf4544333e6936de"
+   "sha256": "562551b15b836e6e01d1b7350909baf3c8c8d83260c1190fbf4544333e6936de",
+   "tags": [
+    "math",
+    "fallback"
+   ]
   },
   {
    "id": "noto-sans-sc",
@@ -87,7 +121,13 @@
    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/notosanssc/NotoSansSC%5Bwght%5D.ttf",
    "license": "OFL-1.1",
    "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/notosanssc/OFL.txt",
-   "sha256": "a3041811a78c361b1de50f953c805e0244951c21c5bd412f7232ef0d899af0da"
+   "sha256": "a3041811a78c361b1de50f953c805e0244951c21c5bd412f7232ef0d899af0da",
+   "tags": [
+    "zh",
+    "sans",
+    "body",
+    "heading"
+   ]
   },
   {
    "id": "inter",
@@ -98,7 +138,13 @@
    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/inter/Inter%5Bopsz%2Cwght%5D.ttf",
    "license": "OFL-1.1",
    "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/inter/OFL.txt",
-   "sha256": "29160a80ff49ddcab2c97711247e08b1fab27a484a329ce8b813d820dc559031"
+   "sha256": "29160a80ff49ddcab2c97711247e08b1fab27a484a329ce8b813d820dc559031",
+   "tags": [
+    "latin",
+    "sans",
+    "body",
+    "ui"
+   ]
   },
   {
    "id": "inter-italic",
@@ -109,7 +155,13 @@
    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/inter/Inter-Italic%5Bopsz%2Cwght%5D.ttf",
    "license": "OFL-1.1",
    "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/inter/OFL.txt",
-   "sha256": "acd98e64795781b2058f07b18475e0ecee2a0fe2b42a49e2f9e37d0d6bf66ce6"
+   "sha256": "acd98e64795781b2058f07b18475e0ecee2a0fe2b42a49e2f9e37d0d6bf66ce6",
+   "tags": [
+    "latin",
+    "sans",
+    "body",
+    "ui"
+   ]
   },
   {
    "id": "jetbrains-mono",
@@ -120,7 +172,558 @@
    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/jetbrainsmono/JetBrainsMono%5Bwght%5D.ttf",
    "license": "OFL-1.1",
    "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/jetbrainsmono/OFL.txt",
-   "sha256": "48715a42ec242c21e9f02692891e147d022299a52e48d5e413e1a942193ffeda"
+   "sha256": "48715a42ec242c21e9f02692891e147d022299a52e48d5e413e1a942193ffeda",
+   "tags": [
+    "latin",
+    "mono",
+    "code"
+   ]
+  },
+  {
+   "id": "zcool-xiaowei",
+   "family": "ZCOOL XiaoWei",
+   "style": "normal",
+   "weight": "400",
+   "file": "ZCOOLXiaoWei-Regular.ttf",
+   "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/zcoolxiaowei/ZCOOLXiaoWei-Regular.ttf",
+   "license": "OFL-1.1",
+   "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/zcoolxiaowei/OFL.txt",
+   "sha256": "a42b620140f493db42f741351dfbf343c0936d58588ee8004b8b2a218d997ff1",
+   "tags": [
+    "zh",
+    "serif",
+    "display",
+    "elegant",
+    "gb2312"
+   ]
+  },
+  {
+   "id": "zcool-qingke-huangyou",
+   "family": "ZCOOL QingKe HuangYou",
+   "style": "normal",
+   "weight": "400",
+   "file": "ZCOOLQingKeHuangYou-Regular.ttf",
+   "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/zcoolqingkehuangyou/ZCOOLQingKeHuangYou-Regular.ttf",
+   "license": "OFL-1.1",
+   "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/zcoolqingkehuangyou/OFL.txt",
+   "sha256": "54f0c0df4308cd74cd0f2fd3494ae054dbc4a1fd6fa7d71f4807eb4cdd8b4136",
+   "tags": [
+    "zh",
+    "sans",
+    "display",
+    "bold",
+    "geometric",
+    "gb2312"
+   ]
+  },
+  {
+   "id": "zcool-kuaile",
+   "family": "ZCOOL KuaiLe",
+   "style": "normal",
+   "weight": "400",
+   "file": "ZCOOLKuaiLe-Regular.ttf",
+   "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/zcoolkuaile/ZCOOLKuaiLe-Regular.ttf",
+   "license": "OFL-1.1",
+   "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/zcoolkuaile/OFL.txt",
+   "sha256": "812a6fc1fe54b6d73a419245c32dfeba8aa33104d5be90d1cf6af082007cb71d",
+   "tags": [
+    "zh",
+    "display",
+    "rounded",
+    "playful",
+    "gb2312"
+   ]
+  },
+  {
+   "id": "ma-shan-zheng",
+   "family": "Ma Shan Zheng",
+   "style": "normal",
+   "weight": "400",
+   "file": "MaShanZheng-Regular.ttf",
+   "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/mashanzheng/MaShanZheng-Regular.ttf",
+   "license": "OFL-1.1",
+   "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/mashanzheng/OFL.txt",
+   "sha256": "6d2546bb189c732a8ca29af9e22457b152387d158aa459e4ac2ce1e51788b7fb",
+   "tags": [
+    "zh",
+    "script",
+    "brush",
+    "kaishu",
+    "display",
+    "gb2312"
+   ]
+  },
+  {
+   "id": "zhi-mang-xing",
+   "family": "Zhi Mang Xing",
+   "style": "normal",
+   "weight": "400",
+   "file": "ZhiMangXing-Regular.ttf",
+   "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/zhimangxing/ZhiMangXing-Regular.ttf",
+   "license": "OFL-1.1",
+   "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/zhimangxing/OFL.txt",
+   "sha256": "644e0cae9b40f0b10ab729a01bd32032e3973bac22be3dccae01bf6ae7fde969",
+   "tags": [
+    "zh",
+    "script",
+    "brush",
+    "xingshu",
+    "display",
+    "gb2312"
+   ]
+  },
+  {
+   "id": "long-cang",
+   "family": "Long Cang",
+   "style": "normal",
+   "weight": "400",
+   "file": "LongCang-Regular.ttf",
+   "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/longcang/LongCang-Regular.ttf",
+   "license": "OFL-1.1",
+   "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/longcang/OFL.txt",
+   "sha256": "e5bf2c3f24ef2327c6f136d8f73e2f9dfdf44896fdbeb35a9515f44777bb91bc",
+   "tags": [
+    "zh",
+    "script",
+    "handwritten",
+    "display",
+    "gb2312"
+   ]
+  },
+  {
+   "id": "ibm-plex-sans",
+   "family": "IBM Plex Sans",
+   "style": "normal",
+   "weight": "100 700",
+   "file": "IBMPlexSans[wdth,wght].ttf",
+   "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/ibmplexsans/IBMPlexSans%5Bwdth%2Cwght%5D.ttf",
+   "license": "OFL-1.1",
+   "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/ibmplexsans/OFL.txt",
+   "sha256": "3b031aa4216174205bd8471f88a49b91f093169e9e87bd5262242bc5967fe2e3",
+   "tags": [
+    "latin",
+    "sans",
+    "body",
+    "technical"
+   ]
+  },
+  {
+   "id": "ibm-plex-sans-italic",
+   "family": "IBM Plex Sans",
+   "style": "italic",
+   "weight": "100 700",
+   "file": "IBMPlexSans-Italic[wdth,wght].ttf",
+   "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/ibmplexsans/IBMPlexSans-Italic%5Bwdth%2Cwght%5D.ttf",
+   "license": "OFL-1.1",
+   "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/ibmplexsans/OFL.txt",
+   "sha256": "0b94c5e981993764db32bf9c610ecc60cbd34ad77ec2f10ba03c64ab75124d8e",
+   "tags": [
+    "latin",
+    "sans",
+    "body",
+    "technical"
+   ]
+  },
+  {
+   "id": "space-grotesk",
+   "family": "Space Grotesk",
+   "style": "normal",
+   "weight": "300 700",
+   "file": "SpaceGrotesk[wght].ttf",
+   "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/spacegrotesk/SpaceGrotesk%5Bwght%5D.ttf",
+   "license": "OFL-1.1",
+   "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/spacegrotesk/OFL.txt",
+   "sha256": "acad6de1fc93436f5c0f1f4137751ef04f1aea3063e7036535970ffcfbd79f72",
+   "tags": [
+    "latin",
+    "sans",
+    "display",
+    "geometric",
+    "tech",
+    "no-italic"
+   ]
+  },
+  {
+   "id": "dm-sans",
+   "family": "DM Sans",
+   "style": "normal",
+   "weight": "100 1000",
+   "file": "DMSans[opsz,wght].ttf",
+   "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/dmsans/DMSans%5Bopsz%2Cwght%5D.ttf",
+   "license": "OFL-1.1",
+   "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/dmsans/OFL.txt",
+   "sha256": "8cd08d97e89c24d0aa92edd2f0f4c8ee6195eee9b7c9f154865a58b02f0c1c0d",
+   "tags": [
+    "latin",
+    "sans",
+    "body",
+    "friendly"
+   ]
+  },
+  {
+   "id": "dm-sans-italic",
+   "family": "DM Sans",
+   "style": "italic",
+   "weight": "100 1000",
+   "file": "DMSans-Italic[opsz,wght].ttf",
+   "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/dmsans/DMSans-Italic%5Bopsz%2Cwght%5D.ttf",
+   "license": "OFL-1.1",
+   "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/dmsans/OFL.txt",
+   "sha256": "22259c0cc8237221b80f44c76ba8d36e6bce3cda72779f5b2773643d499720ae",
+   "tags": [
+    "latin",
+    "sans",
+    "body",
+    "friendly"
+   ]
+  },
+  {
+   "id": "manrope",
+   "family": "Manrope",
+   "style": "normal",
+   "weight": "200 800",
+   "file": "Manrope[wght].ttf",
+   "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/manrope/Manrope%5Bwght%5D.ttf",
+   "license": "OFL-1.1",
+   "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/manrope/OFL.txt",
+   "sha256": "3ae11c49db0455a3cc33e37d380f20fdb8c7f8b41dc07625c177e3d87a9d6ae6",
+   "tags": [
+    "latin",
+    "sans",
+    "body",
+    "modern",
+    "no-italic"
+   ]
+  },
+  {
+   "id": "source-serif-4",
+   "family": "Source Serif 4",
+   "style": "normal",
+   "weight": "200 900",
+   "file": "SourceSerif4[opsz,wght].ttf",
+   "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/sourceserif4/SourceSerif4%5Bopsz%2Cwght%5D.ttf",
+   "license": "OFL-1.1",
+   "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/sourceserif4/OFL.txt",
+   "sha256": "97b2d4da6e3cb494b5a1e66ae176914d852ccabef49e0c02c0df25f3e39aca0b",
+   "tags": [
+    "latin",
+    "serif",
+    "body",
+    "reading"
+   ]
+  },
+  {
+   "id": "source-serif-4-italic",
+   "family": "Source Serif 4",
+   "style": "italic",
+   "weight": "200 900",
+   "file": "SourceSerif4-Italic[opsz,wght].ttf",
+   "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/sourceserif4/SourceSerif4-Italic%5Bopsz%2Cwght%5D.ttf",
+   "license": "OFL-1.1",
+   "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/sourceserif4/OFL.txt",
+   "sha256": "15fbc7e4679489a501998c3669272637a6646388ef7e4bd77eebb5bf967a1f42",
+   "tags": [
+    "latin",
+    "serif",
+    "body",
+    "reading"
+   ]
+  },
+  {
+   "id": "fraunces",
+   "family": "Fraunces",
+   "style": "normal",
+   "weight": "100 900",
+   "file": "Fraunces[SOFT,WONK,opsz,wght].ttf",
+   "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/fraunces/Fraunces%5BSOFT%2CWONK%2Copsz%2Cwght%5D.ttf",
+   "license": "OFL-1.1",
+   "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/fraunces/OFL.txt",
+   "sha256": "177ff6c0f14e5550a3c624247cd1189611d4eb65d000b14944c63d967958abbb",
+   "tags": [
+    "latin",
+    "serif",
+    "display",
+    "retro",
+    "characterful"
+   ]
+  },
+  {
+   "id": "fraunces-italic",
+   "family": "Fraunces",
+   "style": "italic",
+   "weight": "100 900",
+   "file": "Fraunces-Italic[SOFT,WONK,opsz,wght].ttf",
+   "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/fraunces/Fraunces-Italic%5BSOFT%2CWONK%2Copsz%2Cwght%5D.ttf",
+   "license": "OFL-1.1",
+   "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/fraunces/OFL.txt",
+   "sha256": "b24448c43702fac4ee856781d461a0dfba8d8e594b6e8e190234b75fed2c0e01",
+   "tags": [
+    "latin",
+    "serif",
+    "display",
+    "retro",
+    "characterful"
+   ]
+  },
+  {
+   "id": "playfair-display",
+   "family": "Playfair Display",
+   "style": "normal",
+   "weight": "400 900",
+   "file": "PlayfairDisplay[wght].ttf",
+   "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/playfairdisplay/PlayfairDisplay%5Bwght%5D.ttf",
+   "license": "OFL-1.1",
+   "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/playfairdisplay/OFL.txt",
+   "sha256": "c40f2293766a503bc70cce9e512ef844a4ccb7cbcde792fe2ea31d191917d8d6",
+   "tags": [
+    "latin",
+    "serif",
+    "display",
+    "editorial"
+   ]
+  },
+  {
+   "id": "playfair-display-italic",
+   "family": "Playfair Display",
+   "style": "italic",
+   "weight": "400 900",
+   "file": "PlayfairDisplay-Italic[wght].ttf",
+   "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/playfairdisplay/PlayfairDisplay-Italic%5Bwght%5D.ttf",
+   "license": "OFL-1.1",
+   "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/playfairdisplay/OFL.txt",
+   "sha256": "a5e26dc5e2e77fb2803a0bf02fd4f81ee136ec8dea863ccdb0c59a263b21378b",
+   "tags": [
+    "latin",
+    "serif",
+    "display",
+    "editorial"
+   ]
+  },
+  {
+   "id": "newsreader",
+   "family": "Newsreader",
+   "style": "normal",
+   "weight": "200 800",
+   "file": "Newsreader[opsz,wght].ttf",
+   "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/newsreader/Newsreader%5Bopsz%2Cwght%5D.ttf",
+   "license": "OFL-1.1",
+   "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/newsreader/OFL.txt",
+   "sha256": "8a08d13f8a6c0d51be379a60af84f945f65369a67e509ee3c3bdcc421254d7c1",
+   "tags": [
+    "latin",
+    "serif",
+    "body",
+    "news"
+   ]
+  },
+  {
+   "id": "newsreader-italic",
+   "family": "Newsreader",
+   "style": "italic",
+   "weight": "200 800",
+   "file": "Newsreader-Italic[opsz,wght].ttf",
+   "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/newsreader/Newsreader-Italic%5Bopsz%2Cwght%5D.ttf",
+   "license": "OFL-1.1",
+   "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/newsreader/OFL.txt",
+   "sha256": "796668611f80b64d5adf182fde3b6f29ed83b4e7cbec7b96937e84ac01364792",
+   "tags": [
+    "latin",
+    "serif",
+    "body",
+    "news"
+   ]
+  },
+  {
+   "id": "instrument-serif",
+   "family": "Instrument Serif",
+   "style": "normal",
+   "weight": "400",
+   "file": "InstrumentSerif-Regular.ttf",
+   "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/instrumentserif/InstrumentSerif-Regular.ttf",
+   "license": "OFL-1.1",
+   "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/instrumentserif/OFL.txt",
+   "sha256": "498efd461f6ddfcb7a111bf9a565709d2085d48201d501ead960d93e84ffbb88",
+   "tags": [
+    "latin",
+    "serif",
+    "display",
+    "condensed",
+    "elegant"
+   ]
+  },
+  {
+   "id": "instrument-serif-italic",
+   "family": "Instrument Serif",
+   "style": "italic",
+   "weight": "400",
+   "file": "InstrumentSerif-Italic.ttf",
+   "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/instrumentserif/InstrumentSerif-Italic.ttf",
+   "license": "OFL-1.1",
+   "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/instrumentserif/OFL.txt",
+   "sha256": "08939b8bdf534afec24ae0ef5e03f948940cd9a8fe08e7fecbad040e62327385",
+   "tags": [
+    "latin",
+    "serif",
+    "display",
+    "condensed",
+    "elegant"
+   ]
+  },
+  {
+   "id": "ibm-plex-mono",
+   "family": "IBM Plex Mono",
+   "style": "normal",
+   "weight": "400",
+   "file": "IBMPlexMono-Regular.ttf",
+   "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/ibmplexmono/IBMPlexMono-Regular.ttf",
+   "license": "OFL-1.1",
+   "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/ibmplexmono/OFL.txt",
+   "sha256": "6a3412f058c7d8dfd9170c41e85ade48e5156ecb89356110ca57a0a27734af46",
+   "tags": [
+    "latin",
+    "mono",
+    "code",
+    "technical"
+   ]
+  },
+  {
+   "id": "ibm-plex-mono-italic",
+   "family": "IBM Plex Mono",
+   "style": "italic",
+   "weight": "400",
+   "file": "IBMPlexMono-Italic.ttf",
+   "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/ibmplexmono/IBMPlexMono-Italic.ttf",
+   "license": "OFL-1.1",
+   "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/ibmplexmono/OFL.txt",
+   "sha256": "3362fc791b0652193328b862c1c5f23a789bc7288b1617fa63302f88689a2a34",
+   "tags": [
+    "latin",
+    "mono",
+    "code",
+    "technical"
+   ]
+  },
+  {
+   "id": "ibm-plex-mono-medium",
+   "family": "IBM Plex Mono",
+   "style": "normal",
+   "weight": "500",
+   "file": "IBMPlexMono-Medium.ttf",
+   "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/ibmplexmono/IBMPlexMono-Medium.ttf",
+   "license": "OFL-1.1",
+   "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/ibmplexmono/OFL.txt",
+   "sha256": "a9b4c49bb299e05b5f6c481e7fb5e78943d2793249a0c8874ab574a2d1ea6755",
+   "tags": [
+    "latin",
+    "mono",
+    "code",
+    "technical"
+   ]
+  },
+  {
+   "id": "ibm-plex-mono-semibold",
+   "family": "IBM Plex Mono",
+   "style": "normal",
+   "weight": "600",
+   "file": "IBMPlexMono-SemiBold.ttf",
+   "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/ibmplexmono/IBMPlexMono-SemiBold.ttf",
+   "license": "OFL-1.1",
+   "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/ibmplexmono/OFL.txt",
+   "sha256": "d3c38e55c78f5b0f28009fddba4834ec503278936a5986032424c9bd2d23aa46",
+   "tags": [
+    "latin",
+    "mono",
+    "code",
+    "technical"
+   ]
+  },
+  {
+   "id": "space-mono",
+   "family": "Space Mono",
+   "style": "normal",
+   "weight": "400",
+   "file": "SpaceMono-Regular.ttf",
+   "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/spacemono/SpaceMono-Regular.ttf",
+   "license": "OFL-1.1",
+   "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/spacemono/OFL.txt",
+   "sha256": "95837e182baeeada83368f7748db28357f0a1b75c6b84ff7065b5edf933c8e18",
+   "tags": [
+    "latin",
+    "mono",
+    "retro",
+    "display"
+   ]
+  },
+  {
+   "id": "space-mono-bold",
+   "family": "Space Mono",
+   "style": "normal",
+   "weight": "700",
+   "file": "SpaceMono-Bold.ttf",
+   "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/spacemono/SpaceMono-Bold.ttf",
+   "license": "OFL-1.1",
+   "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/spacemono/OFL.txt",
+   "sha256": "405e73d41afb7e5906efce206a326af5c956f38e255f35421c260e861e599c59",
+   "tags": [
+    "latin",
+    "mono",
+    "retro",
+    "display"
+   ]
+  },
+  {
+   "id": "space-mono-italic",
+   "family": "Space Mono",
+   "style": "italic",
+   "weight": "400",
+   "file": "SpaceMono-Italic.ttf",
+   "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/spacemono/SpaceMono-Italic.ttf",
+   "license": "OFL-1.1",
+   "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/spacemono/OFL.txt",
+   "sha256": "eca264c8690a91fe837d19a6badf2d88961610c4c8aafcb196526192a9f258c5",
+   "tags": [
+    "latin",
+    "mono",
+    "retro",
+    "display"
+   ]
+  },
+  {
+   "id": "fira-code",
+   "family": "Fira Code",
+   "style": "normal",
+   "weight": "300 700",
+   "file": "FiraCode[wght].ttf",
+   "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/firacode/FiraCode%5Bwght%5D.ttf",
+   "license": "OFL-1.1",
+   "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/firacode/OFL.txt",
+   "sha256": "9335b082b3c7850d98a64b584f3417f65355f3471278bb5eeb8c6c0e8657aeeb",
+   "tags": [
+    "latin",
+    "mono",
+    "code",
+    "ligatures",
+    "no-italic"
+   ]
+  },
+  {
+   "id": "syne",
+   "family": "Syne",
+   "style": "normal",
+   "weight": "400 800",
+   "file": "Syne[wght].ttf",
+   "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/syne/Syne%5Bwght%5D.ttf",
+   "license": "OFL-1.1",
+   "licenseUrl": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/syne/OFL.txt",
+   "sha256": "ce5ac77142a65cab2248a1a2ebb740b1d4d9c20b52488877d3ff664d1356104a",
+   "tags": [
+    "latin",
+    "sans",
+    "display",
+    "avant-garde",
+    "wide",
+    "no-italic"
+   ]
   }
  ]
 }

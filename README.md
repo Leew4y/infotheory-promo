@@ -57,7 +57,7 @@ engine/               与片子无关
   boot.ts             页面入口：预览播放器与导出钩子 __frame/__layout/__cues/__timeline/__duration/__scenes/__film
 styles/paper-dawn/    "纸与黎明"风格包：色板、字体链、纸面、地平线着色器、调色、版式块、叠加层；fonts.json 引用字体库
 styles/nebula/        "星云"风格包（同样的接口，另一套外观）
-fonts/catalog.json    字体库：每个字体文件的上游来源（固定到提交）、sha256、许可证；风格按 id 引用
+fonts/catalog.json    字体库（42 个字体文件，全部 OFL）：上游来源（固定到提交）、sha256、字重、许可证与选用标签；风格按 id 引用
 templates/film/       新片骨架（标题、一页正文、结尾，无配乐），just new-film 复制它
 films/infotheory/     信息论短片（参考片）
   film.ts             帧率、BPM、章节数与可用风格（第一个是默认，页面 URL 加 ?style=<id> 切换）
@@ -73,6 +73,7 @@ scripts/export.ts     导出：N 个 headless Chrome 各自渲染精确帧时刻
 scripts/test-export.ts  导出失败用例（缺音频、音频过短、浏览器启动失败、编码失败、中断、超时、并发）
 scripts/chrome.ts     共享的 Chrome 启动参数（CPU 2D canvas；Windows 用 ANGLE D3D11，其他平台用浏览器默认；或 SwiftShader）
 scripts/fonts.ts      按字体库下载字体、按片子用字裁剪子集、检查覆盖
+scripts/font-catalog.ts  字体库本身：下载并校验全部字体；--lock 登记新字体（与 GitHub 的文件哈希核对、测出字重）
 scripts/new-film.ts   从模板新建片子
 scripts/regress.ts    像素回归：SwiftShader + CPU 2D canvas 下逐帧比较原始 RGBA 哈希
 scripts/validate.ts   校验：声明、时间轴、文字是否出画面或出安全区
@@ -99,6 +100,7 @@ just check                    # 类型检查
 just check-imports            # 依赖方向
 just validate <film>          # 所有风格：声明、时间轴、渲染、文字版面（出画面或出 5% 安全区都是错误）；--style <id> 只查一个
 just fonts <film>             # 文案改动后重新生成所有风格的字体子集（--style <id> 只生成一个）
+just font-catalog             # 下载并校验字体库里的全部字体（约 80 MB 缓存）；新增字体需 Develata 确认后用 --lock 登记
 just test-export <film>       # 导出失败用例（需要一部有配乐的片子）
 just regress <film>           # 所有风格的像素回归，每个风格一份基线（--update 重写，--style <id> 只跑一个）。基线只在录制它的平台上可比较（目前是 Windows x64），其他平台会直接退出并提示
 ```

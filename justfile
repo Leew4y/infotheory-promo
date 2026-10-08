@@ -30,6 +30,10 @@ build $FILM=film:
 fonts film=film *args:
     bun scripts/fonts.ts --film {{film}} {{args}}
 
+# Download and verify every font of the shared library (fonts/catalog.json -> .cache/fonts); --lock records new entries.
+font-catalog *args:
+    bun scripts/font-catalog.ts {{args}}
+
 # Type-check the engine, styles, films, templates and scripts.
 check:
     bunx tsc --noEmit
