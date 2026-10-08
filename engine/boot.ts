@@ -10,12 +10,14 @@
  *   __styles           ids of all the film's styles, the default first
  *   __timeline()       the resolved timeline (frames and seconds per scene), written to timeline.json
  *   __layout(t)        text boxes of the frame at t (for scripts/validate.ts)
+ *   __contrast(t)      measured contrast of every fully visible text box of the frame at t (for scripts/validate.ts)
  *   __gpu()            WebGL renderer string
  *   __cues()           the sound-effect cue sheet (the film's score reads it as cues.json)
  *   __scenes()         name/start/end of every scene (for the shot list)
  * A film's main.ts imports its film.ts and scenes, then calls boot().
  */
 import { cv, recordText, setCoverage, type TextBox } from './draw';
+import { contrastAt, type ContrastBox } from './inspect';
 import { frame } from './frame';
 import { gpuName } from './gl';
 import { SC, sceneAt } from './scene';
@@ -36,6 +38,7 @@ declare global {
     __cues: () => { t: number; name: string; [k: string]: number | string }[];
     __scenes: () => { name: string; start: number; end: number }[];
     __layout: (t: number, fps?: number) => TextBox[];
+    __contrast: (t: number, fps?: number) => ContrastBox[];
     __fonts: () => FontManifest;
   }
 }
@@ -109,6 +112,7 @@ export function boot(o: BootOptions): void {
     scenes: SC.map((s) => ({ name: s.name, kind: s.kind, f0: s.f0, f1: s.f1, start: s.t0, end: s.t0 + s.d })),
   });
   // text boxes of the frame at t (no motion blur), for scripts/validate.ts
+  window.__contrast = (t, fps = 30) => contrastAt(t, fps);
   window.__layout = (t, fps = 30) => {
     recordText(true);
     frame(t, fps, 1);

@@ -8,9 +8,18 @@ import { C, F, style } from './style';
 export const cv = document.getElementById('c') as HTMLCanvasElement;
 export const ctx = cv.getContext('2d')!;
 
-/** Where a text() call landed on the canvas (after the current transform), for layout checks. */
-export interface TextBox { s: string; font: string; x0: number; y0: number; x1: number; y1: number; alpha: number }
+/**
+ * Where a text() call landed on the canvas (after the current transform), for layout checks: the box, the CSS font,
+ * the rendered size in canvas pixels (font size times the transform's scale), the weight, the fill colour as the canvas
+ * normalises it (#rrggbb or rgba(...)), and the alpha.
+ */
+export interface TextBox { s: string; font: string; px: number; weight: number; color: string; x0: number; y0: number; x1: number; y1: number; alpha: number }
 let boxes: TextBox[] | null = null;
+/** While true, text() records its box but draws nothing (the background of a frame, for the contrast check). */
+let hidden = false;
+export function hideTexts(on: boolean): void {
+  hidden = on;
+}
 /** Start (on = true) or stop recording text boxes; returns what was recorded since the last start. */
 export function recordText(on: boolean): TextBox[] {
   const out = boxes ?? [];
@@ -103,9 +112,10 @@ export function text(s: string, x: number, y: number, o: TextOpts = {}): void {
       xs.push(q.x);
       ys.push(q.y);
     }
-    boxes.push({ s, font: ctx.font, x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys), alpha: ctx.globalAlpha });
+    const px = (o.size ?? 40) * Math.hypot(t.a, t.b);
+    boxes.push({ s, font: ctx.font, px, weight: +(o.weight ?? 400) || 400, color: String(ctx.fillStyle), x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys), alpha: ctx.globalAlpha });
   }
-  ctx.fillText(s, x, y);
+  if (!hidden) ctx.fillText(s, x, y);
   ctx.restore();
 }
 

@@ -4,7 +4,7 @@
  * Fades close in from the edges like an iris; chapter labels and the page count sit top right in mono; captions are
  * centred on a translucent band. The counterpart of paper-dawn for the style-decoupling acceptance.
  */
-import { ctx, text, rule, label, measure } from '../../engine/draw';
+import { ctx, text, rule, label, measure, rgba } from '../../engine/draw';
 import { glPlate } from '../../engine/gl';
 import { C, F, M, type StylePackage, type SubLine } from '../../engine/style';
 import { clamp, eout, sstep, win, W, H } from '../../engine/util';
@@ -77,6 +77,25 @@ const nebula: StylePackage = {
   /** Small mono capitals, light tracking. */
   label(s, x, y, a, color, size, align) {
     text(s.toUpperCase(), x, y, { font: F.mono, size: size * 0.92, ls: size * 0.1, color, alpha: a, align });
+  },
+
+  /**
+   * A shade of the plate's darkest colour behind text: an ellipse twice the asked size whose opacity falls off like a
+   * gaussian (no visible edge), strongest over the text block.
+   */
+  backdrop(cx, cy, w, h, a) {
+    if (a <= 0.002) return;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(w, h);
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+    for (let i = 0; i <= 8; i++) {
+      const r = i / 8;
+      g.addColorStop(r, rgba('#03050A', 0.5 * a * Math.exp(-r * r * 4.5) * (1 - r)));
+    }
+    ctx.fillStyle = g;
+    ctx.fillRect(-1, -1, 2, 2);
+    ctx.restore();
   },
 
   /**

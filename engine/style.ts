@@ -94,6 +94,11 @@ export interface StylePackage {
   label(s: string, x: number, y: number, a: number, color: string, size: number, align: CanvasTextAlign): void;
   /** Cover the scene layer for a scene fade: `amount` in (0, 1], through `color`. */
   transition(amount: number, color: string): void;
+  /**
+   * Text protection on a full-frame background: quietly darken (or calm) the area centred at (cx, cy), about w × h,
+   * so light text drawn over it next stays readable; `a` (0–1) fades it with the text.
+   */
+  backdrop(cx: number, cy: number, w: number, h: number, a: number): void;
   /** Chapter label and page number overlay on chapter pages. */
   chapterLabel(lt: number, d: number, n: number, ch: [string, string], chapters: number): void;
   /** Bilingual captions overlay at film time T. */
@@ -149,5 +154,6 @@ export function style(): StylePackage {
 
 export const background = (): void => style().background();
 export const plate = (u: PlateParams): void => style().plate(u);
+export const backdrop: StylePackage['backdrop'] = (...a) => style().backdrop(...a);
 export const statement: StylePackage['statement'] = (...a) => style().statement(...a);
 export const row: StylePackage['row'] = (...a) => style().row(...a);

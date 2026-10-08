@@ -58,6 +58,10 @@ timeline film=film: (build film)
 test-export film=film: (build film)
     bun scripts/test-export.ts --film {{film}}
 
+# Cases for the layout checks of validate (a throwaway film from the template: clean, then with deliberate faults).
+test-validate:
+    bun scripts/test-validate.ts
+
 # Print the scene list with times.
 scenes film=film: (build film)
     bun scripts/export.ts --film {{film}} --scenes
