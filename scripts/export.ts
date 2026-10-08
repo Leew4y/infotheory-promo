@@ -40,6 +40,7 @@ import { hostname } from 'node:os';
 import path from 'node:path';
 import puppeteer, { type Browser, type Page } from 'puppeteer-core';
 import { chromeArgs, findChrome, loadFilm, killTree, serveDist } from './chrome';
+import { requireFilm } from './film-arg';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const argv = Bun.argv.slice(2);
@@ -47,8 +48,7 @@ const opt = (k: string, d?: string): string | undefined => {
   const i = argv.indexOf(`--${k}`);
   return i >= 0 && argv[i + 1] !== undefined && !/^--[a-z]/.test(argv[i + 1]) ? argv[i + 1] : d;
 };
-const FILM = opt('film') ?? '';
-if (!FILM) { console.error('--film <id> is required (one of films/*)'); process.exit(2); }
+const FILM = requireFilm(argv);
 const DIST = path.join(ROOT, 'dist', FILM);
 const flag = (k: string): boolean => argv.includes(`--${k}`);
 const fail = (exit: number, message: string): never => { throw Object.assign(new Error(message), { exit }); };

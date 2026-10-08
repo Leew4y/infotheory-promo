@@ -266,6 +266,17 @@ A1 实施记录（分支 `engine/a1-films`）：
 - 结果：`new-film demo nebula` → `fonts` → `validate`（0 error）→ 无声导出 600 帧 / 20.000 s，测试片不入库；infotheory `validate` 两套风格 0 error，regress 两套 231/231，
   test-export 17/17，`tsc`、`check-imports` 通过；预览（标题、字体、音乐路径）在浏览器里确认。spikes 改为读 `dist/infotheory/`，0d 运行说明随之更新。
 
+A1 / A1b 评审修正（Codex，gpt-6-astra max：1 BLOCKER / 8 SHOULD_FIX / 2 NICE_TO_HAVE，逐条核实后全部处理）：
+- `test-export` 原先无条件删除 `out/test-export/`，而 `test-export` 是合法片名：改为先校验片名与前置条件，作业目录在 `out/<film>/.test-export/`。
+- 片名参数：`scripts/film-arg.ts` 统一解析（必填、FilmSpec 格式、`films/<id>/main.ts` 存在），所有工具在派生任何路径前调用；`validate --json` 的参数错误也输出诊断数组。
+  反例已测：`--film ../x` 被拒，不再写出仓库外的文件。
+- 帧率：`regress`、`validate` 从页面时间轴读取 fps，不再假定 30。
+- `new-film`：风格须是合法单层 id 且有 `index.ts` 与 `fonts.json`；模板里风格导入与片名声明两行须各出现一次，替换在内存中完成，复制到临时目录后整体改名，失败不留半成品。
+- `check-imports`：`/films/...` 这类项目根路径与 `import.meta.glob(...)`（按模式的静态目录前缀）都纳入检查，非字面量的 glob 报错；类型导入与动态导入只在代码里匹配，字符串里的文字不再误报。四个反例已测。
+- 字体库：目录 id 必须唯一；风格引用不再修改目录对象；`--lock` 写回时持排他锁、重新读取目录、按 id 合并，再原子替换。两个并发作业分别补齐不同字体的反例已测，结果与原目录逐字节相同。
+- 开发服务器：只提供 `/music.mp3`（支持 Range，播放器可拖动），`out/`、`dist/`、`.cache/` 与 `.env` 一律拒绝；浏览器里确认播放、跳转与 403。
+- 0d 运行说明：明确须用包含 A1 的 `main`，删去旧分支的回退说法。
+
 **A1b · 全幅背景参数与风格无关（一个小 PR）。**
 - `PlateParams { time, light, sun }` 是黎明风格的词汇，场景被迫按它传参。改为语义参数：`progress`（0–1，在叙事中的位置）、
   `highlight`（0–1，背景里焦点光源的强弱，0 为无），加 `time`（秒，用于缓慢流动）。每个风格自己决定怎么画。

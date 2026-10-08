@@ -19,6 +19,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import puppeteer, { type Browser } from 'puppeteer-core';
 import { chromeArgs, findChrome, loadFilm, serveDist } from './chrome';
+import { filmArg } from './film-arg';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const argv = Bun.argv.slice(2);
@@ -30,12 +31,19 @@ for (let i = 0; i < argv.length; i++) {
 }
 const opt = (k: string, d: string) => (argv.includes(`--${k}`) ? argv[argv.indexOf(`--${k}`) + 1] : d);
 const JSON_OUT = argv.includes('--json');
-const FILM = opt('film', '');
-if (!FILM) { console.error('--film <id> is required (one of films/*)'); process.exit(2); }
+const filmR = filmArg(argv);
+if (filmR.error !== undefined) {
+  // a usage error still answers in the diagnostics format
+  const d = [{ level: 'error', code: 'usage', path: 'argv', message: filmR.error }];
+  if (argv.includes('--json')) console.log(JSON.stringify(d, null, 1));
+  console.error(filmR.error);
+  process.exit(2);
+}
+const FILM = filmR.film;
 /** One of the film's styles (?style=<id>); omitted: all of them. */
 const STYLE = opt('style', '');
 const DIST = path.resolve(ROOT, opt('dist', `dist/${FILM}`));
-const FPS = 30, W = 1920, H = 1080, SAFE = 0.05, MIN_ALPHA = 0.02;
+const W = 1920, H = 1080, SAFE = 0.05, MIN_ALPHA = 0.02;
 const OUT = path.join(ROOT, 'out', FILM, 'validate.json');
 
 interface Diag { level: 'error' | 'warning'; style: string; code: string; path: string; message: string }
@@ -82,6 +90,7 @@ try {
     if (pageFilm !== FILM) err('film-mismatch', 'page', `the built page renders film "${pageFilm}", not "${FILM}"`);
     else {
       const scenes: { name: string; start: number; end: number }[] = await page.evaluate(() => window.__scenes());
+      const FPS: number = await page.evaluate(() => window.__timeline().fps);
       const duration: number = await page.evaluate(() => window.__duration);
       const eps = 1e-6;
       if (!scenes.length) err('timeline-empty', 'timeline', 'no scenes registered');
@@ -103,7 +112,7 @@ try {
           framesChecked++;
           let boxes: { s: string; x0: number; y0: number; x1: number; y1: number; alpha: number }[];
           try {
-            boxes = await page.evaluate((t) => window.__layout(t, 30), t);
+            boxes = await page.evaluate((t, fps) => window.__layout(t, fps), t, FPS);
           } catch (e) {
             // the film failed to render this frame (e.g. a character no bundled font covers)
             err('render-error', `scene:${s.name}@${tag}(${t.toFixed(2)}s)`, (e instanceof Error ? e.message : String(e)).split(/\r?\n/)[0]);

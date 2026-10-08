@@ -5,7 +5,7 @@
  *
  * The film is only the test subject: any film with a score works (its ranges 30–60 s must exist).
  *
- * Each case runs an export into out/test-export/ against an existing target file holding a sentinel. Every job has
+ * Each case runs an export into out/<id>/.test-export/ against an existing target file holding a sentinel. Every job has
  * its own hard watchdog (kills the whole process tree), and each case checks: the exit code, that it ended within
  * its bound, that no Chrome / ffmpeg / stand-in process started by it is still running, that the old target is
  * untouched (failures) or replaced by a video whose frame count and audio length ffprobe confirms (successes), and
@@ -18,18 +18,19 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync
 import { hostname } from 'node:os';
 import path from 'node:path';
 import { killTree } from './chrome';
+import { requireFilm } from './film-arg';
 
 const ROOT = path.resolve(import.meta.dir, '..');
-const FILM = Bun.argv.includes('--film') ? Bun.argv[Bun.argv.indexOf('--film') + 1] ?? '' : '';
-if (!FILM) { console.error('--film <id> is required'); process.exit(2); }
-const DIR = path.join(ROOT, 'out', 'test-export');
+const FILM = requireFilm(Bun.argv.slice(2));
+// the run's own directory under the film's outputs (a dot name, so no film output can collide with it)
+const DIR = path.join(ROOT, 'out', FILM, '.test-export');
 const TARGET = path.join(DIR, 'target.mp4');
 const FIX = path.join(ROOT, 'scripts', 'test-fixtures');
 const SENTINEL = 'SENTINEL: the previous export';
 const stub = (f: string) => JSON.stringify(['bun', path.join(FIX, f)]);
+if (!existsSync(path.join(ROOT, 'out', FILM, 'music.wav'))) { console.error(`out/${FILM}/music.wav missing: run \`just music ${FILM}\` first`); process.exit(2); }
 rmSync(DIR, { recursive: true, force: true });
 mkdirSync(DIR, { recursive: true });
-if (!existsSync(path.join(ROOT, 'out', FILM, 'music.wav'))) { console.error(`out/${FILM}/music.wav missing: run \`just music ${FILM}\` first`); process.exit(2); }
 
 /** Command lines of running processes that belong to these tests. */
 async function ours(): Promise<string[]> {

@@ -10,9 +10,11 @@
  * templates/<id>/**  the same rules as a film (a template is copied into films/ by just new-film)
  *
  * Runtime imports (static, re-exports, dynamic with a literal specifier) come from Bun's own import scanner, which
- * handles any syntax and ignores comments and strings. Type-only imports, which the scanner drops, are found by a
- * pattern pass over the source with comments removed. A dynamic import() whose specifier is not a string literal
- * cannot be checked and is an error.
+ * handles any syntax and ignores comments and strings. Type-only imports, which the scanner drops, and Vite's
+ * import.meta.glob(...) patterns are found by a pattern pass over the source with comments removed and string contents
+ * blanked (so text inside strings never matches). A glob pattern is checked by its static directory prefix.
+ * Specifiers starting with "/" are project-root paths (as Vite resolves them); bare names are packages. A dynamic
+ * import() or import.meta.glob() whose argument is not a string literal cannot be checked and is an error.
  * Diagnostics: { level, code, path, message }. With --json, stdout is only the JSON list and the summary goes to
  * stderr. Exit code 1 on any error.
  */
@@ -42,6 +44,27 @@ function resolve(from: string, spec: string): string {
     try { if (statSync(c).isFile()) return rel(c); } catch {}
   }
   return rel(base);
+}
+/** Resolve a project-root specifier ("/films/x/y") like the bundler does. */
+function resolveRoot(spec: string): string {
+  return resolve(path.join(ROOT, '_'), '.' + spec);
+}
+/** The same text with the contents of every string and template literal replaced by spaces (positions kept). */
+function blankStrings(code: string): string {
+  let out = '', i = 0;
+  while (i < code.length) {
+    const c = code[i];
+    if (c === '"' || c === "'" || c === '`') {
+      let j = i + 1;
+      while (j < code.length && code[j] !== c) j += code[j] === '\\' ? 2 : 1;
+      out += c + ' '.repeat(Math.max(0, Math.min(j, code.length) - i - 1)) + (j < code.length ? c : '');
+      i = j + 1;
+      continue;
+    }
+    out += c;
+    i++;
+  }
+  return out;
 }
 /** Remove // and block comments, keeping string and template literals intact. */
 function stripComments(src: string): string {
@@ -101,12 +124,37 @@ for (const top of ['engine', 'styles', 'films', 'templates']) {
       continue;
     }
     const code = stripComments(src);
-    for (const re of TYPE_ONLY) for (const m of code.matchAll(re)) specs.add(m[2]);
-    for (const m of code.matchAll(/\bimport\s*\(\s*([^)\s][^)]*)\)/g))
-      if (!/^(['"])[^'"]*\1$/.test(m[1].trim())) diags.push({ level: 'error', code: 'import-dynamic', path: file, message: `dynamic import with a non-literal specifier cannot be checked: import(${m[1].trim()})` });
+    const blank = blankStrings(code); // same positions; matches can only come from code, never from text in strings
+    for (const re of TYPE_ONLY)
+      for (const m of blank.matchAll(new RegExp(re.source, 'gd'))) {
+        const [a, b] = m.indices![2]!;
+        specs.add(code.slice(a, b));
+      }
+    for (const m of blank.matchAll(/\bimport\s*\(\s*([^)\s][^)]*)\)/g))
+      if (!/^(['"])[^'"]*\1$/.test(m[1].trim())) diags.push({ level: 'error', code: 'import-dynamic', path: file, message: `dynamic import with a non-literal specifier cannot be checked: import(${code.slice(m.index!, m.index! + m[0].length)})` });
+    // import.meta.glob('pattern' | ['p1', 'p2'], ...): every literal pattern, by its static directory prefix
+    for (const m of blank.matchAll(/\bimport\.meta\.glob\s*\(\s*/g)) {
+      const at = m.index! + m[0].length;
+      const lit = /^(['"])([^'"]*)\1/;
+      const pats: string[] = [];
+      if (lit.test(code.slice(at))) pats.push(code.slice(at).match(lit)![2]);
+      else if (code[at] === '[') {
+        const end = code.indexOf(']', at);
+        const body = code.slice(at + 1, end < 0 ? at + 1 : end).split(',').map((x) => x.trim()).filter(Boolean);
+        for (const x of body) { const mm = x.match(lit); if (mm) pats.push(mm[2]); else pats.push('\0'); }
+      } else pats.push('\0');
+      for (const p of pats) {
+        if (p === '\0') { diags.push({ level: 'error', code: 'import-glob', path: file, message: 'import.meta.glob() with a non-literal pattern cannot be checked' }); continue; }
+        if (p.startsWith('!')) continue; // a negative pattern only removes files
+        const stat = p.slice(0, p.search(/[*?{[]/) < 0 ? p.length : p.search(/[*?{[]/));
+        const dir = stat.slice(0, stat.lastIndexOf('/') + 1) || './';
+        specs.add(`${dir}${dir.endsWith('/') ? '' : '/'}*`);
+      }
+    }
     for (const spec of specs) {
-      if (!spec.startsWith('.')) continue; // packages
-      const bad = verdict(top, file, resolve(f, spec));
+      if (!spec.startsWith('.') && !spec.startsWith('/')) continue; // packages
+      const target = spec.startsWith('/') ? resolveRoot(spec) : resolve(f, spec);
+      const bad = verdict(top, file, target);
       if (bad) diags.push({ level: 'error', code: 'import-direction', path: file, message: `${spec} -> ${bad}` });
     }
   }

@@ -22,15 +22,15 @@
  * Needs uv. Exit code 1 on any download, checksum or tool failure.
  */
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { requireFilm } from './film-arg';
 import { literals } from './literals';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const argv = Bun.argv.slice(2);
 const opt = (k: string, d: string) => (argv.includes(`--${k}`) ? argv[argv.indexOf(`--${k}`) + 1] : d);
-const FILM = opt('film', '');
-if (!FILM) { console.error('--film <id> is required (one of films/*)'); process.exit(2); }
+const FILM = requireFilm(argv);
 
 /** The styles a film imports: films may import a style only as styles/<id>/index.ts (scripts/check-imports.ts). */
 function filmStyles(): string[] {
@@ -71,13 +71,15 @@ const die = (msg: string): never => { console.error(msg); process.exit(1); };
 interface Entry { id: string; family: string; style: 'normal' | 'italic'; weight: string; file: string; url: string; license: string; licenseUrl: string; sha256: string | null }
 type Src = Entry & { role: string };
 const catalog: { comment: string; fonts: Entry[] } = JSON.parse(readFileSync(CATALOG, 'utf8'));
+const dup = catalog.fonts.map((e) => e.id).find((x, i, a) => a.indexOf(x) !== i);
+if (dup) { console.error(`${CATALOG}: font id "${dup}" appears more than once`); process.exit(1); }
 const refs: { id: string; role: string }[] = JSON.parse(readFileSync(REFS, 'utf8')).fonts;
-/** The style's faces in its order; each is the catalog entry itself (so --lock can record its sha256) plus the role. */
+/** The style's faces in its order: a copy of each catalog entry plus the style's role for it. */
 const lock: { fonts: Src[] } = {
   fonts: refs.map((r) => {
     const e = catalog.fonts.find((x) => x.id === r.id);
     if (!e) { console.error(`${REFS}: font "${r.id}" is not in ${CATALOG}`); process.exit(1); }
-    return Object.assign(e, { role: r.role }) as Src;
+    return { ...e, role: r.role };
   }),
 };
 const sha = (b: Uint8Array) => createHash('sha256').update(b).digest('hex');
@@ -119,8 +121,33 @@ for (const f of lock.fonts) {
     await download(f.licenseUrl, lic, (b) => (/SIL OPEN FONT LICENSE/i.test(new TextDecoder().decode(b)) ? null : 'does not look like the SIL Open Font License'));
   }
 }
-// record new sha256 values in the catalog (the role is the style's, not the catalog's)
-if (lockChanged) writeFileSync(CATALOG, JSON.stringify({ ...catalog, fonts: catalog.fonts.map(({ role: _, ...e }: Entry & { role?: string }) => e) }, null, 1) + '\n');
+// record new sha256 values in the catalog: under an exclusive lock, re-read the catalog (another job may have recorded
+// other fonts meanwhile), fill in only the ids this job measured, and replace the file atomically
+if (lockChanged) {
+  const lockFile = `${CATALOG}.lock`;
+  let fd = -1;
+  for (let i = 0; fd < 0; i++) {
+    try { fd = openSync(lockFile, 'wx'); } catch {
+      if (i >= 200) die(`${lockFile} is held by another job (remove it if no fonts job is running)`);
+      await Bun.sleep(50);
+    }
+  }
+  try {
+    const fresh: { comment: string; fonts: Entry[] } = JSON.parse(readFileSync(CATALOG, 'utf8'));
+    for (const f of lock.fonts) {
+      const e = fresh.fonts.find((x) => x.id === f.id);
+      if (!e) die(`${CATALOG}: font "${f.id}" disappeared while recording its sha256`);
+      if (e!.sha256 === null) e!.sha256 = f.sha256;
+      else if (e!.sha256 !== f.sha256) die(`${CATALOG}: "${f.id}" was locked meanwhile as ${e!.sha256}, this job measured ${f.sha256}`);
+    }
+    const tmp = `${CATALOG}.${process.pid}.tmp`;
+    writeFileSync(tmp, JSON.stringify(fresh, null, 1) + '\n');
+    renameSync(tmp, CATALOG);
+  } finally {
+    closeSync(fd);
+    rmSync(lockFile, { force: true });
+  }
+}
 
 // ---- 2. character set
 function walk(dir: string): string[] {

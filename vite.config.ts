@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync } from 'node:fs';
+import { createReadStream, existsSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
@@ -6,21 +6,41 @@ import { defineConfig } from 'vite';
 const root = fileURLToPath(new URL('.', import.meta.url));
 
 // One page shell (index.html, a single 1920x1080 canvas) for every film: FILM picks the entry films/<FILM>/main.ts.
-// `just dev <film>` / `just build <film>` set it. The build goes to dist/<film>/; out/<film>/ (the film's generated
-// music.mp3, from `just music <film>`) is served at / in the dev server.
+// `just dev <film>` / `just build <film>` set it. The build goes to dist/<film>/. The dev server serves exactly one
+// file from the film's outputs, its preview music out/<film>/music.mp3 (from `just music <film>`), at /music.mp3;
+// nothing else under out/ is exposed.
 const FILM = process.env.FILM ?? '';
-const films = readdirSync(path.join(root, 'films')).filter((n) => existsSync(path.join(root, 'films', n, 'main.ts')));
+const films = readdirSync(path.join(root, 'films')).filter((n) => /^[a-z0-9][a-z0-9-]*$/.test(n) && existsSync(path.join(root, 'films', n, 'main.ts')));
 if (!films.includes(FILM)) throw new Error(`FILM=${JSON.stringify(FILM)} is not a film (films/<id>/main.ts): one of ${films.join(', ')}`);
-const OUT = path.join(root, 'out', FILM);
-mkdirSync(OUT, { recursive: true });
+const MUSIC = path.join(root, 'out', FILM, 'music.mp3');
 
 export default defineConfig({
   root,
-  publicDir: OUT,
+  publicDir: false,
   plugins: [{
     name: 'film-entry',
     transformIndexHtml: { order: 'pre', handler: (html) => html.replace('%FILM_ENTRY%', `/films/${FILM}/main.ts`) },
+    configureServer(server) {
+      server.middlewares.use('/music.mp3', (req, res) => {
+        if (!existsSync(MUSIC)) { res.statusCode = 404; res.end(`no ${path.relative(root, MUSIC)}: run just music ${FILM}`); return; }
+        // byte ranges, so the player can seek
+        const size = statSync(MUSIC).size;
+        const m = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range ?? '');
+        let a = 0, b = size - 1;
+        if (m && (m[1] || m[2])) {
+          a = m[1] ? +m[1] : Math.max(0, size - +m[2]);
+          b = m[1] && m[2] ? Math.min(+m[2], size - 1) : size - 1;
+          if (a > b || a >= size) { res.statusCode = 416; res.setHeader('Content-Range', `bytes */${size}`); res.end(); return; }
+          res.statusCode = 206;
+          res.setHeader('Content-Range', `bytes ${a}-${b}/${size}`);
+        }
+        res.setHeader('Accept-Ranges', 'bytes');
+        res.setHeader('Content-Type', 'audio/mpeg');
+        res.setHeader('Content-Length', String(b - a + 1));
+        createReadStream(MUSIC, { start: a, end: b }).pipe(res);
+      });
+    },
   }],
-  server: { host: '127.0.0.1', port: 5174, open: false },
-  build: { outDir: path.join(root, 'dist', FILM), emptyOutDir: true, target: 'es2022', sourcemap: false, copyPublicDir: false },
+  server: { host: '127.0.0.1', port: 5174, open: false, fs: { deny: ['**/out/**', '**/dist/**', '**/.cache/**', '.env', '.env.*'] } },
+  build: { outDir: path.join(root, 'dist', FILM), emptyOutDir: true, target: 'es2022', sourcemap: false },
 });

@@ -5,7 +5,7 @@
 
 ## 前置条件
 
-- 分支 `main`（PR Leew4y/infotheory-promo#2 合入后；合入前用 `plan/reusable-engine`，内容相同）。
+- 分支 `main`，且须包含多影片改动（阶段 A1：`justfile` 里的命令都带片名，如 `just build infotheory`）。更早的提交或分支没有这些命令，不要用。
 - bun、uv、just、ffmpeg（在 PATH 上）、Google Chrome（安装在 `/Applications`；装在别处时设 `CHROME_PATH`）。
 - 约 2 GB 空闲磁盘（诊断素材写到 `out/`，已被 git 忽略）。
 - 跑性能测试时尽量关掉其他重负载程序，插电运行。

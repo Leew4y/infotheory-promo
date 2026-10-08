@@ -30,6 +30,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import puppeteer, { type Browser, type Page } from 'puppeteer-core';
 import { chromeArgs, findChrome, loadFilm, serveDist } from './chrome';
+import { requireFilm } from './film-arg';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const argv = Bun.argv.slice(2);
@@ -41,11 +42,11 @@ for (let i = 0; i < argv.length; i++) {
 }
 const opt = (k: string, d: string) => (argv.includes(`--${k}`) ? argv[argv.indexOf(`--${k}`) + 1] : d);
 const flag = (k: string) => argv.includes(`--${k}`);
-const FILM = opt('film', '');
-if (!FILM) { console.error('--film <id> is required (one of films/*)'); process.exit(2); }
+const FILM = requireFilm(argv);
 const DIST = path.resolve(ROOT, opt('dist', `dist/${FILM}`));
 const WORKERS = +opt('workers', '4');
-const FPS = 30;
+/** The film's frame rate, read from the page's timeline for each style run. */
+let FPS = 0;
 const STYLE = opt('style', '');
 const baselineOf = (style: string) => path.join(ROOT, 'films', FILM, 'regress', `${style}.json`);
 const reportOf = (style: string) => path.join(ROOT, 'out', FILM, 'regress', `${style}.json`);
@@ -91,6 +92,7 @@ try {
     const pageFilm: string | undefined = await page.evaluate(() => window.__film);
     if (pageFilm !== FILM) throw new Error(`the built page renders film "${pageFilm}", not "${FILM}"`);
     const pageStyle: string = await page.evaluate(() => window.__style); // loadFilm checked it names a style, the requested one
+    FPS = await page.evaluate(() => window.__timeline().fps);
     const BASELINE = baselineOf(pageStyle), REPORT = reportOf(pageStyle);
     const base = flag('update') ? null : existsSync(BASELINE) ? await Bun.file(BASELINE).json() : null;
     if (!flag('update') && !base) { console.error(`[${pageStyle}] no baseline at ${BASELINE} (run with --update --style ${pageStyle})`); return 2; }
