@@ -7,9 +7,10 @@
 //     claim of the film, a counter-argument or a line of the essay, "" for the later parts of the same sentence;
 //   - chapter labels are [Chinese title, ''].
 import { defineFilm, selectStyle } from '../../engine';
-import vigil from '../../styles/math-lessons-a';
+import vigil from '../../styles/vigil';
 import chapel from '../../styles/math-lessons-b';
 import manifesto from '../../styles/math-lessons-c';
 
+// vigil is the chosen look (2026-10-09); the other two directions stay listed for comparison until Develata decides.
 selectStyle([vigil, chapel, manifesto]);
 export default defineFilm({ id: 'math-lessons', fps: 30, bpm: 60, chapters: 4 });

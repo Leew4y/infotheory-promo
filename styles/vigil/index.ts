@@ -1,5 +1,5 @@
 /**
- * Direction A, "夜祷 · Vigil" (rough sample for choosing a direction; not yet reviewed). A nave at night: warm
+ * "夜祷 · Vigil", the look of math-lessons (chosen from three directions on 2026-10-09). A nave at night: warm
  * near-black ground lit as if by one candle, parchment-white serif type, one candle-gold accent, crimson and cobalt
  * glass as the diagram colours; full-frame plates are a rose window whose panes fill with light as the film goes on.
  * Captions are Chinese only; for the film that uses it, a caption's second slot carries a verse mark (a number, "◇",
@@ -31,7 +31,7 @@ function mark(m: string, x: number, y: number, a: number, size: number): void {
 }
 
 const style: StylePackage = {
-  id: 'math-lessons-a',
+  id: 'vigil',
   palette: {
     bg: '#0F0C0A',
     bg2: '#1C1713',
