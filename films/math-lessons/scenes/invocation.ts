@@ -1,6 +1,7 @@
-// The opening: two lines of the essay over the dark plate, in the essay's voice (E01, E02).
+// The opening: two lines of the essay over the dark plate, in the essay's voice (E01, E02). On plates the display
+// text is the caption, so the scene declares no subs.
 import { plate, backdrop, scene, win, W } from '../../../engine';
-import { voiceLine } from '../lib';
+import { recite } from '../lib';
 
 scene({
   name: 'invocation', kind: 'plate', dur: 11.5, fi: 1.2, fo: 0.8,
@@ -10,9 +11,9 @@ scene({
   draw(lt) {
     plate({ time: lt, progress: 0.05, highlight: 0 });
     backdrop(W / 2, 520, 1500, 420, win(lt, 0.4, 10.9, 0.8, 0.6));
-    voiceLine('在完全清醒的时候……', W / 2, 470, win(lt, 0.6, 5.3, 0.6, 0.5), 'essay', { onDark: true, align: 'center', mk: '◇', tag: true, size: 50 });
-    voiceLine('把自己的一生烧进去。', W / 2, 560, win(lt, 2.8, 5.3, 0.6, 0.5), 'essay', { onDark: true, align: 'center', size: 50 });
-    voiceLine('我们会自己决定，', W / 2, 470, win(lt, 5.85, 10.6, 0.6, 0.6), 'essay', { onDark: true, align: 'center', mk: '◇', size: 50 });
-    voiceLine('什么东西值得我们发疯。', W / 2, 560, win(lt, 7.8, 10.6, 0.6, 0.6), 'essay', { onDark: true, align: 'center', size: 50 });
+    recite([
+      { t1: 5.6, lines: [{ t: 0.6, s: '在完全清醒的时候……', mk: '◇', who: 'essay' }, { t: 2.8, s: '把自己的一生烧进去。', who: 'essay' }] },
+      { t1: 10.9, lines: [{ t: 5.85, s: '我们会自己决定，', mk: '◇', who: 'essay' }, { t: 7.8, s: '什么东西值得我们发疯。', who: 'essay' }] },
+    ], lt);
   },
 });

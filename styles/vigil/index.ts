@@ -11,6 +11,9 @@ import { C, F, M, type StylePackage, type SubLine } from '../../engine/style';
 import { clamp, eout, win, W, H } from '../../engine/util';
 import { PLATE_FS } from './shader';
 
+/** Captions are set in the reading face (the display face is for large text only). */
+const CAPTION = '"Noto Serif SC", "STIX Two Text", "STIX Two Math", serif';
+
 /** A caption's verse mark: a number in gold mono, or a small outlined diamond for claims. */
 function mark(m: string, x: number, y: number, a: number, size: number): void {
   if (!m || a <= 0.002) return;
@@ -113,7 +116,7 @@ const style: StylePackage = {
     if (a <= 0) return;
     const nums = ['〇', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
     rule(M, 104, M + 34, 104, C.accent, a, 1.5);
-    text(`${nums[n] ?? n}　${ch[0]}`, M, 142, { size: 26, color: C.fg2, alpha: a, ls: 6 });
+    text(`${nums[n] ?? n}　${ch[0]}`, M, 142, { size: 26, color: C.fg2, alpha: a, ls: 4 });
     label(`${n} / ${chapters}`, W - M, H - 92, a, C.muted, 17, 'right');
   },
 
@@ -122,8 +125,8 @@ const style: StylePackage = {
       const a = win(T, s.a, s.b, 0.18, 0.18);
       if (a <= 0) continue;
       const size = 34, y = 968;
-      const w = measure(s.zh, size, F.body, 400, 3);
-      text(s.zh, W / 2, y, { size, color: s.plate ? C.fgOnDark : C.fg, alpha: a, align: 'center', ls: 3 });
+      const w = measure(s.zh, size, CAPTION, 500, 1);
+      text(s.zh, W / 2, y, { font: CAPTION, size, weight: 500, color: s.plate ? C.fgOnDark : C.fg, alpha: a, align: 'center', ls: 1 });
       mark(s.en, W / 2 - w / 2 - 36, y, a, size);
     }
   },

@@ -2,7 +2,7 @@
 // identically zero; on the breakdown side a smooth force may be chosen. From 10.8 s cell (C) is marked: the statement
 // OpenAI announced it had proved (F-N07). The film does not judge the proof.
 import { text, label, rule, background, M, C, F, W, scene, sstep, clamp, eout } from '../../../engine';
-import { verse, voiceLine } from '../lib';
+import { bell, verse, voiceLine } from '../lib';
 
 const X0 = M, X1 = W - M, Y0 = 300, ROW = 190, HEAD = 70, LEFT = 260;
 const COLW = (X1 - X0 - LEFT) / 2;
@@ -20,7 +20,7 @@ scene({
     [15.28, 18.25, 'Clay 说：问题看来已经解决；', ''],
     [18.25, 19.97, '评审，刻意不急。', ''],
   ],
-  sfx: [[0.6, 'chime', { midi: 77 }], [10.8, 'chime', { midi: 79 }], [10.9, 'tone', { midi: 69 }]],
+  sfx: [[0.6, 'chime', { midi: bell(12) }], [10.8, 'chime', { midi: bell(13) }], [10.9, 'tone', { midi: 69 }]],
   draw(lt) {
     background();
     const a = sstep(0.4, 1.4, lt);

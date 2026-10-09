@@ -1,0 +1,247 @@
+[
+ {
+  "t": 0,
+  "name": "swell",
+  "dur": 4
+ },
+ {
+  "t": 5.8,
+  "name": "low",
+  "midi": 38
+ },
+ {
+  "t": 11.8,
+  "name": "chime",
+  "midi": 74
+ },
+ {
+  "t": 17.1,
+  "name": "chime",
+  "midi": 74
+ },
+ {
+  "t": 21.8,
+  "name": "ink"
+ },
+ {
+  "t": 30.1,
+  "name": "chime",
+  "midi": 76
+ },
+ {
+  "t": 38.5,
+  "name": "chime",
+  "midi": 77
+ },
+ {
+  "t": 39.5,
+  "name": "tick"
+ },
+ {
+  "t": 41.5,
+  "name": "tick"
+ },
+ {
+  "t": 43.5,
+  "name": "tick"
+ },
+ {
+  "t": 45.1,
+  "name": "chime",
+  "midi": 79
+ },
+ {
+  "t": 45.3,
+  "name": "ink"
+ },
+ {
+  "t": 46.3,
+  "name": "ink"
+ },
+ {
+  "t": 47.3,
+  "name": "ink"
+ },
+ {
+  "t": 50.6,
+  "name": "chime",
+  "midi": 81
+ },
+ {
+  "t": 50.8,
+  "name": "stamp"
+ },
+ {
+  "t": 58.6,
+  "name": "chime",
+  "midi": 83
+ },
+ {
+  "t": 66.1,
+  "name": "chime",
+  "midi": 84
+ },
+ {
+  "t": 75.56,
+  "name": "low",
+  "midi": 38
+ },
+ {
+  "t": 81.1,
+  "name": "chime",
+  "midi": 86
+ },
+ {
+  "t": 88.09,
+  "name": "chime",
+  "midi": 88
+ },
+ {
+  "t": 95.6,
+  "name": "chime",
+  "midi": 89
+ },
+ {
+  "t": 103.34,
+  "name": "low",
+  "midi": 38
+ },
+ {
+  "t": 107.11,
+  "name": "chime",
+  "midi": 91
+ },
+ {
+  "t": 113.6,
+  "name": "low",
+  "midi": 33,
+  "dur": 1.8
+ },
+ {
+  "t": 124.1,
+  "name": "chime",
+  "midi": 93
+ },
+ {
+  "t": 134.3,
+  "name": "chime",
+  "midi": 95
+ },
+ {
+  "t": 134.4,
+  "name": "tone",
+  "midi": 69
+ },
+ {
+  "t": 145.1,
+  "name": "chime",
+  "midi": 96
+ },
+ {
+  "t": 152.09,
+  "name": "low",
+  "midi": 33,
+  "dur": 1.8
+ },
+ {
+  "t": 162.35,
+  "name": "low",
+  "midi": 38
+ },
+ {
+  "t": 167.6,
+  "name": "chime",
+  "midi": 98
+ },
+ {
+  "t": 171.3,
+  "name": "stamp",
+  "gain": 0.3
+ },
+ {
+  "t": 171.6,
+  "name": "stamp",
+  "gain": 0.3
+ },
+ {
+  "t": 171.9,
+  "name": "stamp",
+  "gain": 0.3
+ },
+ {
+  "t": 184.6,
+  "name": "chime",
+  "midi": 88
+ },
+ {
+  "t": 192.8,
+  "name": "swell",
+  "dur": 2
+ },
+ {
+  "t": 196.03,
+  "name": "low",
+  "midi": 38
+ },
+ {
+  "t": 201.4,
+  "name": "chime",
+  "midi": 89
+ },
+ {
+  "t": 205,
+  "name": "breath",
+  "dur": 2.5
+ },
+ {
+  "t": 219.3,
+  "name": "low",
+  "midi": 33,
+  "dur": 1.8
+ },
+ {
+  "t": 226.3,
+  "name": "chime",
+  "midi": 88
+ },
+ {
+  "t": 236.6,
+  "name": "chime",
+  "midi": 91
+ },
+ {
+  "t": 245.5,
+  "name": "swell",
+  "dur": 5
+ },
+ {
+  "t": 256.07,
+  "name": "low",
+  "midi": 38
+ },
+ {
+  "t": 259.82,
+  "name": "low",
+  "midi": 38
+ },
+ {
+  "t": 263.57,
+  "name": "low",
+  "midi": 38
+ },
+ {
+  "t": 267.32,
+  "name": "low",
+  "midi": 38
+ },
+ {
+  "t": 269.5,
+  "name": "swell",
+  "dur": 6
+ },
+ {
+  "t": 286,
+  "name": "chime",
+  "midi": 74
+ }
+]
