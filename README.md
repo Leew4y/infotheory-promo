@@ -60,6 +60,9 @@ styles/nebula/        "星云"风格包（同样的接口，另一套外观）
 fonts/catalog.json    字体库（42 个字体文件，全部 OFL）：上游来源（固定到提交）、sha256、字重、许可证与选用标签；风格按 id 引用
 templates/film/       新片骨架（标题、一页正文、结尾，无配乐），just new-film 复制它
 templates/style/      新风格包骨架（接口齐全、可通过全部检查），just new-style 复制它
+engine/capture.ts     录屏素材：清单、剪辑（截取 / 剪掉 / 变速）、镜头与坐标映射
+engine/demo.ts        产品演示场景：录屏放进风格化的窗口，镜头推拉、合成光标与点击波纹
+engine/media.ts       素材帧的按需加载、解码与内存上限缓存；导出时缺帧即报错
 films/infotheory/     信息论短片（参考片）
   film.ts             帧率、BPM、章节数与可用风格（第一个是默认，页面 URL 加 ?style=<id> 切换）
   main.ts             入口：film → scenes → boot()
@@ -92,6 +95,9 @@ justfile              一键命令
 just setup                    # bun install + uv sync
 just new-film demo nebula     # 从模板新建 films/demo/（风格 nebula），之后 just fonts demo
 just new-style ink-wash       # 从模板新建风格包 styles/ink-wash/（含 STYLE.md 设计说明骨架）
+just import-capture demo app ~/rec/app.mp4   # 把 OBS 等任意录屏导入为片子 demo 的素材 app（帧在 .cache/，清单入库）
+just capture demo web demo-scenario.ts       # 用 Playwright 按脚本录制网页演示，同时记录点击
+just captures demo ~/rec      # 换机器或清了缓存后，从源视频重建全部素材帧（按 sha256 校验）
 just dev <film>               # 预览 http://127.0.0.1:5174 ：空格播放/暂停，←/→ 5 秒，, . 单帧，[ ] 跳场景，F 全屏；?style=<id> 切换风格
 just shots <film> 5,20.5      # 写检查帧到 out/<film>/shots/（加 --style nebula 写到 shots-nebula/）
 just cues <film>              # 页面 → films/<film>/cues.json 与 timeline.json

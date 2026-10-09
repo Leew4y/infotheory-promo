@@ -47,6 +47,8 @@ why). Remove the directions that were not chosen.
 - Plate shader: `uP` = progress (opening -> close), `uQ` = highlight; deterministic in `uTime`; no visible banding.
 - Layout: `margin` and `column` are the grid scenes use; captions and chapter labels must stay inside the 5 % safe area.
 - Motion: fades and transitions continuous at both ends (no jump on the first or last frame of a fade).
+- Demo look (`demo`: the window around a screen capture, the cursor, the click ripple): part of the style, in its
+  palette and spirit; check it with a demo scene if the film has captures.
 
 ## 3. Check and self-review (at least one round)
 

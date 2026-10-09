@@ -36,6 +36,10 @@ Every film command takes the film id first (default `infotheory`); outputs go to
 | `just export <film> [workers crf] [--noaudio] [--style id]` | the video |
 | `just check`, `just check-imports`, `just test-validate`, `just test-export <film>` | type check, boundaries, tests |
 | `just font-catalog` | download and verify the whole font library |
+| `just import-capture <film> <id> <video> [--fps 30] [--crop W:H:X:Y] [--events f.jsonl --sync rec=video]` | a screen recording (OBS, any video) becomes capture `<id>`: manifest `films/<film>/captures/<id>.json`, frames in `.cache/captures/<film>/<id>/` |
+| `just capture <film> <id> <scenario.ts>` | record a web demo with Playwright (`scripts/lib/scenario.ts`), with click and pointer events; the source video goes to `out/<film>/sources/` |
+| `just captures <film> <dir>` | re-derive every capture's frames from its source videos (by name in `<dir>`, checked by sha256) |
+| `just test`, `just test-capture`, `just bench-capture` | unit tests; capture end-to-end cases; capture throughput and memory |
 
 ## Rules
 
@@ -47,6 +51,11 @@ Every film command takes the film id first (default `infotheory`); outputs go to
 - Fonts come only from `fonts/catalog.json`; a style lists the ids it uses in `fonts.json`. Adding a font to the
   catalog (a download) needs the person's confirmation.
 - Text on a full-frame plate goes over `backdrop(...)` so it stays readable.
+- Product demos: `demoScene({ name, asset, edit, camera, cursor, clicks, title, ... })` (engine/demo.ts) with an asset
+  imported from `films/<film>/captures/<id>.json`. The edit lists source segments `{ from, to, speed }` (cuts between them);
+  the camera is keyframes `{ t, x, y, zoom }` in frame pixels on the scene's clock; cursor and clicks come from the
+  recorded events, or keyframes for a recording without events. Capture sources (videos) stay outside the repository;
+  only manifests are committed.
 - Done means: `just check`, `just check-imports`, `just validate <film>` (0 errors in every style) and `just regress
   <film>` (every style with a baseline) pass, and the sheet has been looked at. The layout checks sample five frames
   per scene and judge axis-aligned boxes: a strong heuristic, not a proof. Report what was verified, what was not, and
