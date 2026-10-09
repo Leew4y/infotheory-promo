@@ -55,7 +55,8 @@ const widthOf = (s: string, who: Voice, size: number) => measure(s, sizeOf(who, 
 
 /**
  * One display line in a voice, left-aligned at x or centred on x (align 'center'); `mk` is its verse mark, drawn in
- * the left margin of the line. A counter line gets a vertical rule and the tag 反方, an essay line the tag 随笔
+ * the left margin of the line. A counter line gets a vertical rule and the tag 反方, an essay line the tag
+ * 随笔 · 价值判断与思辨 (so the viewer sees what kind of statement it is)
  * (tags only when `tag` is set, on the first line of a block).
  */
 export function voiceLine(s: string, x: number, y: number, a: number, who: Voice, o: { size?: number; onDark?: boolean; align?: CanvasTextAlign; mk?: string; tag?: boolean } = {}): void {
@@ -66,7 +67,7 @@ export function voiceLine(s: string, x: number, y: number, a: number, who: Voice
   text(s, x0, y, { size, color: tone(who, !!o.onDark), alpha: a, ls });
   if (o.mk) verse(o.mk, x0 - Math.min(size * 0.75, 44), y, a, size);
   if (who === 'counter') rule(x0 - 22, y - size * 0.95, x0 - 22, y + size * 0.2, tone(who, !!o.onDark), a, 2);
-  if (o.tag && (who === 'counter' || who === 'essay')) label(who === 'counter' ? '反方' : '随笔', x0, y - size * 1.25, a, o.onDark ? C.mutedOnDark : C.muted, 18);
+  if (o.tag && (who === 'counter' || who === 'essay')) label(who === 'counter' ? '反方' : '随笔 · 价值判断与思辨', x0, y - size * 1.25, a, o.onDark ? C.mutedOnDark : C.muted, 18);
 }
 
 /** A quotation block: large Chinese lines, the original or a gloss in small text below, then the source. */

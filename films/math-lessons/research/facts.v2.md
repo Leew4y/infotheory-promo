@@ -1,4 +1,4 @@
-# 第二阶段：事实与来源清单
+# 事实与来源清单（facts v2，第五阶段冻结快照；工作副本为 facts.md）
 
 影片：`math-lessons`。版本：facts（工作副本，第五阶段按审计修订；冻结快照见 facts.v1.md）。来源编号 S1–S22 见 [sources.md](sources.md)；论证结构见 [argument-map.md](argument-map.md)。
 

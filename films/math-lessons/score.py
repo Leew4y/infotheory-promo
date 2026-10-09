@@ -30,15 +30,15 @@ strings(at('title'), [D3, A3, D4], 5.0, .009, att=2.0, rel=2.5, cut=1200)
 
 # ---- chapter 1 (fontenelle .. numbers): a held D Dorian drone
 bed(at('fontenelle'), [D2, A2, D3], span('fontenelle', 'defenders') - .4, .022, att=2.0)
-# the cycloid keeps time: the bass changes when the beads reach the bottom (9 s after the scene's start + 1, 3, 5)
-for k, t in enumerate([10.0, 12.0, 14.0]):
+# the cycloid keeps time: the bass changes when the beads reach the bottom (released 7.6 s into the scene; + 1 s, + 3 s)
+for k, t in enumerate([8.6, 10.6]):
     cello(at('cycloid') + t, D2 if k % 2 == 0 else A1, 1.9, .03, att=.15, rel=1.2)
 # the litany of defenders: one bell per name, then everything holds its breath at Hardy's "no"
-for t, m in [(0.8, D4), (1.8, F4), (2.8, A4)]:
+for t, m in [(0.6, D4), (1.4, F4), (2.2, A4)]:
     felt(at('defenders') + t, m + UP, .022, 2.6)
-# Hardy's "no": the drone stops for a beat, then returns under his defence
+# Hardy: the drone stops for a beat at his name, then returns under his defence
 bed(at('hardy') + 1.6, [D2, A2], span('hardy', 'hardy') - 1.6, .02, att=1.5)
-felt(at('hardy') + 7.7, D5 + 12, .022, 3.0)
+felt(at('hardy') + 7.9, D5 + 12, .022, 3.0)
 # number theory: the bass moves to C (the Dorian flat seventh); D returns with Hardy
 bed(at('numbers'), [C2, 43], span('numbers', 'numbers'), .02, att=1.5)
 
@@ -49,30 +49,30 @@ bed(at('needed'), [D2, A2, D3], span('needed', 'needed'), .022, att=1.5)
 
 # ---- chapter 3 (statement, dispute): the bass hangs on A, unresolved; three single notes for three voices
 bed(at('statement'), [A1, A2], span('statement', 'statement'), .022, att=1.5)
-felt(at('statement') + 10.8, A4 + UP, .022, 3.0)
-for t, m in [(0.6, E4), (1.4, G4), (7.6, A4)]:
+felt(at('statement') + 10.55, A4 + UP, .022, 3.0)
+for t, m in [(0.5, E4), (1.3, G4), (7.35, A4)]:
     felt(at('dispute') + t, m + UP, .02, 2.8)
-bed(at('dispute'), [A1, A2], 13.6, .02, att=1.0)
-bed(at('dispute') + 13.6, [D2, A2], span('dispute', 'dispute') - 13.6, .022, att=1.2)
+bed(at('dispute'), [A1, A2], 22.0, .02, att=1.0)
+bed(at('dispute') + 22.0, [D2, A2], span('dispute', 'dispute') - 22.0, .022, att=1.2)
 
 # ---- chapter 4 (withdrawal, kernel): the bass steps down as the count goes down
-bed(at('withdrawal'), [D2, A2], 6.3, .02, att=1.0)
+bed(at('withdrawal'), [D2, A2], 6.15, .02, att=1.0)
 for k, m in enumerate([C2, B1f]):
-    cello(at('withdrawal') + 6.3 + .6 * k, m, 2.2 - .3 * k, .03, att=.2)
-bed(at('withdrawal') + 7.5, [B1f + 12, F3], span('withdrawal', 'withdrawal') - 7.5, .018, att=1.5)
+    cello(at('withdrawal') + 6.15 + .6 * k, m, 2.2 - .3 * k, .03, att=.2)
+bed(at('withdrawal') + 7.35, [B1f + 12, F3], span('withdrawal', 'withdrawal') - 7.35, .018, att=1.5)
 bed(at('kernel'), [D2, A2], span('kernel', 'kernel'), .016, att=2.0)
 
 # ---- the essay's voice: no bass, only a high suspended fifth; the bass returns with the counter-argument
-strings(at('voice'), [D5, A4 + 12], 14.0, .012, att=3.0, rel=3.0, cut=3000)
-bed(at('voice') + 14.4, [A1, A2], span('voice', 'voice') - 14.4, .02, att=1.0)
+strings(at('voice'), [D5, A4 + 12], 16.0, .012, att=3.0, rel=3.0, cut=3000)
+bed(at('voice') + 16.3, [A1, A2], span('voice', 'voice') - 16.3, .02, att=1.0)
 
 # ---- the fire: D returns; the closing sentence rises to a borrowed D major, then settles on the open fifth
-bed(at('fire'), [D2, A2], 34.1, .022, att=1.5)
-close = at('fire') + 34.1
+bed(at('fire'), [D2, A2], 30.75, .022, att=1.5)
+close = at('fire') + 30.75
 strings(close, [D3, A3, D4, F4 + 1, A4], 13.0, .015, att=2.5, rel=3.0, cut=1800)
 cello(close, D2, 13.0, .04, att=.8, rel=3.0)
 chordf(close + .2, [D4 + 12, F4 + 13, A4 + 12], .022, 4.0)
-tail = span('fire', 'colophon') - 34.1 - 13.0
+tail = span('fire', 'colophon') - 30.75 - 13.0
 strings(close + 13.0, [D3, A3, D4], max(1.0, tail - 3.0), .016, att=1.0, rel=2.5, cut=1800)
 bed(close + 13.0, [D2, A2], max(1.0, tail - 3.0), .02, att=1.0, rel=2.5)
 

@@ -11,16 +11,16 @@ const CELLS: { k: string; col: number; row: number }[] = [
 ];
 
 scene({
-  name: 'statement', kind: 'page', dur: 21.0, chapter: 3, ch: ['题面', ''],
+  name: 'statement', kind: 'page', dur: 20.5, chapter: 3, ch: ['题面', ''],
   subs: [
-    [0.6, 2.57, 'Clay 的题面写着：', '12'],
-    [2.57, 6.04, '证明解存在且光滑，外力须为零；', ''],
-    [6.04, 10.26, '证明解会破裂，可以选一个光滑的外力。', ''],
-    [10.81, 15.28, '9 月，OpenAI 宣布，它的内部系统证明了后者。', '13'],
-    [15.28, 18.25, 'Clay 说：问题看来已经解决；', ''],
-    [18.25, 19.97, '评审，刻意不急。', ''],
+    [0.5, 2.45, 'Clay 的题面写着：', '12'],
+    [2.45, 5.9, '证明解存在且光滑，外力须为零；', ''],
+    [5.9, 10.1, '证明解会破裂，可以选一个光滑的外力。', ''],
+    [10.55, 15.0, '9 月，OpenAI 宣布，它的内部系统证明了后者。', '13'],
+    [15.0, 17.95, 'Clay 说：问题看来已经解决；', ''],
+    [17.95, 19.65, '评审，刻意不急。', ''],
   ],
-  sfx: [[0.6, 'chime', { midi: bell(12) }], [10.8, 'chime', { midi: bell(13) }], [10.9, 'tone', { midi: 69 }]],
+  sfx: [[0.5, 'chime', { midi: bell(12) }], [10.55, 'chime', { midi: bell(13) }], [10.65, 'tone', { midi: 69 }]],
   draw(lt) {
     background();
     const a = sstep(0.4, 1.4, lt);
@@ -45,13 +45,13 @@ scene({
         text('f', x + 132, y + 140, { font: F.math, style: 'italic', size: 52, color: C.accent, alpha: ca });
       }
     }
-    // (C): the statement OpenAI announced it had proved
-    const k = eout(clamp((lt - 10.8) / 0.8));
+    // the breakdown column: OpenAI announced it had established (C) and also (D)
+    const k = eout(clamp((lt - 10.55) / 0.8));
     if (k > 0) {
       const x = X0 + LEFT + COLW, y = Y0 + HEAD;
       rule(x + 6, y + 6, x + 6 + (COLW - 12) * k, y + 6, C.accent, 1, 3);
       rule(x + 6, y + 2 * ROW - 6, x + 6 + (COLW - 12) * k, y + 2 * ROW - 6, C.accent, 1, 3);
-      label('OpenAI 宣布：成立 (C)，也成立 (D)', x + COLW - 24, y + 62, sstep(11.2, 12.0, lt), C.accent, 18, 'right');
+      label('OpenAI 宣布：成立 (C)，也成立 (D)', x + COLW - 24, y + 62, sstep(10.95, 11.75, lt), C.accent, 18, 'right');
     }
     voiceLine('本片不判断这个证明的对错。', X0 + 40, 820, sstep(12.5, 13.5, lt), 'film', { size: 26, mk: '◇' });
   },
