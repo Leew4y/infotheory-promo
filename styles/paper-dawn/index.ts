@@ -42,6 +42,13 @@ function paper(tone = C.bg): void {
   ctx.restore();
 }
 
+function arrowPath(x: number, y: number, s: number): void {
+  const p: [number, number][] = [[0, 0], [0, 17], [4.2, 13.2], [7, 19.5], [9.6, 18.4], [6.9, 12.2], [12.4, 12.2]];
+  ctx.beginPath();
+  p.forEach(([u, v], i) => (i ? ctx.lineTo(x + u * s, y + v * s) : ctx.moveTo(x + u * s, y + v * s)));
+  ctx.closePath();
+}
+
 const paperDawn: StylePackage = {
   id: 'paper-dawn',
   palette: {
@@ -115,6 +122,47 @@ const paperDawn: StylePackage = {
     ctx.fillStyle = g;
     ctx.fillRect(-1, -1, 2, 2);
     ctx.restore();
+  },
+
+  /** Captures as prints pasted on the page: a thin ink border, a soft shadow, the title as a small caps label above. */
+  demo: {
+    window(r, title, a) {
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.shadowColor = 'rgba(60,40,20,0.22)';
+      ctx.shadowBlur = 28;
+      ctx.shadowOffsetY = 10;
+      ctx.fillStyle = C.bg;
+      ctx.fillRect(r.x, r.y, r.w, r.h);
+      ctx.restore();
+      rule(r.x, r.y, r.x + r.w, r.y, C.fg2, a, 1);
+      rule(r.x + r.w, r.y, r.x + r.w, r.y + r.h, C.fg2, a, 1);
+      rule(r.x + r.w, r.y + r.h, r.x, r.y + r.h, C.fg2, a, 1);
+      rule(r.x, r.y + r.h, r.x, r.y, C.fg2, a, 1);
+      if (title) label(title, r.x, r.y - 16, a, C.muted, 15);
+      return { x: r.x + 1, y: r.y + 1, w: r.w - 2, h: r.h - 2 };
+    },
+    cursor(x, y, press, a) {
+      ctx.save();
+      ctx.globalAlpha = a;
+      arrowPath(x, y, 1.25 - 0.1 * press);
+      ctx.fillStyle = C.bg;
+      ctx.fill();
+      ctx.lineWidth = 1.6;
+      ctx.strokeStyle = C.fg;
+      ctx.stroke();
+      ctx.restore();
+    },
+    ripple(x, y, k, a) {
+      ctx.save();
+      ctx.globalAlpha = a * (1 - k);
+      ctx.strokeStyle = C.accent;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, y, 8 + 34 * eout(k), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    },
   },
 
   /** Fades go through a flat colour (paper or dark). */

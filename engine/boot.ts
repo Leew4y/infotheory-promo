@@ -88,13 +88,17 @@ export function boot(o: BootOptions): void {
   }))
     .then(() => {
       if (!manifest) throw new Error(`no bundled fonts for film "${film().id}" in style "${sid}" (run: bun scripts/fonts.ts --style ${sid})`);
+      // the first frame's media too, so the page is ready to draw it
+      return prepare(0);
+    })
+    .then(() => {
       fontsReady = true;
       const l = document.getElementById('load');
       if (l) l.textContent = o.readyText ?? '字体已就绪 · 建议全屏观看（F）';
       frame(0);
     })
     .catch((e) => {
-      fontError = `fonts failed to load: ${e instanceof Error ? e.message : String(e)}`;
+      fontError = `page not ready: ${e instanceof Error ? e.message : String(e)}`;
       console.error(fontError);
       const l = document.getElementById('load');
       if (l) l.textContent = fontError;

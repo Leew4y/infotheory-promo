@@ -11,6 +11,13 @@ import { C, F, M, type StylePackage, type SubLine } from '../../engine/style';
 import { clamp, eout, sstep, win, W, H } from '../../engine/util';
 import { PLATE_FS } from './shader';
 
+function arrowPath(x: number, y: number, s: number): void {
+  const p: [number, number][] = [[0, 0], [0, 17], [4.2, 13.2], [7, 19.5], [9.6, 18.4], [6.9, 12.2], [12.4, 12.2]];
+  ctx.beginPath();
+  p.forEach(([u, v], i) => (i ? ctx.lineTo(x + u * s, y + v * s) : ctx.moveTo(x + u * s, y + v * s)));
+  ctx.closePath();
+}
+
 const style: StylePackage = {
   id: 'template-style',
   // semantic colours: page ground, ink, secondary text, rules, one accent (+ a lighter form), two quiet diagram colours,
@@ -82,6 +89,39 @@ const style: StylePackage = {
     ctx.fillStyle = g;
     ctx.fillRect(-1, -1, 2, 2);
     ctx.restore();
+  },
+
+  demo: {
+    window(r, title, a) {
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.fillStyle = C.bg2;
+      ctx.fillRect(r.x - 1, r.y - 1, r.w + 2, r.h + 2);
+      ctx.restore();
+      if (title) label(title, r.x, r.y - 14, a, C.muted, 15, 'left');
+      return r;
+    },
+    cursor(x, y, press, a) {
+      ctx.save();
+      ctx.globalAlpha = a;
+      arrowPath(x, y, 1.25 - 0.1 * press);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fill();
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = '#000000';
+      ctx.stroke();
+      ctx.restore();
+    },
+    ripple(x, y, k, a) {
+      ctx.save();
+      ctx.globalAlpha = a * (1 - k);
+      ctx.strokeStyle = C.accent;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, y, 8 + 30 * eout(k), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    },
   },
 
   chapterLabel(lt, d, n, ch, chapters) {

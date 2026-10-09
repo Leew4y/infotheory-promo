@@ -12,5 +12,5 @@
     "skipLibCheck": true,
     "noUncheckedIndexedAccess": false
   },
-  "include": ["engine", "films", "styles", "templates", "scripts", "vite.config.ts"]
+  "include": ["engine", "films", "styles", "templates", "scripts", "tests", "vite.config.ts"]
 }

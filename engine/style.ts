@@ -8,6 +8,7 @@
  * so values a scene captures at registration (e.g. a fade colour) already come from the active style.
  */
 import type { Grade } from './gl';
+import type { Rect } from './capture';
 import { check, GradeSpec } from './schema';
 
 export interface Palette {
@@ -99,6 +100,15 @@ export interface StylePackage {
    * so light text drawn over it next stays readable; `a` (0–1) fades it with the text.
    */
   backdrop(cx: number, cy: number, w: number, h: number, a: number): void;
+  /** How screen captures look in a demo scene (engine/demo.ts): the window around them, the cursor, a click. */
+  demo: {
+    /** Draw the window chrome around `r` (title bar, frame, shadow) and return the rect the capture fills. */
+    window(r: Rect, title: string, a: number): Rect;
+    /** The cursor with its tip at (x, y); `press` 0–1 while a click is held. */
+    cursor(x: number, y: number, press: number, a: number): void;
+    /** A click at (x, y), `k` 0–1 through its short animation. */
+    ripple(x: number, y: number, k: number, a: number): void;
+  };
   /** Chapter label and page number overlay on chapter pages. */
   chapterLabel(lt: number, d: number, n: number, ch: [string, string], chapters: number): void;
   /** Bilingual captions overlay at film time T. */

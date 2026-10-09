@@ -23,6 +23,13 @@ function mask(): CanvasRenderingContext2D {
   return MASK.getContext('2d')!;
 }
 
+function arrowPath(x: number, y: number, s: number): void {
+  const p: [number, number][] = [[0, 0], [0, 17], [4.2, 13.2], [7, 19.5], [9.6, 18.4], [6.9, 12.2], [12.4, 12.2]];
+  ctx.beginPath();
+  p.forEach(([u, v], i) => (i ? ctx.lineTo(x + u * s, y + v * s) : ctx.moveTo(x + u * s, y + v * s)));
+  ctx.closePath();
+}
+
 const nebula: StylePackage = {
   id: 'nebula',
   palette: {
@@ -96,6 +103,56 @@ const nebula: StylePackage = {
     ctx.fillStyle = g;
     ctx.fillRect(-1, -1, 2, 2);
     ctx.restore();
+  },
+
+  /** Captures in a dark glass panel: a cyan hairline with a faint glow, the title in mono on a slim bar. */
+  demo: {
+    window(r, title, a) {
+      const bar = 30;
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.shadowColor = 'rgba(95,212,232,0.25)';
+      ctx.shadowBlur = 30;
+      ctx.fillStyle = C.bg2;
+      ctx.beginPath();
+      ctx.roundRect(r.x, r.y - bar, r.w, r.h + bar, 10);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = rgba(C.accent, 0.55);
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      for (let i = 0; i < 3; i++) {
+        ctx.fillStyle = rgba(C.fg2, 0.5);
+        ctx.beginPath();
+        ctx.arc(r.x + 18 + i * 16, r.y - bar / 2, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+      if (title) text(title.toUpperCase(), r.x + r.w / 2, r.y - bar / 2 + 5, { font: F.mono, size: 13, color: C.muted, alpha: a, align: 'center', ls: 1.5 });
+      return { x: r.x, y: r.y, w: r.w, h: r.h };
+    },
+    cursor(x, y, press, a) {
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.shadowColor = rgba(C.accent, 0.8);
+      ctx.shadowBlur = 10;
+      arrowPath(x, y, 1.25 - 0.1 * press);
+      ctx.fillStyle = C.fg;
+      ctx.fill();
+      ctx.restore();
+    },
+    ripple(x, y, k, a) {
+      ctx.save();
+      ctx.globalAlpha = a * (1 - k);
+      ctx.strokeStyle = C.accent;
+      ctx.shadowColor = C.accent;
+      ctx.shadowBlur = 12;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, y, 6 + 40 * eout(k), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    },
   },
 
   /**
