@@ -15,7 +15,10 @@
 - **实际核对的版本**：*Œuvres de Monsieur de Fontenelle*, nouvelle édition augmentée, t. V（Paris : Michel Brunet, 1742），
   archive.org 条目 `uvres05font`（波士顿公共图书馆藏本扫描）。序言为该卷正文 pp. 1–22。
   页码推算：扫描第 12 帧印有 "Tome V. A"＝p. 1，第 28 帧印有 "Tome V. B"＝p. 17，第 35 帧页眉为 "24"，故印刷页＝帧号 − 11。
-  下列每段都对照了扫描图像（不只是 OCR）。
+  **对照过扫描图像的页**：pp. 1、9、10、13、17、18、21（帧 12、20、21、24、28、29、32）。
+  **只核了 OCR 的**：S1b（pp. 2–3，帧 13–14）与 S1d 后半句 "ce n'est pas risquer beaucoup"（p. 11，帧 22）——第二阶段补看图像。
+- **日期**："1699" 是该序言所属的年卷（*Histoire de l'Académie royale des sciences, année 1699*）；写作日期与 1702 年初印均只见于搜索摘要，**未核实**。
+  旁白应说"为 1699 年卷所写的序言"，不说"1699 年他写道"。
 - **未核实**：1702 年巴黎初印本（*Histoire de l'Académie royale des sciences, année 1699* 卷首序言）。Gallica 扫描
   （ark:/12148/bpt6k65586b）要求人机验证，未能打开。1742 年本与初印本之间是否有文字差异，未核。
 
