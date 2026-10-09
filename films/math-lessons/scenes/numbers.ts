@@ -1,21 +1,21 @@
-// Chapter 1: what became of Hardy's "useless" number theory (F-H11, F-H15, F-H16, F-H17, F-H19, F-P01), then the first
-// of the four refrains.
+// Chapter 1: what became of Hardy's "useless" number theory (F-H11, F-H15, F-H16, F-H17, F-H19, F-P01): a failed
+// prediction of uselessness. The refrain does not follow here (that would read as "it became useful, so it is
+// valuable"); it follows Hardy's own defence in the next scene.
 import { text, rule, background, M, W, C, F, scene, sstep, clamp } from '../../../engine';
-import { bell, verse, voiceLine } from '../lib';
+import { bell, verse } from '../lib';
 
 const X0 = M + 40, X1 = W - M - 40, Y = 520;
 const at = (year: number) => X0 + ((year - 1940) / (2018 - 1940)) * (X1 - X0);
 const MARKS: [number, string, number][] = [[1940, 'Hardy：数论“无用”', 0.8], [1947, 'Hardy 去世', 3.2], [1978, '公钥密码方案（RSA）', 4.0], [2018, 'TLS 1.3 标准', 6.6]];
 
 scene({
-  name: 'numbers', kind: 'page', dur: 15.0, chapter: 1, ch: ['无用', ''],
-  // lines shown verbatim as display text on this page have no caption (the display text is their caption)
+  name: 'numbers', kind: 'page', dur: 10.5, chapter: 1, ch: ['无用', ''],
   subs: [
     [0.6, 3.07, 'Hardy 眼中“无用”的数论，', '7'],
     [3.07, 6.54, '在他身后成了公钥密码的基础，', ''],
     [6.54, 9.51, '写进了互联网的加密标准。', ''],
   ],
-  sfx: [[0.6, 'chime', { midi: bell(7) }], [10.06, 'low', { midi: 38 }]],
+  sfx: [[0.6, 'chime', { midi: bell(7) }]],
   draw(lt) {
     background();
     const k = clamp((lt - 0.6) / 6.4);
@@ -34,6 +34,5 @@ scene({
     text('M', xf, 400, { font: F.math, style: 'italic', size: 44, color: C.fg, alpha: af });
     text('φ(n)', xf + 44, 380, { font: F.math, style: 'italic', size: 26, color: C.fg, alpha: af });
     text('≡ 1 (mod n)', xf + 104, 400, { font: F.math, size: 44, color: C.fg, alpha: af });
-    voiceLine('看不见用途，不等于没有价值。', W / 2, 760, sstep(10.06, 10.8, lt), 'film', { size: 48, align: 'center', mk: '◇' });
   },
 });

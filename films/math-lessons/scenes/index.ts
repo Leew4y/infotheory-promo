@@ -3,8 +3,9 @@ import './invocation'; // plate: the essay's two lines
 import './title'; // plate: the title
 import './fontenelle'; // page, ch. 1: the 1699 preface
 import './cycloid'; // page, ch. 1: the cycloid, Huygens' theorem shown
-import './defenders'; // page, ch. 1: four defenders
-import './numbers'; // page, ch. 1: Hardy's number theory; refrain 1
+import './defenders'; // page, ch. 1: three defenders: the use will come
+import './numbers'; // page, ch. 1: Hardy's number theory, a failed prediction of uselessness
+import './hardy'; // page, ch. 1: Hardy's defence, not by use; refrain 1
 import './release'; // page, ch. 2: the October release
 import './needed'; // page, ch. 2: needed vs meaningful; refrain 2
 import './statement'; // page, ch. 3: the Clay statement (the hinge)

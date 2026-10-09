@@ -29,18 +29,18 @@ sub(at('invocation') + 2.0, D2, span('invocation', 'title') - 2.0, .022)
 strings(at('title'), [D3, A3, D4], 5.0, .009, att=2.0, rel=2.5, cut=1200)
 
 # ---- chapter 1 (fontenelle .. numbers): a held D Dorian drone
-bed(at('fontenelle'), [D2, A2, D3], span('fontenelle', 'defenders') - .5, .022, att=2.0)
+bed(at('fontenelle'), [D2, A2, D3], span('fontenelle', 'defenders') - .4, .022, att=2.0)
 # the cycloid keeps time: the bass changes when the beads reach the bottom (9 s after the scene's start + 1, 3, 5)
 for k, t in enumerate([10.0, 12.0, 14.0]):
     cello(at('cycloid') + t, D2 if k % 2 == 0 else A1, 1.9, .03, att=.15, rel=1.2)
 # the litany of defenders: one bell per name, then everything holds its breath at Hardy's "no"
 for t, m in [(0.8, D4), (1.8, F4), (2.8, A4)]:
     felt(at('defenders') + t, m + UP, .022, 2.6)
-bed(at('defenders') + 7.2, [D2, A2], span('defenders', 'defenders') - 7.2, .02, att=1.5)
-felt(at('defenders') + 14.1, D5 + 12, .022, 3.0)
-# number theory: the bass moves to C (the Dorian flat seventh), back to D at the refrain
-bed(at('numbers'), [C2, 43], 10.0, .02, att=1.5)
-bed(at('numbers') + 10.0, [D2, A2], 5.0, .022, att=.8)
+# Hardy's "no": the drone stops for a beat, then returns under his defence
+bed(at('hardy') + 1.6, [D2, A2], span('hardy', 'hardy') - 1.6, .02, att=1.5)
+felt(at('hardy') + 7.7, D5 + 12, .022, 3.0)
+# number theory: the bass moves to C (the Dorian flat seventh); D returns with Hardy
+bed(at('numbers'), [C2, 43], span('numbers', 'numbers'), .02, att=1.5)
 
 # ---- chapter 2 (release, needed): the drone brightens for the numbers, darkens for the argument
 bed(at('release'), [D2, A2], span('release', 'release'), .02, att=1.0)
@@ -67,12 +67,12 @@ strings(at('voice'), [D5, A4 + 12], 14.0, .012, att=3.0, rel=3.0, cut=3000)
 bed(at('voice') + 14.4, [A1, A2], span('voice', 'voice') - 14.4, .02, att=1.0)
 
 # ---- the fire: D returns; the closing sentence rises to a borrowed D major, then settles on the open fifth
-bed(at('fire'), [D2, A2], 33.6, .022, att=1.5)
-close = at('fire') + 33.6
+bed(at('fire'), [D2, A2], 34.1, .022, att=1.5)
+close = at('fire') + 34.1
 strings(close, [D3, A3, D4, F4 + 1, A4], 13.0, .015, att=2.5, rel=3.0, cut=1800)
 cello(close, D2, 13.0, .04, att=.8, rel=3.0)
 chordf(close + .2, [D4 + 12, F4 + 13, A4 + 12], .022, 4.0)
-tail = span('fire', 'colophon') - 33.6 - 13.0
+tail = span('fire', 'colophon') - 34.1 - 13.0
 strings(close + 13.0, [D3, A3, D4], max(1.0, tail - 3.0), .016, att=1.0, rel=2.5, cut=1800)
 bed(close + 13.0, [D2, A2], max(1.0, tail - 3.0), .02, att=1.0, rel=2.5)
 

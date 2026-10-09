@@ -1,5 +1,5 @@
 // Chapter 4: a proof checker is checked too. An AI-assisted "disproof" passed Lean by exploiting a kernel bug
-// (F-N04); once False is accepted, anything follows (F-M05). Small print: fixed an hour after the report, independent
+// (F-N04); once False is accepted, anything follows (F-M05). Small print: a fix pushed an hour after the report, independent
 // checking still works with current versions of both checkers, and a security AI then found more kernel bugs
 // (F-N04, F-N05, F-N06). Then the fourth refrain.
 import { text, label, rule, arrow, ink, background, M, COL, W, C, F, scene, sstep, clamp } from '../../../engine';
@@ -46,6 +46,6 @@ scene({
     voiceLine('公布，不等于检验。', W / 2, 790, sstep(12.03, 12.8, lt), 'film', { size: 46, align: 'center', mk: '◇' });
     const c = sstep(17.4, 18.2, lt);
     verse('17', M - 40, 860, c, 30);
-    text('报告一小时后修复；独立检查仍然有效，但两边都要用最新版本；后来，一个专门的安全 AI 帮 Lean 团队找出了更多内核错误。', M, 860, { size: 21, color: C.fg2, alpha: c });
+    text('报告一小时后推出修复补丁；独立检查仍然有效，但两边都要用最新版本；后来，一个专门的安全 AI 帮 Lean 团队找出了更多内核错误。', M, 860, { size: 21, color: C.fg2, alpha: c });
   },
 });

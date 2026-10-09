@@ -4,7 +4,8 @@
 import { label, background, M, C, scene, sstep, clamp } from '../../../engine';
 import { bell, count, grid, tiles, verse } from '../lib';
 
-const GONE = [403, 404, 405]; // three adjacent squares: the paper with the sign error and the two that depended on it
+// three adjacent squares stand for the three withdrawn manuscripts; the positions are a picture, not their places in the repository
+const GONE = [403, 404, 405];
 
 scene({
   name: 'withdrawal', kind: 'page', dur: 17.0, chapter: 4, ch: ['检验', ''],

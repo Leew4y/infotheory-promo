@@ -1,6 +1,6 @@
 // Chapter 3, the hinge: the four statements of the Clay problem (F-M04, F-H18). On the existence side the force is
-// identically zero; on the breakdown side a smooth force may be chosen. From 10.8 s cell (C) is marked: the statement
-// OpenAI announced it had proved (F-N07). The film does not judge the proof.
+// identically zero; on the breakdown side a smooth force may be chosen. From 10.8 s the breakdown column is marked:
+// OpenAI announced it had established statement C and also D (F-N07, S7b). The film does not judge the proof.
 import { text, label, rule, background, M, C, F, W, scene, sstep, clamp, eout } from '../../../engine';
 import { bell, verse, voiceLine } from '../lib';
 
@@ -50,8 +50,8 @@ scene({
     if (k > 0) {
       const x = X0 + LEFT + COLW, y = Y0 + HEAD;
       rule(x + 6, y + 6, x + 6 + (COLW - 12) * k, y + 6, C.accent, 1, 3);
-      rule(x + 6, y + ROW - 6, x + 6 + (COLW - 12) * k, y + ROW - 6, C.accent, 1, 3);
-      label('OpenAI 宣布：证明了 (C)', x + COLW - 24, y + 62, sstep(11.2, 12.0, lt), C.accent, 18, 'right');
+      rule(x + 6, y + 2 * ROW - 6, x + 6 + (COLW - 12) * k, y + 2 * ROW - 6, C.accent, 1, 3);
+      label('OpenAI 宣布：成立 (C)，也成立 (D)', x + COLW - 24, y + 62, sstep(11.2, 12.0, lt), C.accent, 18, 'right');
     }
     voiceLine('本片不判断这个证明的对错。', X0 + 40, 820, sstep(12.5, 13.5, lt), 'film', { size: 26, mk: '◇' });
   },

@@ -2,8 +2,8 @@
  "film": "math-lessons",
  "fps": 30,
  "bpm": 60,
- "frames": 8925,
- "duration": 297.5,
+ "frames": 8970,
+ "duration": 299,
  "scenes": [
   {
    "name": "invocation",
@@ -41,89 +41,97 @@
    "name": "defenders",
    "kind": "page",
    "f0": 1335,
-   "f1": 1965,
+   "f1": 1530,
    "start": 44.5,
-   "end": 65.5
+   "end": 51
   },
   {
    "name": "numbers",
    "kind": "page",
-   "f0": 1965,
-   "f1": 2415,
-   "start": 65.5,
-   "end": 80.5
+   "f0": 1530,
+   "f1": 1845,
+   "start": 51,
+   "end": 61.5
+  },
+  {
+   "name": "hardy",
+   "kind": "page",
+   "f0": 1845,
+   "f1": 2385,
+   "start": 61.5,
+   "end": 79.5
   },
   {
    "name": "release",
    "kind": "page",
-   "f0": 2415,
-   "f1": 2850,
-   "start": 80.5,
-   "end": 95
+   "f0": 2385,
+   "f1": 2820,
+   "start": 79.5,
+   "end": 94
   },
   {
    "name": "needed",
    "kind": "page",
-   "f0": 2850,
-   "f1": 3705,
-   "start": 95,
-   "end": 123.5
+   "f0": 2820,
+   "f1": 3675,
+   "start": 94,
+   "end": 122.5
   },
   {
    "name": "statement",
    "kind": "page",
-   "f0": 3705,
-   "f1": 4335,
-   "start": 123.5,
-   "end": 144.5
+   "f0": 3675,
+   "f1": 4305,
+   "start": 122.5,
+   "end": 143.5
   },
   {
    "name": "dispute",
    "kind": "page",
-   "f0": 4335,
-   "f1": 5010,
-   "start": 144.5,
-   "end": 167
+   "f0": 4305,
+   "f1": 4980,
+   "start": 143.5,
+   "end": 166
   },
   {
    "name": "withdrawal",
    "kind": "page",
-   "f0": 5010,
-   "f1": 5520,
-   "start": 167,
-   "end": 184
+   "f0": 4980,
+   "f1": 5490,
+   "start": 166,
+   "end": 183
   },
   {
    "name": "kernel",
    "kind": "page",
-   "f0": 5520,
-   "f1": 6150,
-   "start": 184,
-   "end": 205
+   "f0": 5490,
+   "f1": 6120,
+   "start": 183,
+   "end": 204
   },
   {
    "name": "voice",
    "kind": "plate",
-   "f0": 6150,
-   "f1": 7080,
-   "start": 205,
-   "end": 236
+   "f0": 6120,
+   "f1": 7140,
+   "start": 204,
+   "end": 238
   },
   {
    "name": "fire",
    "kind": "plate",
-   "f0": 7080,
-   "f1": 8565,
-   "start": 236,
-   "end": 285.5
+   "f0": 7140,
+   "f1": 8640,
+   "start": 238,
+   "end": 288
   },
   {
    "name": "colophon",
    "kind": "page",
-   "f0": 8565,
-   "f1": 8925,
-   "start": 285.5,
-   "end": 297.5
+   "f0": 8640,
+   "f1": 8970,
+   "start": 288,
+   "end": 299
   }
  ]
 }
