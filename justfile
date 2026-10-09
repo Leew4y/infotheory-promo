@@ -26,7 +26,7 @@ new-style id:
 import-capture film id video *args:
     bun scripts/import-capture.ts --film {{film}} --id {{id}} {{quote(video)}} {{args}}
 
-# Record a web demo with Playwright (scripts/lib/scenario.ts) as capture <id> of a film; the source video goes to out/<film>/sources/.
+# Record a web demo with Playwright (scripts/lib/scenario.ts) as capture <id> of a film; the source video goes to out/<film>/sources/. Optional paths in the extra arguments (e.g. --sources) must not contain spaces here; run the script directly for those.
 capture film id scenario *args:
     bun scripts/capture.ts --film {{film}} --id {{id}} {{quote(scenario)}} {{args}}
 

@@ -30,31 +30,49 @@ const sh = (cmd: string[], env: Record<string, string> = {}) => {
   return p.stdout.toString();
 };
 
-/** Every process: pid, parent pid, memory in bytes (Windows: working set; elsewhere RSS), executable name. */
-async function processes(): Promise<{ pid: number; ppid: number; mem: number; name: string }[]> {
-  const cmd = process.platform === 'win32'
-    ? ['powershell', '-NoProfile', '-Command', 'Get-CimInstance Win32_Process | ForEach-Object { "$($_.ProcessId) $($_.ParentProcessId) $($_.WorkingSetSize) $($_.Name)" }']
-    : ['ps', '-axo', 'pid=,ppid=,rss=,comm='];
+/**
+ * Every process: pid, parent pid, start time (a number that orders starts), memory in bytes (Windows: working set;
+ * elsewhere RSS), executable name.
+ */
+async function processes(): Promise<{ pid: number; ppid: number; start: number; mem: number; name: string }[]> {
+  const win = process.platform === 'win32';
+  const cmd = win
+    ? ['powershell', '-NoProfile', '-Command', 'Get-CimInstance Win32_Process | ForEach-Object { "$($_.ProcessId) $($_.ParentProcessId) $(if ($_.CreationDate) { $_.CreationDate.ToFileTimeUtc() } else { 0 }) $($_.WorkingSetSize) $($_.Name)" }']
+    : ['ps', '-axo', 'pid=,ppid=,etimes=,rss=,comm='];
   const p = Bun.spawn(cmd, { stdout: 'pipe', stderr: 'ignore' });
-  const k = process.platform === 'win32' ? 1 : 1024;
   return (await new Response(p.stdout).text()).split('\n').map((l) => l.trim().split(/\s+/))
-    .filter((v) => v.length >= 4 && v.slice(0, 3).every((x) => Number.isFinite(+x)))
-    .map(([pid, ppid, m, ...name]) => ({ pid: +pid, ppid: +ppid, mem: +m * k, name: path.basename(name.join(' ')).toLowerCase() }));
+    .filter((v) => v.length >= 5 && v.slice(0, 4).every((x) => Number.isFinite(+x)))
+    .map(([pid, ppid, st, m, ...name]) => ({
+      pid: +pid, ppid: +ppid, start: win ? +st : -+st, mem: +m * (win ? 1 : 1024), name: path.basename(name.join(' ')).toLowerCase(),
+    }));
 }
 
 /**
  * The memory of each worker's browser under `root` (the export; its own launcher may sit in between): a browser is
- * a Chrome process in root's tree whose parent is not one, and its memory is the sum over its process tree.
+ * a Chrome process in root's tree whose parent is not one, and its memory is the sum over its process tree. A parent
+ * id counts only if that process started no later than the child (ids are reused), and no process is visited twice.
  */
 async function workerMemory(root: number): Promise<number[]> {
   const ps = await processes();
-  const kids = new Map<number, number[]>();
-  for (const p of ps) if (p.pid !== p.ppid) kids.set(p.ppid, [...(kids.get(p.ppid) ?? []), p.pid]);
   const by = new Map(ps.map((p) => [p.pid, p]));
+  const kids = new Map<number, number[]>();
+  for (const p of ps) {
+    const parent = by.get(p.ppid);
+    if (p.pid !== p.ppid && parent && parent.start <= p.start) kids.set(p.ppid, [...(kids.get(p.ppid) ?? []), p.pid]);
+  }
   const isChrome = (pid: number) => /^(chrome|msedge|chromium|google chrome)/.test(by.get(pid)?.name ?? '');
-  const tree = (pid: number): number => (by.get(pid)?.mem ?? 0) + (kids.get(pid) ?? []).reduce((s, c) => s + tree(c), 0);
+  const seen = new Set<number>();
+  const tree = (pid: number): number => {
+    if (seen.has(pid)) return 0;
+    seen.add(pid);
+    return (by.get(pid)?.mem ?? 0) + (kids.get(pid) ?? []).reduce((s, c) => s + tree(c), 0);
+  };
   const roots: number[] = [];
-  const walk = (pid: number) => { for (const c of kids.get(pid) ?? []) (isChrome(c) && !isChrome(pid) ? roots.push(c) : walk(c)); };
+  const walk = (pid: number) => {
+    if (seen.has(pid)) return;
+    seen.add(pid);
+    for (const c of kids.get(pid) ?? []) (isChrome(c) && !isChrome(pid) ? roots.push(c) : walk(c));
+  };
   walk(root);
   return roots.map(tree);
 }
@@ -72,7 +90,8 @@ async function measure(args: string[], frames: number): Promise<Measured> {
       peak = Math.max(peak, ...w, 0);
       await Bun.sleep(1000);
     }
-  })();
+  })().catch((e) => { p.kill(); throw e; }); // a failed sample stops this export
+  sampler.catch(() => {});
   const [code, err] = await Promise.all([p.exited, new Response(p.stderr).text()]);
   done = true;
   await sampler;

@@ -37,4 +37,21 @@ test('a working set over the budget is an error', async () => {
   await expect(ensure([{ seq: 's', frame: 20 }, { seq: 's', frame: 21 }])).rejects.toThrow(/over the/);
 });
 
+test('a frame named twice is counted once', async () => {
+  setBudget(4);
+  await ensure([{ seq: 's', frame: 30 }, { seq: 's', frame: 30 }]);
+  expect(() => bitmap({ seq: 's', frame: 30 })).not.toThrow();
+});
+
+test('concurrent ensure() calls: the frames of one still loading are not evicted by the other', async () => {
+  setBudget(8); // room for two frames
+  slow.add('/media/s/00041.jpg');
+  const a = ensure([{ seq: 's', frame: 40 }, { seq: 's', frame: 41 }]);
+  const b = ensure([{ seq: 's', frame: 42 }]);
+  await b;
+  await a;
+  expect(() => bitmap({ seq: 's', frame: 40 })).not.toThrow();
+  expect(() => bitmap({ seq: 's', frame: 41 })).not.toThrow();
+});
+
 test('evicted bitmaps are closed', () => expect(closed).toBeGreaterThan(0));

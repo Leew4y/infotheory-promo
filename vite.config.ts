@@ -32,7 +32,7 @@ export default defineConfig({
         if (!file) { res.statusCode = 404; res.end(); return; }
         res.setHeader('Content-Type', 'image/jpeg');
         res.setHeader('Cache-Control', 'no-cache');
-        createReadStream(file).pipe(res);
+        createReadStream(file).on('error', () => { if (!res.headersSent) res.statusCode = 404; res.end(); }).pipe(res);
       });
       server.middlewares.use('/music.mp3', (req, res) => {
         if (!existsSync(MUSIC)) { res.statusCode = 404; res.end(`no ${path.relative(root, MUSIC)}: run just music ${FILM}`); return; }
@@ -50,7 +50,7 @@ export default defineConfig({
         res.setHeader('Accept-Ranges', 'bytes');
         res.setHeader('Content-Type', 'audio/mpeg');
         res.setHeader('Content-Length', String(b - a + 1));
-        createReadStream(MUSIC, { start: a, end: b }).pipe(res);
+        createReadStream(MUSIC, { start: a, end: b }).on('error', () => { if (!res.headersSent) res.statusCode = 500; res.end(); }).pipe(res);
       });
     },
   }],

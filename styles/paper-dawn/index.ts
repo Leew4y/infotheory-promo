@@ -130,6 +130,7 @@ const paperDawn: StylePackage = {
     area: { x: 150, y: 190, w: W - 300, h: H - 420 },
     rippleDur: 0.6,
     pressDur: 0.15,
+    cursorEase: (u) => u * u * (3 - 2 * u),
     window(r, title, a) {
       ctx.save();
       ctx.globalAlpha = a;

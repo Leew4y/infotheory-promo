@@ -14,20 +14,22 @@
  *    --max-seconds.
  * 2. Resamples the frames to a fixed rate as they arrive (output frame i shows the last frame recorded at or before
  *    t0 + i / fps, until the recording was stopped: a still page sends no frames) and streams them into the encoder
- *    (H.264 CRF 12), so memory stays bounded; an encoder that falls more than 10 s behind fails the recording. The
- *    source video <sources>/<id>.mp4 (default out/<film>/sources/, outside the repository like every capture source)
- *    gets <id>.events.jsonl beside it (seconds from the first output frame, full precision). The page's clock and this
- *    process's are compared at the start and the stop; a jump (clock adjusted, machine slept) fails the recording.
+ *    (H.264 CRF 12), so memory stays bounded: at most 300 recorded frames wait for the encoder (a repeated frame is one
+ *    entry with a count); more fails the recording at once, as does the encoder exiting, and its drain has a deadline.
+ *    The source video <sources>/<id>.mp4 (default out/<film>/sources/, outside the repository like every capture
+ *    source) gets <id>.events.jsonl beside it (seconds from the first output frame, full precision). The page's clock
+ *    and this process's are compared every second; a jump of more than 50 ms (clock adjusted, machine slept) fails the
+ *    recording.
  * 3. Runs scripts/import-capture.ts on that video with the events, the viewport and DPR 1: the asset's frames and
  *    manifest come from the same pipeline as any other recording, and --rebuild works from the saved video.
  * The new video and events are written under temporary names; the previous ones are kept aside until the import
- * succeeded and put back if it fails. Exit code 1 on failure, 2 on bad arguments.
+ * committed (exit 0) and put back on any failure before that. Exit code 1 on failure, 2 on bad arguments.
  */
 import { existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
-import { chromium, type Page } from 'playwright-core';
+import { chromium, type Browser, type Page } from 'playwright-core';
 import type { CaptureEvent } from '../engine/capture';
 import { findChrome } from './chrome';
 import { FILM_ID, requireFilm } from './film-arg';
@@ -61,8 +63,8 @@ const MAX_SECONDS = +(o['max-seconds'] ?? 600);
 if (!(Number.isFinite(MAX_SECONDS) && MAX_SECONDS > 0)) usage(`--max-seconds ${o['max-seconds']}: a number > 0`);
 const SOURCES = path.resolve(ROOT, o.sources ?? `out/${FILM}/sources`);
 const KEEP_ALIVE = !parsed.values['no-keep-alive'];
-/** How far (output frames) the encoder may fall behind the recording before it fails: 10 s. */
-const BACKLOG = 10 * FPS;
+/** How many recorded frames may wait for the encoder before the recording fails (memory bound). */
+const BACKLOG = 300;
 /** The largest disagreement between the page's clock and this process's, start vs stop, before the recording fails. */
 const CLOCK_TOLERANCE_MS = 50;
 
@@ -77,11 +79,14 @@ const tmpVideo = path.join(SOURCES, `.${ID}.${tag}.tmp.mp4`), tmpEvents = path.j
 const lockDir = path.join(SOURCES, `.${ID}.lock`);
 try { mkdirSync(lockDir); } catch { usage(`${ID}: another capture of this id is running (or one crashed: remove ${lockDir})`); }
 
-const browser = await chromium.launch({ executablePath: findChrome(), headless: true });
+/** Remove a leftover; a failure is only a warning. */
+const tidy = (p: string) => { try { rmSync(p, { recursive: true, force: true }); } catch (e) { console.warn(`warning: could not remove ${p}: ${e instanceof Error ? e.message : e}`); } };
+let browser: Browser | null = null;
 let ff: ReturnType<typeof Bun.spawn> | null = null;
-const backups: [string, string][] = [];
+let skewTimer: ReturnType<typeof setInterval> | undefined;
 let code = 0;
 try {
+  browser = await chromium.launch({ executablePath: findChrome(), headless: true });
   const ctx = await browser.newContext({ viewport: vp, deviceScaleFactor: 1 });
   const raw: CaptureEvent[] = [];
   let page: Page | null = null;
@@ -176,26 +181,46 @@ try {
   ff = Bun.spawn(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-f', 'image2pipe', '-framerate', String(FPS), '-c:v', 'mjpeg', '-i', 'pipe:0',
     '-vf', `scale=${vp.width}:${vp.height}:flags=bicubic,format=yuv420p`, '-c:v', 'libx264', '-preset', 'medium', '-crf', '12', '-r', String(FPS), '-f', 'mp4', tmpVideo], { stdin: 'pipe', stderr: 'pipe' });
   const enc = ff;
-  const queue: Buffer[] = [];
-  let t0 = -1, n = 0, recorded = 0, late = 0, prev: { data: Buffer; ts: number } | null = null, encErr: Error | null = null, wake: (() => void) | null = null;
+  // the queue holds runs: one recorded frame and how many output frames repeat it
+  const queue: { data: Buffer; count: number }[] = [];
+  let t0 = -1, n = 0, recorded = 0, late = 0, prev: { data: Buffer; ts: number } | null = null, stopped = false;
+  let wake: (() => void) | null = null;
+  const st: { err: Error | null } = { err: null };
+  let failed: (e: Error) => void = () => {};
+  const failure = new Promise<never>((_, reject) => { failed = reject; });
+  failure.catch(() => {});
+  /** Fail the recording (the first reason wins): the scenario race, the drain and the pump all see it. */
+  const abort = (e: Error) => { if (!st.err) { st.err = e; failed(e); } wake?.(); };
   /** Emit output frames up to (excluding) time `until` with the previous recorded frame. */
-  const emitUntil = (until: number) => {
-    if (!prev) return;
-    while (t0 + (n * 1000) / FPS < until) { queue.push(prev.data); n++; }
-    if (queue.length > BACKLOG && !encErr) encErr = new Error(`the encoder fell more than ${BACKLOG / FPS} s behind the recording`);
+  const emitUntil = (until: number, final = false) => {
+    if (!prev || st.err) return;
+    let k = 0;
+    while (t0 + (n * 1000) / FPS < until) { k++; n++; }
+    if (!k) return;
+    if (!final && queue.length >= BACKLOG) return abort(new Error(`the encoder fell behind: ${BACKLOG} recorded frames are waiting for it`));
+    queue.push({ data: prev.data, count: k });
     wake?.();
   };
-  let stopped = false;
   const pump = (async () => {
     const sink = enc.stdin as import('bun').FileSink;
-    for (;;) {
-      while (queue.length) { sink.write(queue.shift()!); await sink.flush(); }
-      if (stopped) break;
-      await new Promise<void>((r) => { wake = r; });
-      wake = null;
+    try {
+      for (;;) {
+        while (queue.length && !st.err) {
+          const q = queue[0];
+          for (let i = 0; i < q.count && !st.err; i++) { sink.write(q.data); await sink.flush(); }
+          queue.shift();
+        }
+        if (stopped || st.err) break;
+        await new Promise<void>((r) => { wake = r; });
+        wake = null;
+      }
+    } catch (e) {
+      abort(e instanceof Error ? e : new Error(String(e)));
+    } finally {
+      try { sink.end(); } catch {}
     }
-    sink.end();
   })();
+  enc.exited.then((c) => { if (!stopped || c !== 0) abort(new Error(`ffmpeg (source video) exited with ${c} while recording`)); });
   await pg.screencast.start({
     size: vp, quality: QUALITY,
     onFrame: ({ data, timestamp }) => {
@@ -207,57 +232,71 @@ try {
     },
   });
   const skew0 = await clockSkew();
+  skewTimer = setInterval(() => {
+    clockSkew().then((s) => {
+      if (Math.abs(s - skew0) > CLOCK_TOLERANCE_MS) abort(new Error(`the clocks drifted ${(s - skew0).toFixed(0)} ms apart during the recording (system clock adjusted or the machine slept?); record again`));
+    }, () => {});
+  }, 1000);
+  const deadline = (s: number, what: string) => new Promise<never>((_, reject) => { const t = setTimeout(() => reject(new Error(`${what} did not finish within ${s.toFixed(0)} s`)), s * 1000); t.unref?.(); });
   await pg.waitForTimeout(300);
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  await Promise.race([
-    scenario.run(act),
-    new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error(`the scenario did not finish within --max-seconds ${MAX_SECONDS}`)), MAX_SECONDS * 1000); }),
-  ]).finally(() => clearTimeout(timer));
-  await pg.waitForTimeout(500);
-  if (encErr) throw encErr;
+  await Promise.race([scenario.run(act), failure, deadline(MAX_SECONDS, 'the scenario (--max-seconds)')]);
+  await Promise.race([pg.waitForTimeout(500), failure]);
+  clearInterval(skewTimer);
   const skew1 = await clockSkew();
-  if (Math.abs(skew1 - skew0) > CLOCK_TOLERANCE_MS)
-    throw new Error(`the clocks drifted ${(skew1 - skew0).toFixed(0)} ms apart during the recording (system clock adjusted or the machine slept?); record again`);
+  if (Math.abs(skew1 - skew0) > CLOCK_TOLERANCE_MS) abort(new Error(`the clocks drifted ${(skew1 - skew0).toFixed(0)} ms apart during the recording (system clock adjusted or the machine slept?); record again`));
+  if (st.err) throw st.err;
   // the screencast sends a frame only when the page changes: the recording lasts until it is stopped, not until the
   // last frame (a still page repeats its last frame), on the frames' clock (wall-clock milliseconds)
   const tStop = Date.now();
   await pg.screencast.stop();
   await ctx.close();
   if (!prev) throw new Error('no screencast frame was recorded');
-  emitUntil(Math.max(tStop, (prev as { ts: number }).ts) + 1e-6);
-  if (n === 0) { queue.push((prev as { data: Buffer }).data); n = 1; }
+  emitUntil(Math.max(tStop, (prev as { ts: number }).ts) + 1e-6, true);
+  if (n === 0) { queue.push({ data: (prev as { data: Buffer }).data, count: 1 }); n = 1; }
   stopped = true;
   (wake as (() => void) | null)?.();
-  await pump;
-  if (encErr) throw encErr;
-  if ((await enc.exited) !== 0) throw new Error(`ffmpeg (source video): ${(await new Response(enc.stderr as ReadableStream).text()).trim()}`);
+  // the drain: whatever is queued at >= 10 output frames a second, plus a minute
+  await Promise.race([pump, failure, deadline(60 + queue.reduce((k, q) => k + q.count, 0) / 10, 'encoding the source video')]);
+  if (st.err) throw st.err;
+  const exit = await Promise.race([enc.exited, deadline(60, 'the encoder')]);
+  if (exit !== 0) throw new Error(`ffmpeg (source video): ${(await new Response(enc.stderr as ReadableStream).text()).trim()}`);
   const events = raw.map((e) => ({ ...e, t: (e.t - t0) / 1000 })).filter((e) => e.t >= 0 && e.t < n / FPS).sort((a, b) => a.t - b.t);
   writeFileSync(tmpEvents, events.map((e) => JSON.stringify(e)).join('\n') + (events.length ? '\n' : ''));
   const skipped = dropped.popup + dropped.frame;
   console.log(`recorded ${recorded} screencast frames${late ? ` (${late} out of order, dropped)` : ''} -> ${n} frames at ${FPS} fps, ${events.length} events${skipped ? ` (${dropped.frame} in iframes and ${dropped.popup} in popups dropped)` : ''} -> ${video}`);
 
-  // 3. the new source in place (the previous one aside), then the import pipeline
-  for (const [tmp, f] of [[tmpVideo, video], [tmpEvents, evFile]] as const) {
-    if (existsSync(f)) { const bak = `${f}.${tag}.bak`; renameSync(f, bak); backups.push([bak, f]); }
-    renameSync(tmp, f);
+  // 3. the new source in place (the previous one aside), then the import pipeline; its exit 0 is the commit point.
+  // Any failure before it puts back exactly what was there (and removes what was not).
+  const swapped: { f: string; bak: string | null }[] = [];
+  let committed = false;
+  try {
+    for (const [tmp, f] of [[tmpVideo, video], [tmpEvents, evFile]] as const) {
+      const bak = existsSync(f) ? `${f}.${tag}.bak` : null;
+      if (bak) renameSync(f, bak);
+      swapped.push({ f, bak });
+      renameSync(tmp, f);
+    }
+    const imp = Bun.spawnSync(['bun', path.join(import.meta.dir, 'import-capture.ts'), '--film', FILM, '--id', ID, video, '--fps', String(FPS),
+      `--viewport`, `${vp.width}x${vp.height}`, '--dpr', '1', '--events', evFile, '--sync', '0=0'], { stdout: 'inherit', stderr: 'inherit' });
+    if (imp.exitCode !== 0) throw new Error('import-capture failed; the previous source video and events are put back');
+    committed = true;
+  } catch (e) {
+    if (!committed)
+      for (const s of swapped.reverse()) {
+        try { rmSync(s.f, { force: true }); if (s.bak) renameSync(s.bak, s.f); } catch (r) { console.error(`could not restore ${s.f}${s.bak ? ` from ${s.bak}` : ''}: ${r instanceof Error ? r.message : r}`); }
+      }
+    throw e;
   }
-  const imp = Bun.spawnSync(['bun', path.join(import.meta.dir, 'import-capture.ts'), '--film', FILM, '--id', ID, video, '--fps', String(FPS),
-    `--viewport`, `${vp.width}x${vp.height}`, '--dpr', '1', '--events', evFile, '--sync', '0=0'], { stdout: 'inherit', stderr: 'inherit' });
-  if (imp.exitCode !== 0) {
-    // the asset is unchanged (import-capture commits nothing on failure): put its source back
-    for (const [bak, f] of backups) { rmSync(f, { force: true }); renameSync(bak, f); }
-    backups.length = 0;
-    throw new Error('import-capture failed; the previous source video and events are back in place');
-  }
-  for (const [bak] of backups) rmSync(bak, { force: true });
+  for (const s of swapped) if (s.bak) tidy(s.bak);
 } catch (e) {
   console.error(e instanceof Error ? e.message : String(e));
   code = 1;
 } finally {
-  if (ff && ff.exitCode === null) ff.kill();
-  await browser.close().catch(() => {});
-  rmSync(tmpVideo, { force: true });
-  rmSync(tmpEvents, { force: true });
-  rmSync(lockDir, { recursive: true, force: true });
+  clearInterval(skewTimer);
+  if (ff && ff.exitCode === null) { ff.kill(); await Promise.race([ff.exited, Bun.sleep(5000)]); }
+  await browser?.close().catch(() => {});
+  tidy(tmpVideo);
+  tidy(tmpEvents);
+  tidy(lockDir);
 }
 process.exit(code);

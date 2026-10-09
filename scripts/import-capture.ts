@@ -20,9 +20,11 @@
  *   clock; --sync <rec>=<video> says that recording-clock time <rec> is video time <video>. Times keep full precision.
  *   Events outside the video are dropped.
  * - Nothing is replaced until everything is checked: frames are made in a staging directory; the old frames are moved
- *   aside, the new ones moved in, the manifest written, and only then the old frames deleted (on a failure they are
- *   put back). One import per asset at a time (a lock directory .cache/captures/<film>/.<id>.lock).
- * Exit code 1 on any failure, 2 on bad arguments.
+ *   aside, the new ones moved in, the manifest written (the commit point), and only then the old frames deleted (before
+ *   the commit point a failure puts them back). Cleaning up after the commit point never fails the import: a leftover
+ *   is reported as a warning. One import per asset at a time (a lock directory .cache/captures/<film>/.<id>.lock);
+ *   --rebuild reads each manifest again under its lock and does all its work there.
+ * Exit code 0: committed (every asset, for --rebuild); 1: nothing committed for the failing asset; 2: bad arguments.
  */
 import { createReadStream, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -114,17 +116,26 @@ function commit(id: string, s: Staged, manifest?: CaptureAsset): void {
   const dir = inMedia(id), bak = inMedia(`.${id}.${process.pid}.bak`);
   rmSync(bak, { recursive: true, force: true });
   const had = existsSync(dir);
+  let moved = false;
   if (had) renameSync(dir, bak);
   try {
     renameSync(s.tmp, dir);
+    moved = true;
     if (manifest) writeManifest(manifest);
   } catch (e) {
-    if (existsSync(dir) && existsSync(bak)) rmSync(dir, { recursive: true, force: true });
-    if (had && existsSync(bak)) renameSync(bak, dir);
+    // before the commit point: the new frames out, the old ones back
+    if (moved) rmSync(dir, { recursive: true, force: true });
+    if (had) renameSync(bak, dir);
     rmSync(s.tmp, { recursive: true, force: true });
     throw e;
   }
-  rmSync(bak, { recursive: true, force: true });
+  // committed: what follows is cleanup only
+  tidy(bak);
+}
+
+/** Remove a leftover after the commit point; a failure is a warning, never a failed import. */
+function tidy(p: string): void {
+  try { rmSync(p, { recursive: true, force: true }); } catch (e) { console.warn(`warning: could not remove ${p}: ${e instanceof Error ? e.message : e}`); }
 }
 
 /** One import per asset at a time: an exclusive lock directory, released by the returned function. */
@@ -132,7 +143,7 @@ function lock(id: string): () => void {
   mkdirSync(MEDIA, { recursive: true });
   const l = inMedia(`.${id}.lock`);
   try { mkdirSync(l); } catch { fail(`${id}: another import of this capture is running (or one crashed: remove ${l})`); }
-  return () => rmSync(l, { recursive: true, force: true });
+  return () => tidy(l);
 }
 
 const num = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
@@ -184,20 +195,25 @@ try {
   if (o.rebuild) {
     const from = o.from ?? usage('--rebuild needs --from <dir> with the source videos');
     if (!existsSync(CAPTURES)) usage(`films/${FILM} has no captures`);
-    const assets = readdirSync(CAPTURES).filter((n) => n.endsWith('.json')).map((n) => {
+    const read = (n: string): CaptureAsset => {
       let a: CaptureAsset;
       try { a = JSON.parse(readFileSync(path.join(CAPTURES, n), 'utf8')); } catch { return fail(`films/${FILM}/captures/${n}: not JSON`); }
       const p = checkManifest(n, a);
       if (p.length) fail(`films/${FILM}/captures/${n}: ${p.join('; ')}`);
       return a;
-    });
-    for (const a of assets) {
-      const src = path.join(from, a.source.file);
-      if (!existsSync(src)) fail(`${a.id}: source ${a.source.file} not found in ${from}`);
-      const h = await sha256(src);
-      if (h !== a.source.sha256) fail(`${a.id}: ${src} has sha256 ${h}, the manifest says ${a.source.sha256}`);
-      const release = lock(a.id);
+    };
+    // every manifest checked before anything is touched; each read again under its lock (another import may commit
+    // meanwhile), and the source check, extraction and commit done under that lock
+    const names = readdirSync(CAPTURES).filter((n) => n.endsWith('.json'));
+    for (const n of names) read(n);
+    for (const n of names) {
+      const release = lock(n.slice(0, -'.json'.length));
       try {
+        const a = read(n);
+        const src = path.join(from, a.source.file);
+        if (!existsSync(src)) fail(`${a.id}: source ${a.source.file} not found in ${from}`);
+        const h = await sha256(src);
+        if (h !== a.source.sha256) fail(`${a.id}: ${src} has sha256 ${h}, the manifest says ${a.source.sha256}`);
         const s = await stage(a.id, src, { fps: a.fps, crop: a.crop, quality: +a.made.quality });
         if (s.frames !== a.frames || s.width !== a.width || s.height !== a.height) {
           rmSync(s.tmp, { recursive: true, force: true });
@@ -247,7 +263,7 @@ try {
         commit(id, s, asset);
         console.log(`${id}: ${s.frames} frames ${s.width}x${s.height} @ ${fps} fps, ${events.length} events -> films/${FILM}/captures/${id}.json, frames in ${inMedia(id)}`);
       } finally {
-        rmSync(s.tmp, { recursive: true, force: true });
+        tidy(s.tmp);
       }
     } finally {
       release();

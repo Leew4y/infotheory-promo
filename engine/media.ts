@@ -7,9 +7,9 @@
  * drawing stays synchronous and frame(t) a pure function of t.
  *
  * Cache: a least-recently-used set of decoded bitmaps bounded by memory (width x height x 4 bytes each), closed on
- * eviction; concurrent requests for one frame share a single fetch. The working set (the frames of the last ensure(),
- * i.e. of the frame being drawn) is pinned: look-ahead loads never evict it, and a working set larger than the budget
- * is an error rather than a silent miss. In strict mode (export and every check tool) a
+ * eviction; concurrent requests for one frame share a single fetch. Working sets are pinned: the frames of every
+ * ensure() still loading, and of the last one that completed (the frame being drawn). Look-ahead loads never evict
+ * them, and a working set larger than the budget is an error rather than a silent miss. In strict mode (export and every check tool) a
  * frame that is not loaded when drawn is an error; in the preview the nearest loaded earlier frame stands in.
  */
 
@@ -24,7 +24,11 @@ let used = 0;
 let strict = false;
 const cache = new Map<string, ImageBitmap>(); // insertion order = recency
 const pending = new Map<string, Promise<ImageBitmap>>();
-let pinned = new Set<string>();
+/** Working sets by ensure() call: those still loading, and the last completed one. */
+const working = new Map<number, Set<string>>();
+let calls = 0;
+let current = -1;
+const pinned = (k: string) => { for (const w of working.values()) if (w.has(k)) return true; return false; };
 
 /** Strict mode: drawing a frame that is not loaded throws (export and checks). Off in the preview. */
 export function setStrict(on: boolean): void {
@@ -39,7 +43,7 @@ export function setBudget(bytes: number): void {
 function evict(keep?: string): void {
   for (const [k, b] of cache) {
     if (used <= budget) break;
-    if (k === keep || pinned.has(k)) continue;
+    if (k === keep || pinned(k)) continue;
     used -= b.width * b.height * 4;
     b.close();
     cache.delete(k);
@@ -77,8 +81,19 @@ export function load(r: MediaRef): Promise<ImageBitmap> {
  * failure rejects). Throws if the working set alone exceeds the budget.
  */
 export async function ensure(refs: MediaRef[]): Promise<void> {
-  pinned = new Set(refs.map(key));
-  const bmps = await Promise.all(refs.map(load));
+  const keys = new Set(refs.map(key));
+  const id = ++calls;
+  working.set(id, keys);
+  let bmps: ImageBitmap[];
+  try {
+    bmps = await Promise.all([...keys].map((k) => load(refs.find((r) => key(r) === k)!)));
+  } catch (e) {
+    working.delete(id);
+    throw e;
+  }
+  // this call's set is now the drawn one; the previous completed set is released
+  if (current !== id) working.delete(current);
+  current = id;
   const bytes = bmps.reduce((s, b) => s + b.width * b.height * 4, 0);
   if (bytes > budget) throw new Error(`media working set of ${refs.length} frame(s) needs ${(bytes / 2 ** 20).toFixed(0)} MiB, over the ${(budget / 2 ** 20).toFixed(0)} MiB budget`);
 }
@@ -104,4 +119,4 @@ export function bitmap(r: MediaRef): ImageBitmap | null {
 }
 
 /** Cache state, for tests and diagnostics. */
-export const mediaStats = () => ({ frames: cache.size, bytes: used, budget, pending: pending.size, pinned: pinned.size });
+export const mediaStats = () => ({ frames: cache.size, bytes: used, budget, pending: pending.size, pinned: new Set([...working.values()].flatMap((w) => [...w])).size });
