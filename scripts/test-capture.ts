@@ -9,20 +9,25 @@
  *   cap   a numbered 6 s video (each frame carries its number as a barcode), filling the canvas, edit [0, 2) at speed 1
  *         then [3, 5) at speed 2: 90 frames; local frame l shows source frame l (l < 60), else 90 + 2 (l - 60);
  *   gray  a flat gray 2 s video imported with --crop 960:540:100:50 and one click at 0.51 s on viewport (400, 200):
- *         in the 960x540 frames that is (300, 150) (crop origin subtracted), and the click belongs to local frame 15.
+ *         in the 960x540 frames that is (300, 150) (crop origin subtracted), and the click belongs to local frame 15;
+ *   web, webbare  the Playwright recording of scripts/test-fixtures/capture-page.html (four clicks; the page marks each
+ *         press with a red square), in the default window, edit [0, c) then [c + 0.2, end) at speed 1.5 (c between the
+ *         second and third click), the camera zooming to 1.4: web shows the recorded clicks (no cursor), webbare the
+ *         same without clicks; the difference of the two is the ripple alone.
  * Checks:
  *   1. import: 180 frames for the numbered video; the gray one 60 frames of 960x540 with the crop recorded;
  *   2. per style: 157 frames; every cap frame shows exactly the expected source frame (motion blur on);
  *   3. per style: the cursor's tip is drawn where (300, 150) of the footage is on the canvas (the footage's box is found
  *      in the frame), and the click (ripple, press) changes nothing up to local frame 14 and shows from frame 15;
+ *      on the web scenes, 4 frames after each click's frame (worked out by hand through the edit), the ripple's centre
+ *      lies within 3 px of the page's own red marker in the composited frame (camera, cut and speed included);
  *   4. validate: no errors, exactly one warning for the recorded click that the edit cuts (capture-event-cut);
  *   5. a missing frame is an error (strict mode): with one frame file removed, rendering that frame fails;
  *   6. a failed re-import (bad events file) leaves the manifest and frames as they were, and nothing staged behind;
  *   7. --rebuild refuses a manifest whose id is a path, re-derives a cleared cache from the sources (sha256), and refuses
  *      a changed source without touching the frames;
- *   8. a scripted web capture (capture.ts on scripts/test-fixtures/capture-page.html): each recorded click names its
- *      target and box, lies within 4 px of the red marker the page draws at the press, which shows 0–2 frames after
- *      the event frame.
+ *   8. the web capture itself: each recorded click names its target and box, lies within 4 px of the red marker the
+ *      page draws at the press, which shows 0–2 frames after the event frame.
  * Every fixture path is created exclusively before anything is written (an existing one aborts the run), and only
  * those are removed afterwards. Needs ffmpeg, uv (fonts).
  */
@@ -48,7 +53,7 @@ const step = (what: string, r: { code: number; out: string; err: string }) => {
   return r;
 };
 const EDIT: Segment[] = [{ from: 0, to: 2 }, { from: 3, to: 5, speed: 2 }];
-const LEAD = 7, CAP = 90, GRAY = 60, TOTAL = LEAD + CAP + GRAY;
+const LEAD = 7, CAP = 90, GRAY = 60;
 /** The source frame local frame l of the cap scene shows (worked out by hand from EDIT at 30 fps). */
 const capSource = (l: number) => (l < 60 ? l : 90 + 2 * (l - 60));
 const STYLES = ['nebula', 'paper-dawn'];
@@ -60,14 +65,28 @@ const ok = (m: string) => console.log(`ok    ${m}`);
 /** Decode every frame of a video as RGBA and hand it to `fn`; returns the frame count. */
 async function eachFrame(file: string, fn: (f: number, px: Uint8Array) => void): Promise<number> {
   const dec = Bun.spawn(['ffmpeg', '-v', 'error', '-i', file, '-f', 'rawvideo', '-pix_fmt', 'rgba', '-'], { stdout: 'pipe' });
-  let buf = new Uint8Array(0), f = 0;
+  // one frame buffer, filled chunk by chunk (no per-chunk reallocation: the process stays small while the exports run)
+  const buf = new Uint8Array(FB);
+  let fill = 0, f = 0;
   for await (const chunk of dec.stdout as ReadableStream<Uint8Array>) {
-    const next = new Uint8Array(buf.length + chunk.length);
-    next.set(buf); next.set(chunk, buf.length); buf = next;
-    while (buf.length >= FB) { fn(f++, buf.subarray(0, FB)); buf = buf.slice(FB); }
+    for (let o = 0; o < chunk.length;) {
+      const k = Math.min(FB - fill, chunk.length - o);
+      buf.set(chunk.subarray(o, o + k), fill);
+      fill += k; o += k;
+      if (fill === FB) { fn(f++, buf); fill = 0; }
+    }
   }
   await dec.exited;
   return f;
+}
+
+/** Centroid of the pixels where `pick` holds, within `r` px of (cx, cy) (or the whole frame), or null if fewer than `min`. */
+function centroid(p: Uint8Array, pick: (i: number) => boolean, cx = W / 2, cy = H / 2, r = Infinity, min = 6): { x: number; y: number } | null {
+  let n = 0, sx = 0, sy = 0;
+  for (let y = Math.max(0, Math.floor(cy - r)); y < Math.min(H, Math.ceil(cy + r)); y++)
+    for (let x = Math.max(0, Math.floor(cx - r)); x < Math.min(W, Math.ceil(cx + r)); x++)
+      if (pick((y * W + x) * 4)) { n++; sx += x + 0.5; sy += y + 0.5; }
+  return n >= min ? { x: sx / n, y: sy / n } : null;
 }
 
 /** The composite checks on the gray scene's frames (local frames 13, 14, 15 and 50) of one style. */
@@ -152,16 +171,33 @@ try {
     failures.push(`import --crop: ${grayAsset.frames} frames ${grayAsset.width}x${grayAsset.height}, crop ${JSON.stringify(gc)}, viewport ${JSON.stringify(grayAsset.viewport)}`);
   else ok('import --crop: 60 frames of 960x540, crop origin (100, 50) and the source viewport recorded');
 
-  // the film: lead (7 frames), cap, gray
+  // the web capture (Playwright), shown in the film below and checked in 8
+  step('capture', run(['bun', 'scripts/capture.ts', '--film', ID, '--id', 'web', path.join(ROOT, 'scripts', 'test-fixtures', 'capture-scenario.ts'), '--sources', WORK]));
+  const web: CaptureAsset = JSON.parse(readFileSync(path.join(FILM, 'captures', 'web.json'), 'utf8'));
+  const clicks = web.events.filter((e) => e.type === 'click');
+  if (clicks.length !== 4) throw new Error(`capture: ${clicks.length} clicks recorded, expected 4`);
+  // the edit: a 0.2 s cut between the second and third click, then speed 1.5; the camera zooms to 1.4
+  const cut = (clicks[1].t + clicks[2].t) / 2 - 0.1, end = web.frames / web.fps;
+  const WEB_EDIT: Segment[] = [{ from: 0, to: cut }, { from: cut + 0.2, to: end, speed: 1.5 }];
+  const webLocal = (t: number) => (t < cut ? t : cut + (t - cut - 0.2) / 1.5); // by hand from WEB_EDIT
+  const WEBF = Math.ceil((cut + (end - cut - 0.2) / 1.5) * 30 - 1e-9);
+  const WEB0 = LEAD + CAP + GRAY, BARE0 = WEB0 + WEBF, TOTAL = BARE0 + WEBF;
+  const probe = clicks.map((e) => Math.floor(webLocal(e.t) * 30 + 1e-9) + 4);
+
+  // the film: lead (7 frames), cap, gray, web, webbare
   writeFileSync(path.join(FILM, 'scenes', 'index.ts'), "import './cap';\n");
   writeFileSync(path.join(FILM, 'scenes', 'cap.ts'), `import { background, demoScene, scene } from '../../../engine';
 import num from '../captures/num.json';
 import gray from '../captures/gray.json';
+import web from '../captures/web.json';
 
 const flat = { bloom: 0, ca: 0, vig: 0, grain: 0, sat: 1, split: 0 };
 scene({ name: 'lead', kind: 'page', dur: ${LEAD} / 30, fi: 0, fo: 0, subs: [], draw: () => background() });
 demoScene({ name: 'cap', asset: num as never, edit: ${JSON.stringify(EDIT)}, rect: { x: 0, y: 0, w: 1920, h: 1080 }, fi: 0, fo: 0, mb: 3, grade: flat });
 demoScene({ name: 'gray', asset: gray as never, title: 'crop', fi: 0, fo: 0, mb: 3, grade: flat });
+const webOpts = { asset: web as never, title: 'web', edit: ${JSON.stringify(WEB_EDIT)}, camera: [{ t: 0, zoom: 1 }, { t: 2, x: 960, y: 540, zoom: 1.4 }], cursor: false as const, fi: 0, fo: 0, mb: 3, grade: flat };
+demoScene({ name: 'web', ...webOpts });
+demoScene({ name: 'webbare', ...webOpts, clicks: [] });
 `);
   for (const f of ['title.ts', 'idea.ts', 'end.ts']) rmSync(path.join(FILM, 'scenes', f), { force: true });
   step('fonts', run(['bun', 'scripts/fonts.ts', '--film', ID]));
@@ -179,13 +215,29 @@ demoScene({ name: 'gray', asset: gray as never, title: 'crop', fi: 0, fo: 0, mb:
         if (got !== want) wrong.push(`${f}: ${got} != ${want}`);
       }
       if ([13, 14, 15, 50].some((l) => f === LEAD + CAP + l)) keep.set(f, px.slice());
+      if (probe.some((l) => f === WEB0 + l || f === BARE0 + l)) keep.set(f, px.slice());
     });
     if (n !== TOTAL) failures.push(`${style}: export has ${n} frames, expected ${TOTAL}`);
     if (wrong.length) failures.push(`${style}: ${wrong.length} frame(s) show the wrong source frame: ${wrong.slice(0, 8).join(', ')}`);
     if (n === TOTAL && !wrong.length) ok(`${style}: ${TOTAL} frames; the demo starting at frame ${LEAD} shows exactly the expected source frame in all ${CAP}`);
-    const comp = keep.size === 4 ? grayChecks(style, keep) : [`${style}: gray scene frames missing`];
+    const comp = grayChecks(style, keep);
     failures.push(...comp);
     if (!comp.length) ok(`${style}: cursor tip at the cropped footage's (300, 150); the click shows on its frame, not before`);
+    // the web scenes: the ripple (web minus webbare) is centred on the page's own marker
+    const off: string[] = [], ds: string[] = [];
+    probe.forEach((l, k) => {
+      const a = keep.get(WEB0 + l), b = keep.get(BARE0 + l);
+      if (!a || !b) return off.push(`click ${k}: frames missing`);
+      const ring = centroid(a, (i) => Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 60, W / 2, H / 2, Infinity, 20);
+      if (!ring) return off.push(`click ${k}: no ripple at local frame ${l}`);
+      const red = centroid(b, (i) => b[i] > 190 && b[i + 1] < 80 && b[i + 2] < 80, ring.x, ring.y, 60, 4);
+      if (!red) return off.push(`click ${k}: no page marker near the ripple at (${ring.x.toFixed(1)}, ${ring.y.toFixed(1)})`);
+      const d = Math.hypot(ring.x - red.x, ring.y - red.y);
+      ds.push(`${(ring.x - red.x).toFixed(1)},${(ring.y - red.y).toFixed(1)}`);
+      if (d > 3) off.push(`click ${k}: ripple centre (${ring.x.toFixed(1)}, ${ring.y.toFixed(1)}) is ${d.toFixed(1)} px from the page's marker (${red.x.toFixed(1)}, ${red.y.toFixed(1)})`);
+    });
+    failures.push(...off.map((m) => `${style}: web: ${m} (all dx,dy: ${ds.join(' ')})`));
+    if (!off.length) ok(`${style}: web capture through cut, speed and camera: every ripple within 3 px of the page's marker (dx,dy: ${ds.join(' ')})`);
   }
 
   // 4. validate
@@ -231,11 +283,7 @@ demoScene({ name: 'gray', asset: gray as never, title: 'crop', fi: 0, fo: 0, mb:
   if (ch.code === 0 || !/sha256/.test(ch.err) || frames() !== 180) failures.push(`rebuild: a changed source was accepted or the frames were touched (exit ${ch.code}, ${frames()} frames)`);
   else ok('rebuild: a source whose sha256 differs is refused; the frames stay');
 
-  // 8. a scripted web capture (Playwright): every recorded click lands where the page itself marks it, on time
-  step('capture', run(['bun', 'scripts/capture.ts', '--film', ID, '--id', 'web', path.join(ROOT, 'scripts', 'test-fixtures', 'capture-scenario.ts'), '--sources', path.join(WORK, 'sources')]));
-  const web: CaptureAsset = JSON.parse(readFileSync(path.join(FILM, 'captures', 'web.json'), 'utf8'));
-  const clicks = web.events.filter((e) => e.type === 'click');
-  if (clicks.length !== 4) failures.push(`capture: ${clicks.length} clicks recorded, expected 4`);
+  // 8. the web capture (Playwright): every recorded click lands where the page itself marks it, on time
   const webDir = path.join(MEDIA, 'web');
   const problems: string[] = [];
   for (const [k, e] of clicks.entries()) {
@@ -267,7 +315,8 @@ demoScene({ name: 'gray', asset: gray as never, title: 'crop', fi: 0, fo: 0, mb:
 } catch (e) {
   failures.push(e instanceof Error ? e.message : String(e));
 } finally {
-  for (const p of owned) rmSync(p, { recursive: true, force: true });
+  if (process.env.KEEP_FIXTURE && failures.length) console.log(`kept for debugging: ${owned.join(", ")}`);
+  else for (const p of owned) rmSync(p, { recursive: true, force: true });
 }
 for (const m of failures) console.log(`FAIL  ${m}`);
 console.log(`${failures.length ? 'FAIL' : 'PASS'} test-capture${owned.some((p) => existsSync(p)) ? ' (fixture left behind!)' : ''}`);

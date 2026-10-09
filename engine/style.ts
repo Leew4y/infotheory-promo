@@ -107,6 +107,8 @@ export interface StylePackage {
     /** Seconds a click's ripple lasts, and seconds the cursor shows the press after a click. */
     rippleDur: number;
     pressDur: number;
+    /** How the cursor moves between its positions: an easing of u in [0, 1] (e.g. smoothstep). */
+    cursorEase: (u: number) => number;
     /** Draw the window chrome around `r` (title bar, frame, shadow) and return the rect the capture fills. */
     window(r: Rect, title: string, a: number): Rect;
     /** The cursor with its tip at (x, y); `press` 0–1 while a click is held. */

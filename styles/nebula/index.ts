@@ -111,6 +111,7 @@ const nebula: StylePackage = {
     area: { x: 170, y: 190, w: W - 340, h: H - 420 },
     rippleDur: 0.6,
     pressDur: 0.15,
+    cursorEase: (u) => u * u * (3 - 2 * u),
     window(r, title, a) {
       const bar = 30;
       ctx.save();

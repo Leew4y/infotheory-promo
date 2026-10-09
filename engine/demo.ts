@@ -19,7 +19,7 @@
 import { background, style } from './style';
 import { ctx } from './draw';
 import { outputFrame } from './frame';
-import { FPS, frameOf } from './film';
+import { FPS } from './film';
 import { bitmap } from './media';
 import { note } from './notes';
 import { scene, type Sfx, type Sub, type SceneDef } from './scene';
@@ -43,8 +43,11 @@ export interface DemoOpts {
   title?: string;
   /** Camera keyframes in frame pixels on the scene's clock (default: the whole frame). */
   camera?: CamKey[];
-  /** Cursor keyframes and clicks in frame pixels on the scene's clock; when given they replace the recorded events. */
-  cursor?: CursorKey[];
+  /**
+   * Cursor keyframes and clicks in frame pixels on the scene's clock; when given they replace the recorded events.
+   * cursor: false shows no cursor (the clicks, recorded or given, still show).
+   */
+  cursor?: CursorKey[] | false;
   clicks?: CursorKey[];
   /** The window's rect on the canvas (default: the style's demo area, fitted to the capture's aspect). */
   rect?: Rect;
@@ -79,15 +82,14 @@ function keyProblems(what: string, keys: CursorKey[] | undefined, ordered: boole
   return out;
 }
 
-/** Smoothstep interpolation through keyframes, held at the ends. */
-function along(keys: CursorKey[], lt: number): { x: number; y: number } | null {
+/** Interpolation through keyframes with the style's easing, held at the ends. */
+function along(keys: CursorKey[], lt: number, ease: (u: number) => number): { x: number; y: number } | null {
   if (!keys.length) return null;
   if (lt <= keys[0].t) return keys[0];
   for (let i = 1; i < keys.length; i++) {
     if (lt < keys[i].t) {
       const a = keys[i - 1], b = keys[i];
-      const u = (lt - a.t) / (b.t - a.t);
-      const e = u * u * (3 - 2 * u);
+      const e = ease((lt - a.t) / (b.t - a.t));
       return { x: a.x + (b.x - a.x) * e, y: a.y + (b.y - a.y) * e };
     }
   }
@@ -98,24 +100,24 @@ function along(keys: CursorKey[], lt: number): { x: number; y: number } | null {
 export function demoScene(o: DemoOpts): SceneDef {
   const asset = o.asset;
   const edit = o.edit ?? [{ from: 0, to: asset.frames / asset.fps }];
-  const problems = [...editProblems(edit, asset), ...cameraProblems(o.camera ?? []), ...keyProblems('cursor', o.cursor, true), ...keyProblems('clicks', o.clicks, false)];
+  const problems = [...editProblems(edit, asset), ...cameraProblems(o.camera ?? []), ...keyProblems('cursor', o.cursor || undefined, true), ...keyProblems('clicks', o.clicks, false)];
   if (o.rect && !(['x', 'y', 'w', 'h'] as const).every((k) => Number.isFinite(o.rect![k])) || o.rect && !(o.rect.w > 0 && o.rect.h > 0)) problems.push(`rect: finite, with w and h > 0 (got ${JSON.stringify(o.rect)})`);
   if (problems.length) throw new Error(`demo scene "${o.name}" (capture ${asset.id}): ${problems.join('; ')}`);
   // cursor and clicks: given keyframes, or the recorded events seen through the edit
-  let cursor = o.cursor ?? [];
+  let cursor = o.cursor || [];
   let clicks = o.clicks ?? [];
   if (!o.cursor && !o.clicks && asset.events.length) {
     const { shown, cut } = editEvents(edit, asset);
     for (const e of cut) if (e.type === 'click') note('capture-event-cut', `scene:${o.name}`, `a click recorded at ${e.t.toFixed(3)}s of capture "${asset.id}" falls in a part the edit cuts; it is not shown`);
     const pos = shown.filter((e) => e.x !== undefined && e.y !== undefined).map((e) => ({ t: e.lt, ...toFrame(asset, e.x!, e.y!), type: e.type }));
-    cursor = pos.map(({ t, x, y }) => ({ t, x, y }));
+    if (o.cursor !== false) cursor = pos.map(({ t, x, y }) => ({ t, x, y }));
     clicks = pos.filter((e) => e.type === 'click').map(({ t, x, y }) => ({ t, x, y }));
   }
   const rect = o.rect ?? defaultRect(asset);
   const camera = o.camera ?? [];
   const frameAt = (lt: number) => sourceFrame(asset, sourceTime(edit, lt));
-  // each click from the frame its time falls in
-  const hits = clicks.map((c) => ({ ...c, f: frameOf(c.t) }));
+  // each click from the frame its time falls in: floor(t x fps + 1e-9), the frame contract for event times
+  const hits = clicks.map((c) => ({ ...c, f: Math.floor(c.t * FPS + 1e-9) }));
   // draw() runs after registration and reads the scene's start frame from self
   const self: SceneDef = scene({
     name: o.name, kind: 'page', dur: o.dur ?? Math.ceil(editDuration(edit) * FPS - 1e-9) / FPS, fi: o.fi, fo: o.fo, mb: o.mb, grade: o.grade, chapter: o.chapter, ch: o.ch,
@@ -144,7 +146,7 @@ export function demoScene(o: DemoOpts): SceneDef {
         const a = age(c);
         if (a !== null && a < S.demo.rippleDur) { const p = at(c.x, c.y); S.demo.ripple(p.x, p.y, clamp(a / S.demo.rippleDur), 1); }
       }
-      const cur = along(cursor, lt);
+      const cur = along(cursor, lt, S.demo.cursorEase);
       if (cur) {
         const press = hits.reduce((m, c) => { const a = age(c); return a === null ? m : Math.max(m, 1 - a / S.demo.pressDur); }, 0);
         const p = at(cur.x, cur.y);
