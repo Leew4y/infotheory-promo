@@ -14,6 +14,7 @@
  *   __gpu()            WebGL renderer string
  *   __cues()           the sound-effect cue sheet (the film's score reads it as cues.json)
  *   __scenes()         name, kind, start/end, fade lengths and caption times (film seconds) of every scene
+ *   __narration()      where each narration line plays (film seconds), for the final mix, and the lines no scene placed
  *   __notes()          notes recorded while the film registered (e.g. a recorded click an edit cuts), for validate
  *   __prefetch(ts)     start loading the media of the given times (export look-ahead)
  * A film's main.ts imports its film.ts and scenes, then calls boot().
@@ -23,6 +24,7 @@ import { contrastAt, type ContrastBox } from './inspect';
 import { frame, needsAt, prepare } from './frame';
 import { prefetch, setStrict } from './media';
 import { allNotes, type Note } from './notes';
+import { narrationReport, type LinePlacement } from './narration';
 import { gpuName } from './gl';
 import { SC, sceneAt } from './scene';
 import { style, styleIds } from './style';
@@ -35,6 +37,7 @@ declare global {
     __frame: (t: number, fps?: number) => Promise<string>;
     __prefetch: (ts: number[]) => void;
     __notes: () => Note[];
+    __narration: () => { placements: LinePlacement[]; unplaced: string[] };
     __duration: number;
     __film: string;
     __style: string;
@@ -136,6 +139,7 @@ export function boot(o: BootOptions): void {
   };
   window.__gpu = gpuName;
   window.__notes = allNotes;
+  window.__narration = narrationReport;
   window.__cues = () =>
     SC.flatMap((s) => (s.sfx ?? []).map(([t, name, o]) => ({ t: +(s.t0 + t).toFixed(4), name, ...(o ?? {}) }))).sort((a, b) => a.t - b.t);
   window.__scenes = () => SC.map((s) => ({

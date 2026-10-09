@@ -96,6 +96,8 @@ try {
     for (const d of diags) if (d.style === cur) d.style = pageStyle;
     cur = pageStyle;
     checked.push(pageStyle);
+    const { unplaced } = await page.evaluate(() => window.__narration());
+    for (const id of unplaced) if (!noted.has(`unplaced|${id}`)) { noted.add(`unplaced|${id}`); err('narration-unplaced', `narration:${id}`, `narration line "${id}" is placed in no scene (narratedScene / demoScene narration)`); }
     // notes the film recorded while registering (engine/notes.ts) are warnings, once (they recur in every style)
     for (const n of await page.evaluate(() => window.__notes())) {
       const k = `${n.code}|${n.path}|${n.message}`;

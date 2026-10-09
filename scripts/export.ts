@@ -7,6 +7,7 @@
  *   bun scripts/export.ts --film <id> --cues [films/<id>/cues.json]          dump the sound-effect cue sheet for the score
  *   bun scripts/export.ts --film <id> --timeline [films/<id>/timeline.json]  dump the resolved timeline (scene frames / seconds)
  *   bun scripts/export.ts --film <id> --scenes                               print the scene list with start/end times
+ *   bun scripts/export.ts --film <id> --narration [out/<id>/narration.cues.json]  where each narration line plays
  *   every form takes [--style <id>]: one of the film's styles (?style=<id>); omitted: the film's default.
  *   The page is the film's build, dist/<id>/ (just build <id>).
  *
@@ -55,7 +56,7 @@ const flag = (k: string): boolean => argv.includes(`--${k}`);
 const fail = (exit: number, message: string): never => { throw Object.assign(new Error(message), { exit }); };
 
 const CRF = opt('crf', '18')!;
-const SINGLE = flag('shots') || flag('cues') || flag('timeline') || flag('scenes');
+const SINGLE = flag('shots') || flag('cues') || flag('timeline') || flag('scenes') || flag('narration');
 const WORKERS = SINGLE ? 1 : Math.max(1, +(opt('workers', '4') ?? 4));
 const STYLE = opt('style');
 const OUT = path.resolve(ROOT, opt('out', `out/${FILM}/${FILM}${STYLE ? `-${STYLE}` : ''}.mp4`)!);
@@ -256,12 +257,20 @@ try {
     const list = await workers[0].evaluate(() => window.__scenes());
     for (const s of list) console.log(`${s.name.padEnd(12)} ${s.start.toFixed(2).padStart(8)} -> ${s.end.toFixed(2).padStart(8)}  (${(s.end - s.start).toFixed(1)}s)`);
     console.log(`total ${tl.duration.toFixed(2)}s`);
-  } else if (flag('cues') || flag('timeline')) {
+  } else if (flag('cues') || flag('timeline') || flag('narration')) {
     if (flag('timeline')) {
       const tf = path.resolve(ROOT, opt('timeline', `films/${FILM}/timeline.json`)!);
       mkdirSync(path.dirname(tf), { recursive: true });
       writeFileSync(tf, JSON.stringify(tl, null, 1));
       console.log(`wrote timeline (${tl.scenes.length} scenes, ${tl.frames} frames) to ${tf}`);
+    }
+    if (flag('narration')) {
+      const file = path.resolve(ROOT, opt('narration', `out/${FILM}/narration.cues.json`)!);
+      const { placements, unplaced } = await workers[0].evaluate(() => window.__narration());
+      if (unplaced.length) fail(1, `narration lines placed in no scene: ${unplaced.join(', ')}`);
+      mkdirSync(path.dirname(file), { recursive: true });
+      writeFileSync(file, JSON.stringify(placements, null, 1));
+      console.log(`wrote ${placements.length} narration placements to ${file}`);
     }
     if (flag('cues')) {
       const file = path.resolve(ROOT, opt('cues', `films/${FILM}/cues.json`)!);

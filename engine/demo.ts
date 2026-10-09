@@ -23,6 +23,7 @@ import { FPS, frameOf } from './film';
 import { bitmap } from './media';
 import { note } from './notes';
 import { scene, type Sfx, type Sub, type SceneDef } from './scene';
+import { narrationTiming, type NarrationTiming } from './narration';
 import type { Grade } from './gl';
 import { clamp } from './util';
 import {
@@ -39,6 +40,11 @@ export interface DemoOpts {
   /** The parts of the recording to show (default: all of it). The scene lasts as long as the edit unless dur is given. */
   edit?: Segment[];
   dur?: number;
+  /**
+   * Narration over the capture (engine/narration.ts): the scene lasts max(narration with its lead and tail, the edit),
+   * so the footage is never cut short; with `dur` given, at least `dur`. The lines become captions.
+   */
+  narration?: NarrationTiming;
   /** The window title (e.g. the product or page). */
   title?: string;
   /** Camera keyframes in frame pixels on the scene's clock (default: the whole frame). */
@@ -116,10 +122,12 @@ export function demoScene(o: DemoOpts): SceneDef {
   const frameAt = (lt: number) => sourceFrame(asset, sourceTime(edit, lt));
   // each click from the frame its time falls in
   const hits = clicks.map((c) => ({ ...c, f: frameOf(c.t) }));
+  const footage = Math.ceil(editDuration(edit) * FPS - 1e-9) / FPS;
+  const said = o.narration ? narrationTiming(o.name, { ...o.narration, minDur: Math.max(o.narration.minDur ?? 0, o.dur ?? footage) }) : null;
   // draw() runs after registration and reads the scene's start frame from self
   const self: SceneDef = scene({
-    name: o.name, kind: 'page', dur: o.dur ?? Math.ceil(editDuration(edit) * FPS - 1e-9) / FPS, fi: o.fi, fo: o.fo, mb: o.mb, grade: o.grade, chapter: o.chapter, ch: o.ch,
-    subs: o.subs ?? [], sfx: o.sfx,
+    name: o.name, kind: 'page', dur: said ? said.dur : o.dur ?? footage, fi: o.fi, fo: o.fo, mb: o.mb, grade: o.grade, chapter: o.chapter, ch: o.ch,
+    subs: [...(o.subs ?? []), ...(said?.subs ?? [])], sfx: o.sfx,
     // demo scenes hold the page still: camera moves happen inside the window
     cam: () => ({ z: 1 }),
     need: (lt) => [{ seq: asset.id, frame: frameAt(lt) }],
@@ -153,5 +161,5 @@ export function demoScene(o: DemoOpts): SceneDef {
       ctx.restore();
     },
   });
-  return self;
+  return said ? said.bind(self) : self;
 }
