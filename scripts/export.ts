@@ -11,7 +11,8 @@
  *   The page is the film's build, dist/<id>/ (just build <id>).
  *
  * Every worker is its own headless Chrome rendering exact frame times through the page's ?export=1 hooks.
- * Frames are handed out one at a time and written to ffmpeg in order. Needs `just build <id>` first (the page is
+ * Frames are handed out in chunks of consecutive frames (so a worker can read a capture's frames ahead, in order) and
+ * written to ffmpeg in order. Needs `just build <id>` first (the page is
  * served from dist/<id>/), Chrome, and ffmpeg / ffprobe on PATH.
  *
  * Output contract (docs/plan/reusable-engine.md, "全局契约 / 导出产物"):
@@ -204,7 +205,7 @@ async function probe(file: string): Promise<Probe> {
 }
 const audioSeconds = async (file: string) => finite((await runProbe(['-show_entries', 'format=duration', '-of', 'csv=p=0', file])).trim(), `duration of ${file}`);
 
-interface Worker { id: number; browser: Browser; page: Page; frame: (t: number) => Promise<Buffer>; evaluate: <T>(fn: () => T) => Promise<T> }
+interface Worker { id: number; browser: Browser; page: Page; frame: (t: number) => Promise<Buffer>; prefetch: (ts: number[]) => Promise<void>; evaluate: <T>(fn: () => T) => Promise<T> }
 async function launch(id: number, chrome: string, url: string, fps: () => number): Promise<Worker> {
   checkCancel();
   const browser = await puppeteer.launch({
@@ -221,7 +222,8 @@ async function launch(id: number, chrome: string, url: string, fps: () => number
     const durl: string = await page.evaluate((t, f) => window.__frame(t, f), t, fps());
     return Buffer.from(durl.slice(durl.indexOf(',') + 1), 'base64');
   };
-  return { id, browser, page, frame, evaluate: (fn) => page.evaluate(fn) };
+  const prefetch = (ts: number[]) => page.evaluate((ts) => window.__prefetch(ts), ts);
+  return { id, browser, page, frame, prefetch, evaluate: (fn) => page.evaluate(fn) };
 }
 
 let code = 0;
@@ -302,8 +304,11 @@ try {
     const stdin = enc.stdin as import('bun').FileSink;
     const t0 = performance.now();
 
-    // frames are rendered by whichever worker is free and written in order; rendering may run AHEAD frames past the encoder
-    const AHEAD = 12 * WORKERS;
+    // frames are rendered in chunks of CHUNK consecutive frames by whichever worker is free, and written in order;
+    // rendering may run AHEAD frames past the encoder. A worker starts loading the media of its whole chunk when it takes
+    // it (captures are read in order, ahead of the frame being drawn).
+    const CHUNK = 15;
+    const AHEAD = Math.max(12, 2 * CHUNK) * WORKERS;
     const ready = new Map<number, Buffer>();
     let nextTake = 0, nextWrite = 0;
     let failed: Error | null = null;
@@ -311,8 +316,12 @@ try {
     const work = async (w: Worker): Promise<void> => {
       while (nextTake < N && !stop()) {
         if (nextTake >= nextWrite + AHEAD) { await Bun.sleep(5); continue; }
-        const i = nextTake++;
-        try { ready.set(i, await w.frame((F0 + i) / FPS)); } catch (e) { failed ??= e instanceof Error ? e : new Error(String(e)); }
+        const a = nextTake, b = Math.min(N, a + CHUNK);
+        nextTake = b;
+        try {
+          await w.prefetch(Array.from({ length: b - a }, (_, k) => (F0 + a + k) / FPS));
+          for (let i = a; i < b && !stop(); i++) ready.set(i, await w.frame((F0 + i) / FPS));
+        } catch (e) { failed ??= e instanceof Error ? e : new Error(String(e)); }
       }
     };
     const write = async (): Promise<void> => {

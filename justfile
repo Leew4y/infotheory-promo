@@ -82,6 +82,10 @@ test:
 test-capture:
     bun scripts/test-capture.ts
 
+# Throughput and memory of capture scenes against the 0b budgets (a 60 s numbered capture vs the reference film's page scene).
+bench-capture *args:
+    bun scripts/bench-capture.ts {{args}}
+
 # Cases for the layout checks of validate (a throwaway film from the template: clean, then with deliberate faults).
 test-validate:
     bun scripts/test-validate.ts
