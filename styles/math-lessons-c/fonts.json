@@ -1,0 +1,12 @@
+{
+ "comment": "Fonts of the math-lessons-c direction (Manifesto): ids in fonts/catalog.json, in the order the manifest lists them; role is informational. Subsets per film: just fonts <film>.",
+ "fonts": [
+  { "id": "noto-sans-sc", "role": "body" },
+  { "id": "space-grotesk", "role": "latin" },
+  { "id": "space-mono", "role": "mono" },
+  { "id": "space-mono-bold", "role": "mono" },
+  { "id": "stix-two-text", "role": "math" },
+  { "id": "stix-two-text-italic", "role": "math" },
+  { "id": "stix-two-math", "role": "fallback" }
+ ]
+}

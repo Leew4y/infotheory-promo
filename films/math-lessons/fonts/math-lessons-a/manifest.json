@@ -1,0 +1,155 @@
+{
+ "film": "math-lessons",
+ "style": "math-lessons-a",
+ "generator": {
+  "fonttools": "4.66.1",
+  "brotli": "1.2.0"
+ },
+ "charset": " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~³·ç–…≡◇　。〇《》一七三不且东个中为么乐九了二于五人什从以们会候值光克全八六内再写决判到刻力千卷历去反发可史后否器四在复外始存学它完定审宣对己已布年序应开当得急意懂我托把报据教数断斯方无时明是月本机来次清滑烧片生用疯的看着破禧种科称程笔第类系纳经统维者自裂西解言训证评误说这进选道部醒里错问院随难集零面须题（），：；？",
+ "fonts": [
+  {
+   "family": "ZCOOL XiaoWei",
+   "role": "body",
+   "style": "normal",
+   "weight": "400",
+   "file": "ZCOOLXiaoWei-normal.woff2",
+   "sha256": "51af0e26b8e782aade7f280ef79e9e41628382ee0530f89db1873e6a2b72e7d0",
+   "bytes": 40888,
+   "source": {
+    "file": "ZCOOLXiaoWei-Regular.ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/zcoolxiaowei/ZCOOLXiaoWei-Regular.ttf",
+    "sha256": "a42b620140f493db42f741351dfbf343c0936d58588ee8004b8b2a218d997ff1"
+   },
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSE-ZCOOLXiaoWei.txt",
+   "chars": 251,
+   "missing": "³·ç≡◇〇"
+  },
+  {
+   "family": "Noto Serif SC",
+   "role": "body",
+   "style": "normal",
+   "weight": "200 900",
+   "file": "NotoSerifSC-normal.woff2",
+   "sha256": "3636bbd5a3b019a89e0246859cf7e0eab3b05accf9a4d18ebd1262dac6ecbb94",
+   "bytes": 118908,
+   "source": {
+    "file": "NotoSerifSC[wght].ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/notoserifsc/NotoSerifSC%5Bwght%5D.ttf",
+    "sha256": "050080d9255a86808f2945bffac582b31ef32bc36411ce29563b4961670c66f9"
+   },
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSE-NotoSerifSC.txt",
+   "chars": 257,
+   "missing": ""
+  },
+  {
+   "family": "Instrument Serif",
+   "role": "latin",
+   "style": "normal",
+   "weight": "400",
+   "file": "InstrumentSerif-normal.woff2",
+   "sha256": "83877df6d51f7264dad44d7292230d2cd7e1587072074aea3f7f418e2da6dc55",
+   "bytes": 10664,
+   "source": {
+    "file": "InstrumentSerif-Regular.ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/instrumentserif/InstrumentSerif-Regular.ttf",
+    "sha256": "498efd461f6ddfcb7a111bf9a565709d2085d48201d501ead960d93e84ffbb88"
+   },
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSE-InstrumentSerif.txt",
+   "chars": 99,
+   "missing": "³≡◇　。〇《》一七三不且东个中为么乐九了二于五人什从以们会候值光克全八六内再写决判到刻力千卷历去反发可史后否器四在复外始存学它完定审宣对己已布年序应开当得急意懂我托把报据教数断斯方无时明是月本机来次清滑烧片生用疯的看着破禧种科称程笔第类系纳经统维者自裂西解言训证评误说这进选道部醒里错问院随难集零面须题（），：；？"
+  },
+  {
+   "family": "Instrument Serif",
+   "role": "latin",
+   "style": "italic",
+   "weight": "400",
+   "file": "InstrumentSerif-italic.woff2",
+   "sha256": "373f7f4a6da1a92b4ad29e9cf4cbda35a0f5dd04b8330453b9506054680baefd",
+   "bytes": 11104,
+   "source": {
+    "file": "InstrumentSerif-Italic.ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/instrumentserif/InstrumentSerif-Italic.ttf",
+    "sha256": "08939b8bdf534afec24ae0ef5e03f948940cd9a8fe08e7fecbad040e62327385"
+   },
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSE-InstrumentSerif.txt",
+   "chars": 99,
+   "missing": "³≡◇　。〇《》一七三不且东个中为么乐九了二于五人什从以们会候值光克全八六内再写决判到刻力千卷历去反发可史后否器四在复外始存学它完定审宣对己已布年序应开当得急意懂我托把报据教数断斯方无时明是月本机来次清滑烧片生用疯的看着破禧种科称程笔第类系纳经统维者自裂西解言训证评误说这进选道部醒里错问院随难集零面须题（），：；？"
+  },
+  {
+   "family": "IBM Plex Mono",
+   "role": "mono",
+   "style": "normal",
+   "weight": "400",
+   "file": "IBMPlexMono-normal.woff2",
+   "sha256": "394608f7608ad665a4d70b58b1692c5d97e8c98c52dfa66557e12bfeb7b18210",
+   "bytes": 7052,
+   "source": {
+    "file": "IBMPlexMono-Regular.ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/ibmplexmono/IBMPlexMono-Regular.ttf",
+    "sha256": "6a3412f058c7d8dfd9170c41e85ade48e5156ecb89356110ca57a0a27734af46"
+   },
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSE-IBMPlexMono.txt",
+   "chars": 100,
+   "missing": "≡◇　。〇《》一七三不且东个中为么乐九了二于五人什从以们会候值光克全八六内再写决判到刻力千卷历去反发可史后否器四在复外始存学它完定审宣对己已布年序应开当得急意懂我托把报据教数断斯方无时明是月本机来次清滑烧片生用疯的看着破禧种科称程笔第类系纳经统维者自裂西解言训证评误说这进选道部醒里错问院随难集零面须题（），：；？"
+  },
+  {
+   "family": "STIX Two Text",
+   "role": "math",
+   "style": "normal",
+   "weight": "400 700",
+   "file": "STIXTwoText-normal.woff2",
+   "sha256": "ccad94b797263d3224e64dd1fe7b11cb303e718b4069bf18a2b3fcebf37ddd12",
+   "bytes": 30672,
+   "source": {
+    "file": "STIXTwoText[wght].ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/stixtwotext/STIXTwoText%5Bwght%5D.ttf",
+    "sha256": "7962b8b7811e6a896c9a91a0bccbb5241047770eb24d4997c5cb5fe21d5c0df2"
+   },
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSE-STIXTwoText.txt",
+   "chars": 100,
+   "missing": "≡◇　。〇《》一七三不且东个中为么乐九了二于五人什从以们会候值光克全八六内再写决判到刻力千卷历去反发可史后否器四在复外始存学它完定审宣对己已布年序应开当得急意懂我托把报据教数断斯方无时明是月本机来次清滑烧片生用疯的看着破禧种科称程笔第类系纳经统维者自裂西解言训证评误说这进选道部醒里错问院随难集零面须题（），：；？"
+  },
+  {
+   "family": "STIX Two Text",
+   "role": "math",
+   "style": "italic",
+   "weight": "400 700",
+   "file": "STIXTwoText-italic.woff2",
+   "sha256": "e1e54d6573e0ad87e68e93f3dfb77958fcff941f74759ab54c849b1c5fe072a3",
+   "bytes": 34272,
+   "source": {
+    "file": "STIXTwoText-Italic[wght].ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/stixtwotext/STIXTwoText-Italic%5Bwght%5D.ttf",
+    "sha256": "88c0e2e316eaff56eddc9e51e4850317e2a1e490bbf758b2dec4793aedba9c74"
+   },
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSE-STIXTwoText.txt",
+   "chars": 100,
+   "missing": "≡◇　。〇《》一七三不且东个中为么乐九了二于五人什从以们会候值光克全八六内再写决判到刻力千卷历去反发可史后否器四在复外始存学它完定审宣对己已布年序应开当得急意懂我托把报据教数断斯方无时明是月本机来次清滑烧片生用疯的看着破禧种科称程笔第类系纳经统维者自裂西解言训证评误说这进选道部醒里错问院随难集零面须题（），：；？"
+  },
+  {
+   "family": "STIX Two Math",
+   "role": "fallback",
+   "style": "normal",
+   "weight": "400",
+   "file": "STIXTwoMath-normal.woff2",
+   "sha256": "d22c84e1ea7ddd6d33e40d8ef24c625fe4710280973360fe13c3961e94429cf6",
+   "bytes": 22216,
+   "source": {
+    "file": "STIXTwoMath-Regular.ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/stixtwomath/STIXTwoMath-Regular.ttf",
+    "sha256": "562551b15b836e6e01d1b7350909baf3c8c8d83260c1190fbf4544333e6936de"
+   },
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSE-STIXTwoMath.txt",
+   "chars": 102,
+   "missing": "　。〇《》一七三不且东个中为么乐九了二于五人什从以们会候值光克全八六内再写决判到刻力千卷历去反发可史后否器四在复外始存学它完定审宣对己已布年序应开当得急意懂我托把报据教数断斯方无时明是月本机来次清滑烧片生用疯的看着破禧种科称程笔第类系纳经统维者自裂西解言训证评误说这进选道部醒里错问院随难集零面须题（），：；？"
+  }
+ ]
+}
