@@ -107,6 +107,7 @@
 |---|---|---|
 | S5a | README | This repository contains mathematical manuscripts and supporting proof artifacts produced by an internal OpenAI model. |
 | S5b | README | The current catalogue contains 719 manuscripts organized into 372 families. … The repository has ~42% top-line results formalized. |
+| S5b′ | 初始提交 adc7f12（2026-10-06T21:58Z）的 README | The current catalogue contains 722 manuscripts organized into 372 families. … Many, but not all, of the manuscripts have been formalized. |
 | S5c | README | This collection includes results at different stages of verification. Not all have accompanying Lean formalizations. … Some of the unformalized results could have issues. |
 | S5d | README, How the results were produced | Over the course of the evaluation, the model was posed approximately 4,000 problems. Aggregating the output into result families and manuscripts and requiring an appropriate level of significance led to the catalog outlined above. |
 | S5e | README | On average, each result used three hours of ChatGPT Pro thinking compute with that model. |
@@ -209,7 +210,7 @@
 - *Harper's Magazine* 第 179 卷（1939），pp. 544–552；读的是 IAS 提供的扫描 PDF <https://www.ias.edu/sites/default/files/library/UsefulnessHarpers.pdf>，已核实。
   PDF 页眉只写 "issue 179, June/November 1939"，**具体月份未核实**。
 - S15a（p. 545）：…"throughout the whole history of science most of the really great discoveries which had ultimately proved to be beneficial to mankind had been made by men and women who were driven not by the desire to be useful but merely the desire to satisfy their curiosity."
-- 背景：Flexner 是 IAS 的创办主任（文中自述 IAS；AGMAI 今天就设在 IAS——**这只是巧合，不作任何推论**）。
+- 文中大段介绍了普林斯顿高等研究院（IAS）；Flexner 与 IAS 的确切关系本片未核，不作头衔使用。
 
 ### S16 Bertrand Russell，"The Study of Mathematics"
 
@@ -257,6 +258,12 @@
 - Tao 博客转载 <https://terrytao.wordpress.com/2026/10/07/ahm-statement-on-openais-october-6-release-of-mathematical-documents/>，已核实。
 - S21a："Releasing over 700 files at once is not a demonstration of scholarship, but a demonstration of power."
 - 用途：展示数学界反应的分歧（从 AGMAI 的谨慎到 AHM 的拒斥）；AHM 的立场是一方观点，不代表数学界。
+
+### S23 E. Rescorla，RFC 8446 "The Transport Layer Security (TLS) Protocol Version 1.3"（IETF Standards Track，2018 年 8 月）
+
+- <https://www.rfc-editor.org/rfc/rfc8446.txt>，已核实。
+- S23a（§9.1）："A TLS-compliant application MUST support digital signatures with rsa_pkcs1_sha256 (for certificates), rsa_pss_rsae_sha256 (for CertificateVerify and certificates), and ecdsa_secp256r1_sha256."
+- S23b（摘要）："TLS allows client/server applications to communicate over the Internet in a way that is designed to prevent eavesdropping, tampering, and message forgery."
 
 ### S22 GitHub issue leanprover/lean4#14576
 
