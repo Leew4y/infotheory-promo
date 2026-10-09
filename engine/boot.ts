@@ -14,11 +14,15 @@
  *   __gpu()            WebGL renderer string
  *   __cues()           the sound-effect cue sheet (the film's score reads it as cues.json)
  *   __scenes()         name, kind, start/end, fade lengths and caption times (film seconds) of every scene
+ *   __notes()          notes recorded while the film registered (e.g. a recorded click an edit cuts), for validate
+ *   __prefetch(ts)     start loading the media of the given times (export look-ahead)
  * A film's main.ts imports its film.ts and scenes, then calls boot().
  */
 import { cv, recordText, setCoverage, type TextBox } from './draw';
 import { contrastAt, type ContrastBox } from './inspect';
-import { frame } from './frame';
+import { frame, needsAt, prepare } from './frame';
+import { prefetch, setStrict } from './media';
+import { allNotes, type Note } from './notes';
 import { gpuName } from './gl';
 import { SC, sceneAt } from './scene';
 import { style, styleIds } from './style';
@@ -28,7 +32,9 @@ import { film, FPS, FRAMES, TOTAL } from './film';
 declare global {
   interface Window {
     __ready: () => boolean;
-    __frame: (t: number, fps?: number) => string;
+    __frame: (t: number, fps?: number) => Promise<string>;
+    __prefetch: (ts: number[]) => void;
+    __notes: () => Note[];
     __duration: number;
     __film: string;
     __style: string;
@@ -37,8 +43,8 @@ declare global {
     __gpu: () => string;
     __cues: () => { t: number; name: string; [k: string]: number | string }[];
     __scenes: () => { name: string; kind: string; start: number; end: number; fadeIn: number; fadeOut: number; subs: [number, number][] }[];
-    __layout: (t: number, fps?: number) => TextBox[];
-    __contrast: (t: number, fps?: number) => ContrastBox[];
+    __layout: (t: number, fps?: number) => Promise<TextBox[]>;
+    __contrast: (t: number, fps?: number) => Promise<ContrastBox[]>;
     __fonts: () => FontManifest;
   }
 }
@@ -99,10 +105,14 @@ export function boot(o: BootOptions): void {
     return fontsReady;
   };
   window.__fonts = () => fonts;
-  window.__frame = (t, fps = 30) => {
+  // every hook that renders first loads the media the frame needs (engine/media.ts), then draws synchronously
+  window.__frame = async (t, fps = 30) => {
+    await prepare(t);
     frame(t, fps, 3);
     return cv.toDataURL('image/jpeg', 0.95);
   };
+  /** Start loading the media of frames a worker will render next (look-ahead; never waits). */
+  window.__prefetch = (ts) => { for (const t of ts) prefetch(needsAt(t)); };
   window.__duration = TOTAL;
   window.__film = film().id;
   window.__style = sid;
@@ -113,13 +123,15 @@ export function boot(o: BootOptions): void {
   });
   // text boxes of the frame at t (no motion blur), for scripts/validate.ts
   // the same motion-blur sub-frames as __frame (the export)
-  window.__contrast = (t, fps = 30) => contrastAt(t, fps, 3);
-  window.__layout = (t, fps = 30) => {
+  window.__contrast = async (t, fps = 30) => { await prepare(t); return contrastAt(t, fps, 3); };
+  window.__layout = async (t, fps = 30) => {
+    await prepare(t);
     recordText(true);
     frame(t, fps, 1);
     return recordText(false);
   };
   window.__gpu = gpuName;
+  window.__notes = allNotes;
   window.__cues = () =>
     SC.flatMap((s) => (s.sfx ?? []).map(([t, name, o]) => ({ t: +(s.t0 + t).toFixed(4), name, ...(o ?? {}) }))).sort((a, b) => a.t - b.t);
   window.__scenes = () => SC.map((s) => ({
@@ -130,6 +142,8 @@ export function boot(o: BootOptions): void {
 
   const au = document.getElementById('au') as HTMLAudioElement;
 
+  // export and the check tools: a frame must never be drawn with media missing
+  setStrict(EXPORT);
   if (EXPORT) {
     document.body.classList.add('export');
   } else {
@@ -153,6 +167,8 @@ export function boot(o: BootOptions): void {
     // nothing is drawn before the bundled fonts are in: no frame may use a system font
     const draw = (T: number) => {
       if (!fontsReady) return;
+      // the preview never waits: start loading the next second of media; a missing frame shows the nearest loaded one
+      for (let k = 0; k < 30; k += 3) prefetch(needsAt(T + k / 30));
       frame(T);
       fill.style.width = `${(T / TOTAL) * 100}%`;
       tm.textContent = fmtTime(T);

@@ -59,7 +59,7 @@ async function launch(): Promise<W> {
 /** Render frame f with the export path (3 motion-blur sub-frames) and hash the canvas's raw RGBA. */
 async function hashFrame(w: W, f: number): Promise<string> {
   return w.page.evaluate(async (t, fps) => {
-    window.__frame(t, fps);
+    await window.__frame(t, fps);
     const c = document.getElementById('c') as HTMLCanvasElement;
     const px = c.getContext('2d')!.getImageData(0, 0, c.width, c.height).data;
     const d = new Uint8Array(await crypto.subtle.digest('SHA-256', px));

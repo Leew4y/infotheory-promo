@@ -7,6 +7,7 @@ import { appendFrames, durFrames, film, FPS } from './film';
 import { check, SceneSpec } from './schema';
 import { style } from './style';
 import type { Grade } from './gl';
+import type { MediaRef } from './media';
 
 export type Sub = [number, number, string, string];
 export type Sfx = [number, string, Record<string, number | string>?];
@@ -31,6 +32,11 @@ export interface SceneDef {
   sfx?: Sfx[];
   cam?: (lt: number, d: number) => Cam;
   draw: (lt: number, d: number, t: number) => void;
+  /**
+   * The media frames (engine/media.ts) the scene draws at local time lt of the output frame; loaded before the frame
+   * is drawn. Scenes that show no capture leave it out.
+   */
+  need?: (lt: number, d: number) => MediaRef[];
   /** Resolved: start and end frame (half-open), start time and duration in seconds. */
   f0: number;
   f1: number;

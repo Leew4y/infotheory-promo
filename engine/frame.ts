@@ -9,6 +9,7 @@ import { SC, sceneAt, camDrift } from './scene';
 import { film, TOTAL } from './film';
 import { style, type SubLine } from './style';
 import { clamp, sstep, W, H } from './util';
+import { ensure, type MediaRef } from './media';
 
 export type { SubLine };
 export const SUBS = (): SubLine[] => SC.flatMap((s) => s.subs.map(([a, b, zh, en]) => ({ a: s.t0 + a, b: s.t0 + b, zh, en, plate: s.kind === 'plate' })));
@@ -44,6 +45,22 @@ export function drawLayer(t: number, jx: number, jy: number): void {
   }
 }
 
+/**
+ * The output frame's time while frame() runs. Media (a capture's source frame) is chosen from it, never from a
+ * motion-blur sub-frame's time: the global contract "sub-frames move the camera and vector drawing, not footage".
+ */
+let outT = 0;
+export const outputTime = (): number => outT;
+
+/** The media frames the output frame at T needs (from its scene's need()). */
+export function needsAt(T: number): MediaRef[] {
+  T = clamp(T, 0, TOTAL - 1e-3);
+  const sc = sceneAt(T);
+  return sc.need ? sc.need(T - sc.t0, sc.d) : [];
+}
+/** Load everything frame(T) will draw; resolves when it can be drawn synchronously. */
+export const prepare = (T: number): Promise<void> => ensure(needsAt(T));
+
 let subsCache: SubLine[] | null = null;
 function overlays(T: number): void {
   const sc = sceneAt(T);
@@ -59,6 +76,7 @@ const JIT: [number, number][] = [[0.5, 0.5], [0.25, 0.75], [0.75, 0.25], [0.125,
 /** Render the frame at time T. samples > 1 averages the scene's `mb` sub-frames over half a frame (motion blur). */
 export function frame(T: number, fps = 30, samples = 1): void {
   T = clamp(T, 0, TOTAL - 1e-3);
+  outT = T;
   const sc = sceneAt(T);
   const K = samples > 1 ? Math.max(1, sc.mb ?? 3) : 1;
   for (let k = 0; k < K; k++) {

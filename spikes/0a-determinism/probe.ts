@@ -33,11 +33,11 @@ async function session(): Promise<Uint8Array[]> {
   await page.goto(`http://127.0.0.1:${server.port}/?export=1`, { waitUntil: 'load' });
   await page.waitForFunction(() => typeof window.__frame === 'function' && window.__ready(), { timeout: 60_000 });
   if (!printed) console.log('renderer:', await page.evaluate(() => window.__gpu())), (printed = true);
-  for (const f of WARM) await page.evaluate((t) => void window.__frame(t, 30), f / 30);
+  for (const f of WARM) await page.evaluate((t) => window.__frame(t, 30), f / 30);
   const out: Uint8Array[] = [];
   for (let i = 0; i < 2; i++) {
-    const b64: string = await page.evaluate((t) => {
-      window.__frame(t, 30);
+    const b64: string = await page.evaluate(async (t) => {
+      await window.__frame(t, 30);
       const c = document.getElementById('c') as HTMLCanvasElement;
       const px = c.getContext('2d')!.getImageData(0, 0, c.width, c.height).data;
       let s = '';

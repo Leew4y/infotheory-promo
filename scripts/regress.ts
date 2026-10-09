@@ -30,7 +30,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import puppeteer, { type Browser, type Page } from 'puppeteer-core';
 import { chromeArgs, findChrome, loadFilm, serveDist } from './chrome';
-import { requireFilm } from './film-arg';
+import { mediaDir, requireFilm } from './film-arg';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const argv = Bun.argv.slice(2);
@@ -61,14 +61,14 @@ const ARGS = chromeArgs(flag('gpu') ? 'platform' : 'swiftshader', { cpu2d: !flag
 interface W { browser: Browser; page: Page }
 const hashFrame = (w: W, f: number): Promise<string> =>
   w.page.evaluate(async (t, fps) => {
-    window.__frame(t, fps);
+    await window.__frame(t, fps);
     const c = document.getElementById('c') as HTMLCanvasElement;
     const px = c.getContext('2d')!.getImageData(0, 0, c.width, c.height).data;
     const d = new Uint8Array(await crypto.subtle.digest('SHA-256', px));
     return Array.from(d, (b) => b.toString(16).padStart(2, '0')).join('');
   }, f / FPS, FPS);
 
-const server = serveDist(DIST);
+const server = serveDist(DIST, { media: mediaDir(FILM) });
 const ws: W[] = [];
 let code = 2;
 try {

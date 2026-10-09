@@ -79,7 +79,7 @@ const caps = await page.evaluate(() => {
 // sample frames: horizon plate (dawn), a page (surprise), the dusk1 -> compress transition
 const frames = [[10, 'dawn-plate'], [33, 'surprise-page'], [65.8, 'dusk1-fade']] as const;
 for (const [t, name] of frames) {
-  await page.evaluate((t) => void window.__frame(t, 30), t);
+  await page.evaluate((t) => window.__frame(t, 30), t);
   const png: string = await page.evaluate(() => (document.getElementById('c') as HTMLCanvasElement).toDataURL('image/png'));
   writeFileSync(path.join(OUT, 'frames', `${name}.png`), Buffer.from(png.slice(png.indexOf(',') + 1), 'base64'));
 }

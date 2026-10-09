@@ -18,7 +18,7 @@ import { existsSync, mkdirSync, readdirSync, renameSync, rmSync, writeFileSync }
 import path from 'node:path';
 import puppeteer from 'puppeteer-core';
 import { chromeArgs, findChrome, loadFilm, serveDist } from './chrome';
-import { requireFilm } from './film-arg';
+import { mediaDir, requireFilm } from './film-arg';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const argv = Bun.argv.slice(2);
@@ -57,7 +57,7 @@ function moments(scenes: Scene[], fps: number): Moment[] {
   return out;
 }
 
-const server = serveDist(DIST);
+const server = serveDist(DIST, { media: mediaDir(FILM) });
 const browser = await puppeteer.launch({ executablePath: findChrome(), headless: true, defaultViewport: { width: 1920, height: 1080, deviceScaleFactor: 1 }, args: chromeArgs('platform') });
 const TMP = `${OUT}.${process.pid}.tmp`;
 let code = 0;

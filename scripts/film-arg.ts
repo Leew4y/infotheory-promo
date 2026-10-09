@@ -8,6 +8,9 @@ import path from 'node:path';
 const ROOT = path.resolve(import.meta.dir, '..');
 export const FILM_ID = /^[a-z0-9][a-z0-9-]*$/;
 
+/** Where a film's media frames (screen captures, derived from their sources) live: .cache/captures/<film>/. */
+export const mediaDir = (film: string): string => path.join(ROOT, '.cache', 'captures', film);
+
 /** The films in films/ (directories with a main.ts). */
 export function films(): string[] {
   return readdirSync(path.join(ROOT, 'films')).filter((n) => FILM_ID.test(n) && existsSync(path.join(ROOT, 'films', n, 'main.ts'))).sort();

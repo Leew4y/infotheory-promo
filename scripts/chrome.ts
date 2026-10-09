@@ -56,13 +56,24 @@ export async function killTree(pid: number | undefined, waitMs = 5000): Promise<
 }
 
 /** A static file server for a built page directory; '/' is index.html. */
-export function serveDist(dist: string): { url: string; stop: () => void } {
+/**
+ * Serve a built film (dist/<film>/) on a free local port, and, if given, the film's media frames
+ * (.cache/captures/<film>/) under /media/. A request may only reach files inside those directories.
+ */
+export function serveDist(dist: string, o: { media?: string } = {}): { url: string; stop: () => void } {
+  const inside = (root: string, rel: string): string | null => {
+    const f = path.resolve(root, '.' + path.posix.normalize('/' + rel));
+    return f === path.resolve(root) || f.startsWith(path.resolve(root) + path.sep) ? f : null;
+  };
   const server = Bun.serve({
     hostname: '127.0.0.1', port: 0,
     async fetch(req) {
-      const p = decodeURIComponent(new URL(req.url).pathname);
+      let p: string;
+      try { p = decodeURIComponent(new URL(req.url).pathname); } catch { return new Response('bad request', { status: 400 }); }
       if (p === '/favicon.ico') return new Response(null, { status: 204 });
-      const f = Bun.file(path.join(dist, p === '/' ? 'index.html' : p));
+      const file = p.startsWith('/media/') ? (o.media ? inside(o.media, p.slice('/media'.length)) : null) : inside(dist, p === '/' ? '/index.html' : p);
+      if (!file) return new Response('not found', { status: 404 });
+      const f = Bun.file(file);
       return (await f.exists()) ? new Response(f) : new Response('not found', { status: 404 });
     },
   });

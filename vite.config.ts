@@ -8,7 +8,7 @@ const root = fileURLToPath(new URL('.', import.meta.url));
 // One page shell (index.html, a single 1920x1080 canvas) for every film: FILM picks the entry films/<FILM>/main.ts.
 // `just dev <film>` / `just build <film>` set it. The build goes to dist/<film>/. The dev server serves exactly one
 // file from the film's outputs, its preview music out/<film>/music.mp3 (from `just music <film>`), at /music.mp3;
-// nothing else under out/ is exposed.
+// nothing else under out/ is exposed. Its media frames (screen captures) are served from .cache/captures/<film>/ at /media/.
 const FILM = process.env.FILM ?? '';
 const films = readdirSync(path.join(root, 'films')).filter((n) => /^[a-z0-9][a-z0-9-]*$/.test(n) && existsSync(path.join(root, 'films', n, 'main.ts')));
 if (!films.includes(FILM)) throw new Error(`FILM=${JSON.stringify(FILM)} is not a film (films/<id>/main.ts): one of ${films.join(', ')}`);
@@ -21,6 +21,17 @@ export default defineConfig({
     name: 'film-entry',
     transformIndexHtml: { order: 'pre', handler: (html) => html.replace('%FILM_ENTRY%', `/films/${FILM}/main.ts`) },
     configureServer(server) {
+      // the film's media frames (screen captures), .cache/captures/<film>/, at /media/; nothing outside that directory
+      const MEDIA = path.join(root, '.cache', 'captures', FILM);
+      server.middlewares.use('/media', (req, res) => {
+        let rel: string;
+        try { rel = decodeURIComponent((req.url ?? '/').split('?')[0]); } catch { res.statusCode = 400; res.end(); return; }
+        const file = path.resolve(MEDIA, '.' + path.posix.normalize('/' + rel));
+        if (!file.startsWith(MEDIA + path.sep) || !existsSync(file) || !statSync(file).isFile()) { res.statusCode = 404; res.end(); return; }
+        res.setHeader('Content-Type', 'image/jpeg');
+        res.setHeader('Cache-Control', 'no-cache');
+        createReadStream(file).pipe(res);
+      });
       server.middlewares.use('/music.mp3', (req, res) => {
         if (!existsSync(MUSIC)) { res.statusCode = 404; res.end(`no ${path.relative(root, MUSIC)}: run just music ${FILM}`); return; }
         // byte ranges, so the player can seek

@@ -40,7 +40,7 @@ import { hostname } from 'node:os';
 import path from 'node:path';
 import puppeteer, { type Browser, type Page } from 'puppeteer-core';
 import { chromeArgs, findChrome, loadFilm, killTree, serveDist } from './chrome';
-import { requireFilm } from './film-arg';
+import { mediaDir, requireFilm } from './film-arg';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const argv = Bun.argv.slice(2);
@@ -239,7 +239,7 @@ try {
     lockPath = takeLock(OUT);
     if (deadline > 0) deadlineTimer = setTimeout(() => cancel(`deadline of ${deadline}s exceeded`), deadline * 1000);
   }
-  server = serveDist(DIST);
+  server = serveDist(DIST, { media: mediaDir(FILM) });
   let FPS = 30;
   const tLoad = performance.now();
   const workers = await Promise.all(Array.from({ length: WORKERS }, (_, i) => launch(i, chrome, server!.url, () => FPS)));

@@ -25,7 +25,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import puppeteer, { type Browser } from 'puppeteer-core';
 import { chromeArgs, findChrome, loadFilm, serveDist } from './chrome';
-import { filmArg } from './film-arg';
+import { filmArg, mediaDir } from './film-arg';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const argv = Bun.argv.slice(2);
@@ -65,7 +65,7 @@ let CHROME = '';
 try { CHROME = findChrome(); } catch (e) { console.error((e as Error).message); process.exit(2); }
 if (!existsSync(path.join(DIST, 'index.html'))) { console.error(`${DIST}/index.html missing: run \`just build ${FILM}\``); process.exit(2); }
 
-const server = serveDist(DIST);
+const server = serveDist(DIST, { media: mediaDir(FILM) });
 let browser: Browser | null = null;
 let scenesChecked = 0, framesChecked = 0, boxesChecked = 0, contrastChecked = 0, contrastUnchecked = 0, toolError: string | null = null;
 const checked: string[] = [];
@@ -95,6 +95,8 @@ try {
     for (const d of diags) if (d.style === cur) d.style = pageStyle;
     cur = pageStyle;
     checked.push(pageStyle);
+    // notes the film recorded while registering (engine/notes.ts) are warnings
+    for (const n of await page.evaluate(() => window.__notes())) warn(n.code, n.path, n.message);
     const pageFilm: string | undefined = await page.evaluate(() => window.__film);
     if (pageFilm !== FILM) err('film-mismatch', 'page', `the built page renders film "${pageFilm}", not "${FILM}"`);
     else {
