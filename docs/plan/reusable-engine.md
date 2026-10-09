@@ -437,6 +437,28 @@ A1 / A1b 评审修正（Codex，gpt-6-astra max：1 BLOCKER / 8 SHOULD_FIX / 2 N
 - 旁白 2 秒而素材 5 秒的用例按规则延长场景，素材不被截掉；
 - 最终母版中每段旁白在其对齐时间窗内可检出（窗内 RMS 高于窗外垫乐 ≥ 6 dB）；积分响度 −16 LUFS ±0.5，真峰值 ≤ −1.5 dBTP。
 
+2b 实施记录（分支 `engine/2b-narration`，2026-10-09）：
+- 与原计划的偏差（Develata 的决定）：TTS 用本地 Fun-CosyVoice3-0.5B（Windows + CUDA），不用 Kokoro 与云端；时间按句，不做词级对齐（不用 WhisperX）。
+  因此锚点是旁白行的 id（`vo(id)`），不是 token；版本号、金额等写进该行的 `read`（读法），字幕仍显示 `text`；重复出现的术语因按行定位而无歧义。
+  旁白音频提交入库（每句一个 FLAC，`films/<film>/narration/`）：合成是采样的，同一句无法再次得到同样的音频与时长，而时长决定时间轴。
+- 契约（`engine/narration.ts`）：脚本 `narration.json`、lock（每句 text、read、时长、FLAC 的 sha256、合成键）；`useNarration` 拒绝别的片子、别的音色、
+  过期或时长非正的 lock；`narratedScene` 与 `demoScene({ narration })` 的时长 = max(lead + 各句与间隔 + tail, 素材长度或 minDur)，向上取整到整帧；
+  各句即字幕；每句只能放进一个场景，未放置的句子 validate 报 `narration-unplaced`。
+- 合成（`scripts/narrate.ts`、`audio/tts.py`）：合成键 = 适配层版本、后端、模型及其固定 revision、参考音频 sha256 与文字稿、读法、语速、种子（由行 id 得出）；
+  键不变且文件完好则保留，只改字幕不重合成，改读法只重合成该句；文件丢失须 `--resynth` 才重做。适配层顶层只用标准库，fake 后端（每个读法字符 0.2 秒）
+  可在任意 Python 下运行；CosyVoice3 惰性导入，按句设种子，切分出的片段拼接，首尾静音裁掉（−45 dBFS、各留 30 ms），使放置时刻即开口时刻。
+- 混音（`audio/mix.py`）：各句电平统一（−20 dBFS RMS），配乐在旁白前 0.15 秒到后 0.3 秒压低 12 dB（平滑过渡），再用 `synth.master` 两遍 loudnorm 到 −16 LUFS、
+  真峰值 ≤ −1.5 dBTP 并复测；`master.json` 记录配乐、lock、放置的指纹，导出默认使用母版，不匹配即拒绝（"just mix"）。预览播放器也放母版。
+- 字体子集现在包含旁白字幕（`narration.json` 的 text 与 en）——test-narration 首次运行时正因此失败。
+- 验收（`test-narration`，fake 后端）：时长、放置、场景长度均与手算一致（2 秒旁白配 5 秒素材时场景保持 5 秒）；只改字幕不重合成、改读法只合成一句、
+  丢失音频需 `--resynth`；未放置的句子报错；母版 −16.10 LUFS、真峰值 −5.6 dBTP，每句窗口比窗外垫乐高 9.8 dB（要求 ≥ 6 dB）；导出使用母版，旁白位置变化后拒绝过期母版。
+- CosyVoice3 实机（Windows 11、RTX 3060 Laptop、torch 2.3.1+cu121）：`just tts-setup` 从源码、环境、依赖到模型全部按固定版本完成；
+  模型改从 ModelScope 逐文件下载（Hugging Face 直连约 0.5 MB/s），每个文件按 Hugging Face 固定 revision 的 sha256 / git blob 校验。
+  依赖在上游清单基础上按实际导入链补齐（rich、gdown、matplotlib、wget、pyworld），safetensors 固定为 0.5.3（0.8.0 让 transformers 4.51.3 加载时段错误）。
+  3 句试听样例合成成功（RTF 1.5–2.2；onnxruntime 只有 CPU provider），音色由 Develata 试听后决定。
+  合成进程峰值内存高：系统可提交内存只剩 3–4 GB 时加载模型会段错误，剩约 6 GB 时成功；之前 test-capture、bench 的 Chrome 崩溃也发生在同样的内存压力下（推断）。
+- 未覆盖：音色选定与正式旁白的听感；macOS 上的 TTS 环境；词级锚点（按决定不做）。
+
 **2c · 计划驱动与 agent 命令。**
 - 契约：`Brief`、`FilmPlan`（Zod，可导出 JSON Schema）。`films/<id>/film-plan.json` 是场景顺序、ID、时长、文案、字幕、素材引用的唯一来源；
   `film.ts` 从它构建影片，场景模块按计划中的 ID 注册。

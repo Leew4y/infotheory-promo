@@ -40,6 +40,9 @@ Every film command takes the film id first (default `infotheory`); outputs go to
 | `just capture <film> <id> <scenario.ts>` | record a web demo with Playwright (`scripts/lib/scenario.ts`), with click and pointer events; the source video goes to `out/<film>/sources/` |
 | `just captures <film> <dir>` | re-derive every capture's frames from its source videos (by name in `<dir>`, checked by sha256) |
 | `just test`, `just test-capture`, `just bench-capture` | unit tests; capture end-to-end cases; capture throughput and memory |
+| `just narrate <film> [--resynth ids\|all]` | synthesize `films/<film>/narration.json` into `films/<film>/narration/<id>.flac` and the lock (`narration.lock.json`); both committed |
+| `just mix <film> [--music file\|none]` | final mix: music ducked under the narration, mastered to −16 LUFS → `out/<film>/master.wav` (the export uses it and refuses a stale one) |
+| `just tts-setup`, `just test-narration` | local TTS (Fun-CosyVoice3-0.5B, pinned, into `.cache/tts/`); narration end-to-end cases on the fake voice |
 
 ## Rules
 
@@ -58,6 +61,13 @@ Every film command takes the film id first (default `infotheory`); outputs go to
   recorded events, or keyframes for a recording without events; a click shows from the frame its time falls in. Invalid
   edits, camera or cursor keys fail at registration. Capture sources (videos) stay outside the repository; only
   manifests are committed. A failed import or recording leaves the previous asset and source as they were.
+- Narration: lines in `films/<film>/narration.json` (`id`, `scene`, `text` for the captions, `en`, `read` for how the
+  voice says numbers, versions, amounts, `pause`); `useNarration(script, lock)` in film.ts after `defineFilm`. Time a
+  scene by its lines with `narratedScene({ name, kind, draw, lead, gap, tail, minDur })` or `demoScene({ ..., narration: {} })`
+  (the footage is never cut short); the lines become the captions; `vo(id)` is a line's start on its scene's clock,
+  the only anchor for animations that land on a sentence (timing is per sentence, not per word). Synthesis samples:
+  a line's audio cannot be made again identically, so it is committed and a re-synthesis (`--resynth`) changes the
+  timeline. Run `just fonts <film>` after changing captions.
 - Done means: `just check`, `just check-imports`, `just validate <film>` (0 errors in every style) and `just regress
   <film>` (every style with a baseline) pass, and the sheet has been looked at. The layout checks sample five frames
   per scene and judge axis-aligned boxes: a strong heuristic, not a proof. Report what was verified, what was not, and

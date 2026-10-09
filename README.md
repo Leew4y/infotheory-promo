@@ -63,6 +63,9 @@ templates/style/      新风格包骨架（接口齐全、可通过全部检查�
 engine/capture.ts     录屏素材：清单、剪辑（截取 / 剪掉 / 变速）、镜头与坐标映射
 engine/demo.ts        产品演示场景：录屏放进风格化的窗口，镜头推拉、合成光标与点击波纹
 engine/media.ts       素材帧的按需加载、解码与内存上限缓存；导出时缺帧即报错
+engine/narration.ts   旁白：脚本与 lock、按句定时的场景（narratedScene / demoScene 的 narration）、vo(id) 锚点
+audio/tts.py          TTS 适配层（fake 测试后端；本地 Fun-CosyVoice3-0.5B）；audio/mix.py 最终混音与母版
+voices/               音色库：参考音频、其文字稿、来源与许可
 films/infotheory/     信息论短片（参考片）
   film.ts             帧率、BPM、章节数与可用风格（第一个是默认，页面 URL 加 ?style=<id> 切换）
   main.ts             入口：film → scenes → boot()
@@ -98,6 +101,9 @@ just new-style ink-wash       # 从模板新建风格包 styles/ink-wash/（含 
 just import-capture demo app ~/rec/app.mp4   # 把 OBS 等任意录屏导入为片子 demo 的素材 app（帧在 .cache/，清单入库）
 just capture demo web demo-scenario.ts       # 用 Playwright 按脚本录制网页演示，同时记录点击
 just captures demo ~/rec      # 换机器或清了缓存后，从源视频重建全部素材帧（按 sha256 校验）
+just tts-setup                # 安装本地 TTS（CosyVoice 源码、Python 3.10 环境、模型约 5.4 GB，全部固定版本）
+just narrate demo             # 合成旁白（每句一个 FLAC，连同 lock 一起提交）
+just mix demo                 # 最终混音：配乐在旁白处自动压低，母版 −16 LUFS；导出自动使用
 just dev <film>               # 预览 http://127.0.0.1:5174 ：空格播放/暂停，←/→ 5 秒，, . 单帧，[ ] 跳场景，F 全屏；?style=<id> 切换风格
 just shots <film> 5,20.5      # 写检查帧到 out/<film>/shots/（加 --style nebula 写到 shots-nebula/）
 just cues <film>              # 页面 → films/<film>/cues.json 与 timeline.json
