@@ -6,7 +6,7 @@
 import { ctx, scaleText, textMark } from './draw';
 import { accumulate, glc, post, type Grade } from './gl';
 import { SC, sceneAt, camDrift } from './scene';
-import { film, TOTAL } from './film';
+import { film, FPS, frameOf, TOTAL } from './film';
 import { style, type SubLine } from './style';
 import { clamp, sstep, W, H } from './util';
 import { ensure, type MediaRef } from './media';
@@ -46,17 +46,18 @@ export function drawLayer(t: number, jx: number, jy: number): void {
 }
 
 /**
- * The output frame's time while frame() runs. Media (a capture's source frame) is chosen from it, never from a
- * motion-blur sub-frame's time: the global contract "sub-frames move the camera and vector drawing, not footage".
+ * The output frame (its index on the film's frame grid) while frame() runs. Media (a capture's source frame) is chosen
+ * from it, never from a motion-blur sub-frame's time: the global contract "sub-frames move the camera and vector
+ * drawing, not footage". An index, not a time: local times computed from it are exact multiples of 1 / fps.
  */
-let outT = 0;
-export const outputTime = (): number => outT;
+let outF = 0;
+export const outputFrame = (): number => outF;
 
-/** The media frames the output frame at T needs (from its scene's need()). */
+/** The media frames the output frame at T needs (from its scene's need(), at the frame's local time). */
 export function needsAt(T: number): MediaRef[] {
   T = clamp(T, 0, TOTAL - 1e-3);
   const sc = sceneAt(T);
-  return sc.need ? sc.need(T - sc.t0, sc.d) : [];
+  return sc.need ? sc.need((frameOf(T) - sc.f0) / FPS, sc.d) : [];
 }
 /** Load everything frame(T) will draw; resolves when it can be drawn synchronously. */
 export const prepare = (T: number): Promise<void> => ensure(needsAt(T));
@@ -76,7 +77,7 @@ const JIT: [number, number][] = [[0.5, 0.5], [0.25, 0.75], [0.75, 0.25], [0.125,
 /** Render the frame at time T. samples > 1 averages the scene's `mb` sub-frames over half a frame (motion blur). */
 export function frame(T: number, fps = 30, samples = 1): void {
   T = clamp(T, 0, TOTAL - 1e-3);
-  outT = T;
+  outF = frameOf(T);
   const sc = sceneAt(T);
   const K = samples > 1 ? Math.max(1, sc.mb ?? 3) : 1;
   for (let k = 0; k < K; k++) {

@@ -2,6 +2,7 @@ import { createReadStream, existsSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
+import { confined } from './scripts/lib/confine';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
 
@@ -22,12 +23,13 @@ export default defineConfig({
     transformIndexHtml: { order: 'pre', handler: (html) => html.replace('%FILM_ENTRY%', `/films/${FILM}/main.ts`) },
     configureServer(server) {
       // the film's media frames (screen captures), .cache/captures/<film>/, at /media/; nothing outside that directory
+      // (real paths, links resolved: scripts/lib/confine.ts)
       const MEDIA = path.join(root, '.cache', 'captures', FILM);
       server.middlewares.use('/media', (req, res) => {
         let rel: string;
         try { rel = decodeURIComponent((req.url ?? '/').split('?')[0]); } catch { res.statusCode = 400; res.end(); return; }
-        const file = path.resolve(MEDIA, '.' + path.posix.normalize('/' + rel));
-        if (!file.startsWith(MEDIA + path.sep) || !existsSync(file) || !statSync(file).isFile()) { res.statusCode = 404; res.end(); return; }
+        const file = confined(MEDIA, rel);
+        if (!file) { res.statusCode = 404; res.end(); return; }
         res.setHeader('Content-Type', 'image/jpeg');
         res.setHeader('Cache-Control', 'no-cache');
         createReadStream(file).pipe(res);

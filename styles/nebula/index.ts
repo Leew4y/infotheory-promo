@@ -107,6 +107,10 @@ const nebula: StylePackage = {
 
   /** Captures in a dark glass panel: a cyan hairline with a faint glow, the title in mono on a slim bar. */
   demo: {
+    // the margins of the layout; below the chapter label, above the captions
+    area: { x: 170, y: 190, w: W - 340, h: H - 420 },
+    rippleDur: 0.6,
+    pressDur: 0.15,
     window(r, title, a) {
       const bar = 30;
       ctx.save();

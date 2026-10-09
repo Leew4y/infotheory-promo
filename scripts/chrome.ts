@@ -7,6 +7,7 @@
  */
 import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { confined } from './lib/confine';
 
 export type Gpu = 'platform' | 'swiftshader';
 
@@ -55,26 +56,20 @@ export async function killTree(pid: number | undefined, waitMs = 5000): Promise<
   return !alive();
 }
 
-/** A static file server for a built page directory; '/' is index.html. */
 /**
  * Serve a built film (dist/<film>/) on a free local port, and, if given, the film's media frames
- * (.cache/captures/<film>/) under /media/. A request may only reach files inside those directories.
+ * (.cache/captures/<film>/) under /media/. A request may only reach files inside those directories (real paths:
+ * scripts/lib/confine.ts).
  */
 export function serveDist(dist: string, o: { media?: string } = {}): { url: string; stop: () => void } {
-  const inside = (root: string, rel: string): string | null => {
-    const f = path.resolve(root, '.' + path.posix.normalize('/' + rel));
-    return f === path.resolve(root) || f.startsWith(path.resolve(root) + path.sep) ? f : null;
-  };
   const server = Bun.serve({
     hostname: '127.0.0.1', port: 0,
     async fetch(req) {
       let p: string;
       try { p = decodeURIComponent(new URL(req.url).pathname); } catch { return new Response('bad request', { status: 400 }); }
       if (p === '/favicon.ico') return new Response(null, { status: 204 });
-      const file = p.startsWith('/media/') ? (o.media ? inside(o.media, p.slice('/media'.length)) : null) : inside(dist, p === '/' ? '/index.html' : p);
-      if (!file) return new Response('not found', { status: 404 });
-      const f = Bun.file(file);
-      return (await f.exists()) ? new Response(f) : new Response('not found', { status: 404 });
+      const file = p.startsWith('/media/') ? (o.media ? confined(o.media, p.slice('/media'.length)) : null) : confined(dist, p === '/' ? '/index.html' : p);
+      return file ? new Response(Bun.file(file)) : new Response('not found', { status: 404 });
     },
   });
   return { url: `http://127.0.0.1:${server.port}`, stop: () => server.stop(true) };

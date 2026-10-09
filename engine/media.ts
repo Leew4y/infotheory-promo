@@ -7,7 +7,9 @@
  * drawing stays synchronous and frame(t) a pure function of t.
  *
  * Cache: a least-recently-used set of decoded bitmaps bounded by memory (width x height x 4 bytes each), closed on
- * eviction; concurrent requests for one frame share a single fetch. In strict mode (export and every check tool) a
+ * eviction; concurrent requests for one frame share a single fetch. The working set (the frames of the last ensure(),
+ * i.e. of the frame being drawn) is pinned: look-ahead loads never evict it, and a working set larger than the budget
+ * is an error rather than a silent miss. In strict mode (export and every check tool) a
  * frame that is not loaded when drawn is an error; in the preview the nearest loaded earlier frame stands in.
  */
 
@@ -22,6 +24,7 @@ let used = 0;
 let strict = false;
 const cache = new Map<string, ImageBitmap>(); // insertion order = recency
 const pending = new Map<string, Promise<ImageBitmap>>();
+let pinned = new Set<string>();
 
 /** Strict mode: drawing a frame that is not loaded throws (export and checks). Off in the preview. */
 export function setStrict(on: boolean): void {
@@ -36,7 +39,7 @@ export function setBudget(bytes: number): void {
 function evict(keep?: string): void {
   for (const [k, b] of cache) {
     if (used <= budget) break;
-    if (k === keep) continue;
+    if (k === keep || pinned.has(k)) continue;
     used -= b.width * b.height * 4;
     b.close();
     cache.delete(k);
@@ -69,9 +72,15 @@ export function load(r: MediaRef): Promise<ImageBitmap> {
   return p;
 }
 
-/** Load every frame in `refs` (all or nothing: the first failure rejects). */
+/**
+ * Load every frame in `refs` and pin them as the working set until the next ensure() (all or nothing: the first
+ * failure rejects). Throws if the working set alone exceeds the budget.
+ */
 export async function ensure(refs: MediaRef[]): Promise<void> {
-  await Promise.all(refs.map(load));
+  pinned = new Set(refs.map(key));
+  const bmps = await Promise.all(refs.map(load));
+  const bytes = bmps.reduce((s, b) => s + b.width * b.height * 4, 0);
+  if (bytes > budget) throw new Error(`media working set of ${refs.length} frame(s) needs ${(bytes / 2 ** 20).toFixed(0)} MiB, over the ${(budget / 2 ** 20).toFixed(0)} MiB budget`);
 }
 
 /** Start loading `refs` without waiting (look-ahead); failures are ignored here and surface when the frame is needed. */
@@ -95,4 +104,4 @@ export function bitmap(r: MediaRef): ImageBitmap | null {
 }
 
 /** Cache state, for tests and diagnostics. */
-export const mediaStats = () => ({ frames: cache.size, bytes: used, budget, pending: pending.size });
+export const mediaStats = () => ({ frames: cache.size, bytes: used, budget, pending: pending.size, pinned: pinned.size });

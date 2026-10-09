@@ -163,10 +163,16 @@ export function boot(o: BootOptions): void {
     const info = document.getElementById('info')!;
     document.getElementById('dur')!.textContent = fmtTime(TOTAL);
     const now = () => (useAudio ? au.currentTime : (performance.now() - clock0) / 1000);
+    // a paused seek draws at once (with stand-in frames if media is still loading), then again once its media is in;
+    // a later seek makes the earlier one's redraw stale
+    let seekSeq = 0;
     const setT = (t: number) => {
       au.currentTime = clamp(t, 0, TOTAL - 0.01);
       if (!useAudio) clock0 = performance.now() - au.currentTime * 1000;
-      if (!playing) draw(au.currentTime);
+      if (playing) return;
+      const T = au.currentTime, seq = ++seekSeq;
+      draw(T);
+      prepare(T).then(() => { if (seq === seekSeq && !playing) draw(T); }, () => {});
     };
     // nothing is drawn before the bundled fonts are in: no frame may use a system font
     const draw = (T: number) => {

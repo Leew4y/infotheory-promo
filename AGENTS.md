@@ -52,10 +52,12 @@ Every film command takes the film id first (default `infotheory`); outputs go to
   catalog (a download) needs the person's confirmation.
 - Text on a full-frame plate goes over `backdrop(...)` so it stays readable.
 - Product demos: `demoScene({ name, asset, edit, camera, cursor, clicks, title, ... })` (engine/demo.ts) with an asset
-  imported from `films/<film>/captures/<id>.json`. The edit lists source segments `{ from, to, speed }` (cuts between them);
+  imported from `films/<film>/captures/<id>.json`. The edit lists source segments `{ from, to, speed }` in recording order,
+  without overlap (cuts between them; no reordering or repeats);
   the camera is keyframes `{ t, x, y, zoom }` in frame pixels on the scene's clock; cursor and clicks come from the
-  recorded events, or keyframes for a recording without events. Capture sources (videos) stay outside the repository;
-  only manifests are committed.
+  recorded events, or keyframes for a recording without events; a click shows from the frame its time falls in. Invalid
+  edits, camera or cursor keys fail at registration. Capture sources (videos) stay outside the repository; only
+  manifests are committed. A failed import or recording leaves the previous asset and source as they were.
 - Done means: `just check`, `just check-imports`, `just validate <film>` (0 errors in every style) and `just regress
   <film>` (every style with a baseline) pass, and the sheet has been looked at. The layout checks sample five frames
   per scene and judge axis-aligned boxes: a strong heuristic, not a proof. Report what was verified, what was not, and

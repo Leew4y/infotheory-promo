@@ -22,17 +22,17 @@ new-film id style:
 new-style id:
     bun scripts/new-style.ts {{id}}
 
-# Import a screen recording (OBS or any video) as capture <id> of a film: frames to .cache/captures/<film>/<id>/, manifest to films/<film>/captures/<id>.json.
+# Import a screen recording (OBS or any video) as capture <id> of a film: frames to .cache/captures/<film>/<id>/, manifest to films/<film>/captures/<id>.json. Paths are quoted (spaces are fine; a path containing an apostrophe needs the script run directly).
 import-capture film id video *args:
-    bun scripts/import-capture.ts --film {{film}} --id {{id}} {{video}} {{args}}
+    bun scripts/import-capture.ts --film {{film}} --id {{id}} {{quote(video)}} {{args}}
 
 # Record a web demo with Playwright (scripts/lib/scenario.ts) as capture <id> of a film; the source video goes to out/<film>/sources/.
 capture film id scenario *args:
-    bun scripts/capture.ts --film {{film}} --id {{id}} {{scenario}} {{args}}
+    bun scripts/capture.ts --film {{film}} --id {{id}} {{quote(scenario)}} {{args}}
 
 # Re-derive every capture of a film from its source videos (found by name in <dir>, checked by sha256).
 captures film dir:
-    bun scripts/import-capture.ts --film {{film}} --rebuild --from {{dir}}
+    bun scripts/import-capture.ts --film {{film}} --rebuild --from {{quote(dir)}}
 
 # Live preview at http://127.0.0.1:5174 (space play/pause, arrows seek, [ ] scenes, , . frame step); ?style=<id> picks a style.
 dev $FILM=film:

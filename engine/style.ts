@@ -102,6 +102,11 @@ export interface StylePackage {
   backdrop(cx: number, cy: number, w: number, h: number, a: number): void;
   /** How screen captures look in a demo scene (engine/demo.ts): the window around them, the cursor, a click. */
   demo: {
+    /** Where a capture's window goes on a page by default (canvas px): clear of the chapter label and the captions. */
+    area: Rect;
+    /** Seconds a click's ripple lasts, and seconds the cursor shows the press after a click. */
+    rippleDur: number;
+    pressDur: number;
     /** Draw the window chrome around `r` (title bar, frame, shadow) and return the rect the capture fills. */
     window(r: Rect, title: string, a: number): Rect;
     /** The cursor with its tip at (x, y); `press` 0–1 while a click is held. */

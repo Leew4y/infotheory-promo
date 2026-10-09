@@ -52,6 +52,12 @@ export function film(): FilmMeta {
 /** Seconds -> whole frames for an ordinary duration (half rounds up). */
 export const durFrames = (seconds: number): number => Math.floor(seconds * FPS + 0.5);
 
+/**
+ * The frame showing time t: frame i covers [i / fps, (i + 1) / fps). Tolerant of the float error in t = i / fps (and in
+ * differences of such times), so frame times computed in different ways land on the same frame.
+ */
+export const frameOf = (t: number, fps = FPS): number => Math.floor(t * fps + 1e-6);
+
 /** Append `n` frames to the film; returns the start frame. Called by scene() only. */
 export function appendFrames(n: number): number {
   const start = FRAMES;

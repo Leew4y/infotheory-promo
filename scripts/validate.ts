@@ -69,6 +69,7 @@ const server = serveDist(DIST, { media: mediaDir(FILM) });
 let browser: Browser | null = null;
 let scenesChecked = 0, framesChecked = 0, boxesChecked = 0, contrastChecked = 0, contrastUnchecked = 0, toolError: string | null = null;
 const checked: string[] = [];
+const noted = new Set<string>();
 try {
   browser = await puppeteer.launch({
     executablePath: CHROME, headless: true, defaultViewport: { width: W, height: H, deviceScaleFactor: 1 },
@@ -95,8 +96,11 @@ try {
     for (const d of diags) if (d.style === cur) d.style = pageStyle;
     cur = pageStyle;
     checked.push(pageStyle);
-    // notes the film recorded while registering (engine/notes.ts) are warnings
-    for (const n of await page.evaluate(() => window.__notes())) warn(n.code, n.path, n.message);
+    // notes the film recorded while registering (engine/notes.ts) are warnings, once (they recur in every style)
+    for (const n of await page.evaluate(() => window.__notes())) {
+      const k = `${n.code}|${n.path}|${n.message}`;
+      if (!noted.has(k)) { noted.add(k); warn(n.code, n.path, n.message); }
+    }
     const pageFilm: string | undefined = await page.evaluate(() => window.__film);
     if (pageFilm !== FILM) err('film-mismatch', 'page', `the built page renders film "${pageFilm}", not "${FILM}"`);
     else {

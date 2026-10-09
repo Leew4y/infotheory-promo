@@ -1,9 +1,11 @@
 // Unit tests of the capture edit and geometry (engine/capture.ts): bun test
 import { describe, expect, test } from 'bun:test';
-import { cameraAt, editDuration, editEvents, editProblems, filmTime, sourceFrame, sourceTime, toFrame, viewTransform, type CaptureAsset } from '../engine/capture';
+import { frameOf } from '../engine/film';
+import { cameraAt, cameraProblems, editDuration, editEvents, editProblems, filmTime, sourceFrame, sourceTime, toFrame, viewTransform, type CaptureAsset } from '../engine/capture';
 
 const asset: CaptureAsset = {
   id: 't', fps: 30, frames: 300, width: 1920, height: 1080, viewport: { width: 960, height: 540 }, dpr: 2,
+  crop: null,
   source: { file: 'x.mp4', sha256: '', bytes: 0, duration: 10, width: 1920, height: 1080, fps: 30 },
   events: [{ t: 1, type: 'click', x: 100, y: 50 }, { t: 3.5, type: 'click', x: 10, y: 10 }, { t: 6, type: 'mark' }],
   made: {},
@@ -82,4 +84,57 @@ describe('geometry', () => {
     expect(mid.zoom).toBeCloseTo(2, 9);
   });
   test('viewport CSS px to frame px', () => expect(toFrame(asset, 100, 50)).toEqual({ x: 200, y: 100 }));
+});
+
+// Expected values below are worked out by hand on the frame grid, not with the functions under test.
+describe('edit boundaries on the frame grid', () => {
+  test('a scene starting at frame 8: output frame 9 is local frame 1, the first frame of the second segment', () => {
+    const edit = [{ from: 0, to: 1 / 30 }, { from: 1, to: 2 }];
+    expect(frameOf(9 / 30, 30) - 8).toBe(1);
+    // local frame 1 = 1/30 s: the first segment (1/30 s long) is over; source time 1 -> source frame 30
+    expect(sourceFrame(asset, sourceTime(edit, (frameOf(9 / 30, 30) - 8) / 30))).toBe(30);
+    // the float difference of global times lands just below the boundary; it must still pick the second segment
+    expect(sourceFrame(asset, sourceTime(edit, 9 / 30 - 8 / 30))).toBe(30);
+  });
+  test('segment lengths that do not sum exactly (0.1 + 0.2) still switch on the frame', () => {
+    const edit = [{ from: 0, to: 0.1 }, { from: 5, to: 5.2 }, { from: 8, to: 9 }];
+    // local frame 9 = 0.3 s = the end of the first two segments (3 + 6 frames): source 8 -> frame 240
+    expect(sourceFrame(asset, sourceTime(edit, 9 / 30))).toBe(240);
+    expect(sourceFrame(asset, sourceTime(edit, 8 / 30))).toBe(155); // 5 + 5/30 s
+  });
+  test('film time is half-open with the same tolerance', () => {
+    const edit = [{ from: 0, to: 0.1 }, { from: 5, to: 5.2 }];
+    expect(filmTime(edit, 0.1 - 1e-12)).toBeNull();
+    expect(filmTime(edit, 5)).toBeCloseTo(0.1, 12);
+  });
+  test('frameOf: frame i covers [i/fps, (i+1)/fps)', () => {
+    for (let i = 0; i < 1000; i++) expect(frameOf(i / 30, 30)).toBe(i);
+    expect(frameOf(1.01, 30)).toBe(30);
+    expect(frameOf(0.999 / 30, 30)).toBe(0);
+  });
+});
+
+describe('edit problems', () => {
+  test('reordered or overlapping segments are refused (cut and trim only)', () => {
+    expect(editProblems([{ from: 4, to: 5 }, { from: 1, to: 2 }], asset).length).toBe(1);
+    expect(editProblems([{ from: 1, to: 3 }, { from: 2, to: 4 }], asset).length).toBe(1);
+    expect(editProblems([{ from: 1, to: 2 }, { from: 2, to: 4 }], asset)).toEqual([]);
+  });
+  test('camera keys: finite, zoom > 0, strictly increasing times', () => {
+    expect(cameraProblems([{ t: 0, zoom: 1 }, { t: 1, x: 10, y: 10, zoom: 2 }])).toEqual([]);
+    expect(cameraProblems([{ t: 0, zoom: 0 }, { t: 1, zoom: 2 }]).length).toBe(1);
+    expect(cameraProblems([{ t: 1 }, { t: 1 }]).length).toBe(1);
+    expect(cameraProblems([{ t: 0, x: NaN }]).length).toBe(1);
+  });
+});
+
+describe('crop', () => {
+  const cropped: CaptureAsset = {
+    ...asset, width: 960, height: 540, viewport: { width: 1920, height: 1080 }, dpr: 1, crop: { x: 100, y: 50, w: 960, h: 540 },
+  };
+  test('viewport px -> source px -> minus the crop origin -> frame px', () => expect(toFrame(cropped, 400, 200)).toEqual({ x: 300, y: 150 }));
+  test('crop with a device pixel ratio of 2', () => {
+    const a = { ...cropped, viewport: { width: 960, height: 540 }, dpr: 2 };
+    expect(toFrame(a, 400, 200)).toEqual({ x: 700, y: 350 });
+  });
 });

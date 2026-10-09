@@ -126,6 +126,10 @@ const paperDawn: StylePackage = {
 
   /** Captures as prints pasted on the page: a thin ink border, a soft shadow, the title as a small caps label above. */
   demo: {
+    // the margins of the layout; below the chapter label, above the captions
+    area: { x: 150, y: 190, w: W - 300, h: H - 420 },
+    rippleDur: 0.6,
+    pressDur: 0.15,
     window(r, title, a) {
       ctx.save();
       ctx.globalAlpha = a;
