@@ -12,10 +12,12 @@
  *   (alpha >= 0.02 after the scene's fade, after the camera transform) lies inside the frame and inside the safe area
  *   (5 % each side); both are errors. Five frames per scene are a sample: nothing is proved
  *   about the frames in between.
- * - overlap: on the same frames, two fully shown text boxes (alpha >= 0.9) that intersect by more than 2 px each way.
- * - contrast: on the same frames, every fully shown text box against the background under it (engine/inspect.ts:
- *   the declared text colour over the box's mean colour in a text-free render), WCAG AA: 4.5, large text
- *   (>= 24 px, or >= 18.66 px bold) 3. Both are errors.
+ * - overlap: on the same frames, two text boxes that intersect by more than 2 px each way: an error when both are
+ *   fully shown (alpha >= 0.9), a warning when both are at least half shown.
+ * - contrast: on the same frames, rendered as exported (motion blur), each text box against what is under it, glyph by
+ *   glyph (engine/inspect.ts), WCAG AA: 4.5, large text (>= 24 px, or >= 18.66 px bold) 3. Below AA: an error for
+ *   fully shown text, a warning for text at 0.5–0.9 alpha; text below 0.5 alpha is counted as unchecked in the report.
+ *   Boxes are axis-aligned and sampled on five frames per scene: a heuristic, not a proof of glyph-level legibility.
  * Diagnostics: { level, code, path, message }, also written to out/<film>/validate.json. With --json, stdout is only
  * the JSON list and the summary goes to stderr. Exit code 1 on any error, 2 if the tool itself could not run.
  */
@@ -49,7 +51,7 @@ const STYLE = opt('style', '');
 const DIST = path.resolve(ROOT, opt('dist', `dist/${FILM}`));
 const W = 1920, H = 1080, SAFE = 0.05, MIN_ALPHA = 0.02;
 /** Text at least this opaque counts as fully shown (overlap and contrast checks); WCAG large text: 24 px, or 18.66 px bold. */
-const FULL_ALPHA = 0.9, LARGE_PX = 24, LARGE_BOLD_PX = 18.66;
+const FULL_ALPHA = 0.9, HALF_ALPHA = 0.5, LARGE_PX = 24, LARGE_BOLD_PX = 18.66;
 const OUT = path.join(ROOT, 'out', FILM, 'validate.json');
 
 interface Diag { level: 'error' | 'warning'; style: string; code: string; path: string; message: string }
@@ -65,7 +67,7 @@ if (!existsSync(path.join(DIST, 'index.html'))) { console.error(`${DIST}/index.h
 
 const server = serveDist(DIST);
 let browser: Browser | null = null;
-let scenesChecked = 0, framesChecked = 0, boxesChecked = 0, toolError: string | null = null;
+let scenesChecked = 0, framesChecked = 0, boxesChecked = 0, contrastChecked = 0, contrastUnchecked = 0, toolError: string | null = null;
 const checked: string[] = [];
 try {
   browser = await puppeteer.launch({
@@ -134,21 +136,30 @@ try {
             else if (b.x0 < sx0 || b.y0 < sy0 || b.x1 > sx1 || b.y1 > sy1) err('text-safe-area', where, `"${b.s}" ${box} is outside the ${SAFE * 100}% safe area (alpha ${b.alpha.toFixed(2)})`);
           }
           const where = `scene:${s.name}@${tag}(${t.toFixed(2)}s)`;
-          // two fully visible text boxes that overlap (more than 2 px each way; crossfades are below the alpha bar)
-          const vis = boxes.filter((b) => b.alpha >= FULL_ALPHA);
-          for (let i = 0; i < vis.length; i++) for (let j = i + 1; j < vis.length; j++) {
-            const a = vis[i], b = vis[j];
+          // overlapping text boxes (more than 2 px each way): an error when both are fully shown, a warning when both are
+          // at least half shown (steady semi-transparent text, or the middle of a crossfade)
+          const shown = boxes.filter((b) => b.alpha >= HALF_ALPHA);
+          for (let i = 0; i < shown.length; i++) for (let j = i + 1; j < shown.length; j++) {
+            const a = shown[i], b = shown[j];
             const w = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0), h = Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0);
-            if (w > 2 && h > 2) err('text-overlap', where, `"${a.s}" and "${b.s}" overlap by ${w.toFixed(0)}x${h.toFixed(0)} px`);
+            if (w <= 2 || h <= 2) continue;
+            const full = a.alpha >= FULL_ALPHA && b.alpha >= FULL_ALPHA;
+            (full ? err : warn)(full ? 'text-overlap' : 'text-overlap-partial', where, `"${a.s}" and "${b.s}" overlap by ${w.toFixed(0)}x${h.toFixed(0)} px${full ? '' : ` (alpha ${a.alpha.toFixed(2)} / ${b.alpha.toFixed(2)})`}`);
           }
-          // contrast of every fully visible text box against what is under it (WCAG AA: 4.5, large text 3)
-          const cs: { s: string; px: number; weight: number; ratio: number; text: number[]; bg: number[] }[] = await page.evaluate((t, fps) => window.__contrast(t, fps), t, FPS);
+          // contrast of each text box against what is under it, as exported (engine/inspect.ts); WCAG AA: 4.5, large 3.
+          // Fully shown text below AA is an error; text shown at 0.5–0.9 alpha is judged at that alpha and reported as a
+          // warning (it may be a fade in progress); text below 0.5 alpha is not judged and is counted as unchecked.
+          const cs: { s: string; px: number; weight: number; alpha: number; ratio: number; text: number[]; bg: number[] }[] = await page.evaluate((t, fps) => window.__contrast(t, fps), t, FPS);
+          contrastChecked += cs.length;
+          contrastUnchecked += boxes.filter((b) => b.alpha >= MIN_ALPHA && b.alpha < HALF_ALPHA).length;
           for (const c of cs) {
             const large = c.px >= LARGE_PX || (c.px >= LARGE_BOLD_PX && c.weight >= 700);
             const need = large ? 3 : 4.5;
+            if (c.ratio >= need) continue;
             const rgb = (v: number[]) => `rgb(${v.map((x) => Math.round(x)).join(',')})`;
-            if (!Number.isFinite(c.ratio)) warn('text-contrast-unknown', where, `"${c.s}": the fill is not a plain colour, contrast not measured`);
-            else if (c.ratio < need) err('text-contrast', where, `"${c.s}" (${c.px.toFixed(0)} px${large ? ', large' : ''}) contrast ${c.ratio.toFixed(2)} < ${need}: ${rgb(c.text)} on ${rgb(c.bg)}`);
+            const msg = `"${c.s}" (${c.px.toFixed(0)} px${large ? ', large' : ''}, alpha ${c.alpha.toFixed(2)}) contrast ${c.ratio.toFixed(2)} < ${need}: ${rgb(c.text)} on ${rgb(c.bg)}`;
+            if (c.alpha >= FULL_ALPHA) err('text-contrast', where, msg);
+            else warn('text-contrast-partial', where, msg);
           }
         }
       }
@@ -171,7 +182,7 @@ try {
 }
 
 mkdirSync(path.dirname(OUT), { recursive: true });
-writeFileSync(OUT, JSON.stringify({ film: FILM, styles: checked, scenesChecked, framesChecked, boxesChecked, diagnostics: diags }, null, 1));
+writeFileSync(OUT, JSON.stringify({ film: FILM, styles: checked, scenesChecked, framesChecked, boxesChecked, contrastChecked, contrastUnchecked, diagnostics: diags }, null, 1));
 const errors = diags.filter((d) => d.level === 'error').length, warnings = diags.length - errors;
 const summary = `${errors ? 'FAIL' : 'PASS'} validate ${FILM} [${checked.join(', ') || 'no style loaded'}]: ${scenesChecked} scenes, ${framesChecked} frames, ${boxesChecked} text boxes, ${errors} error(s), ${warnings} warning(s) -> ${OUT}`;
 if (JSON_OUT) {

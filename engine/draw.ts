@@ -10,15 +10,26 @@ export const ctx = cv.getContext('2d')!;
 
 /**
  * Where a text() call landed on the canvas (after the current transform), for layout checks: the box, the CSS font,
- * the rendered size in canvas pixels (font size times the transform's scale), the weight, the fill colour as the canvas
- * normalises it (#rrggbb or rgba(...)), and the alpha.
+ * the rendered size in canvas pixels (font size times the smaller of the transform's two axis scales, so a squashed
+ * text never counts as larger than it is), the numeric weight, the fill as the canvas reports it, and the alpha.
  */
 export interface TextBox { s: string; font: string; px: number; weight: number; color: string; x0: number; y0: number; x1: number; y1: number; alpha: number }
 let boxes: TextBox[] | null = null;
-/** While true, text() records its box but draws nothing (the background of a frame, for the contrast check). */
-let hidden = false;
-export function hideTexts(on: boolean): void {
-  hidden = on;
+/**
+ * How text() paints (for the contrast check, engine/inspect.ts): 'draw' the glyphs (normal); 'hide' nothing (the
+ * background); 'box' a solid rectangle over the text's ink extent, in the same fill, alpha, compositing and transform,
+ * so that after the grade, the overlays and motion blur it shows the colour the text really ends up with.
+ */
+export type TextMode = 'draw' | 'hide' | 'box';
+let mode: TextMode = 'draw';
+export function textMode(m: TextMode): void {
+  mode = m;
+}
+/** A CSS font weight as a number (normal 400, bold 700, ...). */
+export function weightOf(w: number | string | undefined): number {
+  if (typeof w === 'number') return w;
+  const k: Record<string, number> = { normal: 400, bold: 700, bolder: 700, lighter: 300 };
+  return k[String(w ?? 'normal').trim()] ?? (Number.isFinite(+String(w)) ? +String(w) : 400);
 }
 /** Start (on = true) or stop recording text boxes; returns what was recorded since the last start. */
 export function recordText(on: boolean): TextBox[] {
@@ -104,18 +115,20 @@ export function text(s: string, x: number, y: number, o: TextOpts = {}): void {
   if (o.ls) ctx.letterSpacing = `${o.ls}px`;
   ctx.globalAlpha = o.alpha ?? 1;
   ctx.fillStyle = o.color ?? C.fg;
-  if (boxes) {
-    const m = ctx.measureText(s), t = ctx.getTransform();
+  const m = boxes || mode === 'box' ? ctx.measureText(s) : null;
+  if (boxes && m) {
+    const t = ctx.getTransform();
     const xs: number[] = [], ys: number[] = [];
     for (const [px, py] of [[x - m.actualBoundingBoxLeft, y - m.actualBoundingBoxAscent], [x + m.actualBoundingBoxRight, y - m.actualBoundingBoxAscent], [x - m.actualBoundingBoxLeft, y + m.actualBoundingBoxDescent], [x + m.actualBoundingBoxRight, y + m.actualBoundingBoxDescent]]) {
       const q = t.transformPoint(new DOMPoint(px, py));
       xs.push(q.x);
       ys.push(q.y);
     }
-    const px = (o.size ?? 40) * Math.hypot(t.a, t.b);
-    boxes.push({ s, font: ctx.font, px, weight: +(o.weight ?? 400) || 400, color: String(ctx.fillStyle), x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys), alpha: ctx.globalAlpha });
+    const px = (o.size ?? 40) * Math.min(Math.hypot(t.a, t.b), Math.hypot(t.c, t.d));
+    boxes.push({ s, font: ctx.font, px, weight: weightOf(o.weight), color: String(ctx.fillStyle), x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys), alpha: ctx.globalAlpha });
   }
-  if (!hidden) ctx.fillText(s, x, y);
+  if (mode === 'draw') ctx.fillText(s, x, y);
+  else if (mode === 'box' && m) ctx.fillRect(x - m.actualBoundingBoxLeft, y - m.actualBoundingBoxAscent, m.actualBoundingBoxLeft + m.actualBoundingBoxRight, m.actualBoundingBoxAscent + m.actualBoundingBoxDescent);
   ctx.restore();
 }
 

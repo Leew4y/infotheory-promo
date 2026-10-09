@@ -23,11 +23,11 @@ export const gitBlob = (b: Uint8Array) => createHash('sha1').update(`blob ${b.le
 export const famKey = (family: string) => family.replace(/\s+/g, '');
 export const die = (msg: string): never => { console.error(msg); process.exit(1); };
 
-/** Read the catalog; ids must be unique. */
+/** Read the catalog; ids must be unique (throws otherwise). */
 export function readCatalog(): Catalog {
   const c: Catalog = JSON.parse(readFileSync(CATALOG, 'utf8'));
   const dup = c.fonts.map((e) => e.id).find((x, i, a) => a.indexOf(x) !== i);
-  if (dup) die(`${CATALOG}: font id "${dup}" appears more than once`);
+  if (dup) throw new Error(`${CATALOG}: font id "${dup}" appears more than once`);
   return c;
 }
 
@@ -58,7 +58,7 @@ export async function licence(e: Entry): Promise<string> {
 /**
  * Record measured values (sha256, weight) in the catalog: under an exclusive lock, re-read the catalog (another job may
  * have recorded other fonts meanwhile), fill in only fields that are still null, refuse a conflicting value, and replace
- * the file atomically.
+ * the file atomically. Throws on a conflict; the lock is released in every case.
  */
 export async function recordInCatalog(measured: { id: string; sha256?: string; weight?: string }[]): Promise<void> {
   if (!measured.length) return;
@@ -66,7 +66,7 @@ export async function recordInCatalog(measured: { id: string; sha256?: string; w
   let fd = -1;
   for (let i = 0; fd < 0; i++) {
     try { fd = openSync(lockFile, 'wx'); } catch {
-      if (i >= 200) die(`${lockFile} is held by another job (remove it if no fonts job is running)`);
+      if (i >= 200) throw new Error(`${lockFile} is held by another job (remove it if no fonts job is running)`);
       await Bun.sleep(50);
     }
   }
@@ -74,11 +74,11 @@ export async function recordInCatalog(measured: { id: string; sha256?: string; w
     const fresh = readCatalog();
     for (const m of measured) {
       const e = fresh.fonts.find((x) => x.id === m.id);
-      if (!e) die(`${CATALOG}: font "${m.id}" disappeared while recording it`);
+      if (!e) throw new Error(`${CATALOG}: font "${m.id}" disappeared while recording it`);
       for (const k of ['sha256', 'weight'] as const) {
         if (m[k] === undefined) continue;
         if (e![k] === null) e![k] = m[k]!;
-        else if (e![k] !== m[k]) die(`${CATALOG}: "${m.id}" ${k} was recorded meanwhile as ${e![k]}, this job measured ${m[k]}`);
+        else if (e![k] !== m[k]) throw new Error(`${CATALOG}: "${m.id}" ${k} was recorded meanwhile as ${e![k]}, this job measured ${m[k]}`);
       }
     }
     const tmp = `${CATALOG}.${process.pid}.tmp`;

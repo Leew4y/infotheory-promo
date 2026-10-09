@@ -10,6 +10,6 @@ scene({
     text('谢谢观看。', M, 480 + (1 - a) * 12, { size: 72, weight: 500, color: C.fg, alpha: a, ls: 6 });
     text('Thank you for watching.', M, 550, { font: F.latin, style: 'italic', size: 28, color: C.muted, alpha: sstep(1.0, 1.8, lt) });
     rule(M, 640, M + 260 * eout(clamp((lt - 1.6) / 1.0)), 640, C.accent, 1, 1.5);
-    label('github.com / your-project', M, 690, sstep(2.0, 2.8, lt), C.muted, 16);
+    label('github.com / your-project', M, 690, sstep(1.6, 2.2, lt), C.muted, 16);
   },
 });

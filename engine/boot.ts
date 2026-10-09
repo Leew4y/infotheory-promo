@@ -10,7 +10,7 @@
  *   __styles           ids of all the film's styles, the default first
  *   __timeline()       the resolved timeline (frames and seconds per scene), written to timeline.json
  *   __layout(t)        text boxes of the frame at t (for scripts/validate.ts)
- *   __contrast(t)      measured contrast of every fully visible text box of the frame at t (for scripts/validate.ts)
+ *   __contrast(t)      measured contrast of every text box (alpha >= 0.5) of the frame at t as exported (for scripts/validate.ts)
  *   __gpu()            WebGL renderer string
  *   __cues()           the sound-effect cue sheet (the film's score reads it as cues.json)
  *   __scenes()         name, kind, start/end, fade lengths and caption times (film seconds) of every scene
@@ -112,7 +112,8 @@ export function boot(o: BootOptions): void {
     scenes: SC.map((s) => ({ name: s.name, kind: s.kind, f0: s.f0, f1: s.f1, start: s.t0, end: s.t0 + s.d })),
   });
   // text boxes of the frame at t (no motion blur), for scripts/validate.ts
-  window.__contrast = (t, fps = 30) => contrastAt(t, fps);
+  // the same motion-blur sub-frames as __frame (the export)
+  window.__contrast = (t, fps = 30) => contrastAt(t, fps, 3);
   window.__layout = (t, fps = 30) => {
     recordText(true);
     frame(t, fps, 1);

@@ -12,6 +12,6 @@ scene({
     const rise = (1 - eout(clamp((lt - 0.8) / 1.2))) * 16;
     text('新片标题', W / 2, 520 + rise, { size: 120, weight: 500, color: C.fgOnDark, alpha: a, align: 'center', ls: 24 });
     text('A one-line promise of what this film shows', W / 2, 600, { font: F.latin, style: 'italic', size: 28, color: C.mutedOnDark, alpha: sstep(1.8, 2.8, lt), align: 'center' });
-    label('2026 · Hackathon demo', W / 2, 660, sstep(2.6, 3.4, lt), C.mutedOnDark, 16, 'center');
+    label('2026 · Hackathon demo', W / 2, 660, sstep(2.2, 2.8, lt), C.mutedOnDark, 16, 'center');
   },
 });

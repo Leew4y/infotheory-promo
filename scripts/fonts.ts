@@ -123,10 +123,10 @@ const run = async (args: string[]) => {
   try {
     p = Bun.spawn([UV, 'tool', 'run', '--from', `fonttools[woff]==${GENERATOR.fonttools}`, '--with', `brotli==${GENERATOR.brotli}`, ...args], { stdout: 'pipe', stderr: 'pipe' });
   } catch (e) {
-    return die(`cannot run uv (${UV}): ${e instanceof Error ? e.message : String(e)}; install uv or set UV`);
+    throw new Error(`cannot run uv (${UV}): ${e instanceof Error ? e.message : String(e)}; install uv or set UV`);
   }
   const [out, err, code] = await Promise.all([new Response(p.stdout as ReadableStream).text(), new Response(p.stderr as ReadableStream).text(), p.exited]);
-  if (code !== 0) die(`${args.slice(0, 2).join(' ')} failed (${code}): ${err.trim().split('\n').slice(-3).join(' ')}`);
+  if (code !== 0) throw new Error(`${args.slice(0, 2).join(' ')} failed (${code}): ${err.trim().split('\n').slice(-3).join(' ')}`);
   return out;
 };
 const TMP = path.join(path.dirname(OUT), `.fonts.${process.pid}.tmp`);
@@ -155,6 +155,9 @@ try {
   for (const n of readdirSync(OUT)) if (/\.woff2$|^LICENSE-.*\.txt$|^manifest\.json$/.test(n)) rmSync(path.join(OUT, n));
   for (const n of readdirSync(TMP)) renameSync(path.join(TMP, n), path.join(OUT, n));
   console.log(`-> ${path.join(OUT, 'manifest.json')}`);
+} catch (e) {
+  console.error(e instanceof Error ? e.message : String(e));
+  process.exitCode = 1;
 } finally {
   rmSync(TMP, { recursive: true, force: true });
   rmSync(textFile, { force: true });

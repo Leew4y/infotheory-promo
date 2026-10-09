@@ -11,7 +11,7 @@
  * Prints the library. Adding entries to the catalog needs Develata's confirmation (licences, size).
  * Needs uv for measuring weights. Exit code 1 on any download, checksum or tool failure.
  */
-import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { CACHE, die, download, gitBlob, licence, readCatalog, recordInCatalog, sha256, type Entry } from './font-lib';
 
@@ -19,16 +19,28 @@ const LOCK = Bun.argv.includes('--lock');
 const GENERATOR = { fonttools: '4.66.1', brotli: '1.2.0' };
 const UV = process.env.UV ?? (existsSync(path.join(process.env.USERPROFILE ?? '', 'scoop', 'shims', 'uv.exe')) ? path.join(process.env.USERPROFILE!, 'scoop', 'shims', 'uv.exe') : 'uv');
 
-/** GitHub's blob id for a raw.githubusercontent.com URL at its pinned ref. */
+/** GitHub directory listings by owner/repo/dir@ref, fetched once per run (the anonymous API allows 60 calls an hour). */
+const listings = new Map<string, Promise<{ path: string; sha: string }[]>>();
+/** GitHub's blob id for a raw.githubusercontent.com URL at its pinned ref (GITHUB_TOKEN, if set, raises the rate limit). */
 async function upstreamBlob(url: string): Promise<string> {
   const m = /^https:\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/([0-9a-f]{40})\/(.+)$/.exec(url);
   if (!m) return die(`${url}: not a raw.githubusercontent.com URL pinned to a 40-hex commit`);
   const [, owner, repo, ref, p] = m;
   const file = decodeURIComponent(p);
   const dir = file.slice(0, file.lastIndexOf('/'));
-  const r = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${dir}?ref=${ref}`, { headers: { 'User-Agent': 'font-catalog' } });
-  if (!r.ok) return die(`GitHub contents API ${r.status} for ${owner}/${repo}/${dir}@${ref}`);
-  const hit = ((await r.json()) as { path: string; sha: string }[]).find((x) => x.path === file);
+  const key = `${owner}/${repo}/${dir}@${ref}`;
+  if (!listings.has(key)) listings.set(key, (async () => {
+    const headers: Record<string, string> = { 'User-Agent': 'font-catalog', Accept: 'application/vnd.github+json' };
+    if (process.env.GITHUB_TOKEN) headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
+    const r = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${dir}?ref=${ref}`, { headers });
+    if (r.status === 403 || r.status === 429) {
+      const reset = Number(r.headers.get('x-ratelimit-reset'));
+      return die(`GitHub API rate limit for ${key}${reset ? `; it resets at ${new Date(reset * 1000).toISOString()}` : ''} (set GITHUB_TOKEN to raise it)`);
+    }
+    if (!r.ok) return die(`GitHub contents API ${r.status} for ${key}`);
+    return (await r.json()) as { path: string; sha: string }[];
+  })());
+  const hit = (await listings.get(key)!).find((x) => x.path === file);
   if (!hit) return die(`${file} is not in ${owner}/${repo}@${ref}`);
   return hit.sha;
 }
@@ -56,8 +68,7 @@ for (const e of cat.fonts) {
 const unweighted = cat.fonts.filter((e) => e.weight === null);
 if (unweighted.length) {
   if (!LOCK) die(`${unweighted.map((e) => e.id).join(', ')}: no weight in the catalog; run with --lock`);
-  const py = path.join(CACHE, `weights-${process.pid}.py`);
-  writeFileSync(py, `
+  const py = `
 import json, sys
 from fontTools.ttLib import TTFont
 out = {}
@@ -66,9 +77,10 @@ for p in sys.argv[1:]:
     ax = [a for a in f['fvar'].axes if a.axisTag == 'wght'] if 'fvar' in f else []
     out[p] = f'{int(ax[0].minValue)} {int(ax[0].maxValue)}' if ax else str(f['OS/2'].usWeightClass)
 print(json.dumps(out))
-`);
+`;
   const files = unweighted.map((e) => path.join(CACHE, e.file));
-  const p = Bun.spawnSync([UV, 'tool', 'run', '--from', `fonttools==${GENERATOR.fonttools}`, 'python', py, ...files], { stdout: 'pipe', stderr: 'pipe' });
+  // the script goes in with -c: nothing to clean up
+  const p = Bun.spawnSync([UV, 'tool', 'run', '--from', `fonttools==${GENERATOR.fonttools}`, 'python', '-c', py, ...files], { stdout: 'pipe', stderr: 'pipe' });
   if (p.exitCode !== 0) die(`measuring weights failed: ${p.stderr.toString().trim().split('\n').slice(-3).join(' ')}`);
   const w: Record<string, string> = JSON.parse(p.stdout.toString());
   for (const e of unweighted) {
@@ -77,7 +89,11 @@ print(json.dumps(out))
     if (m) m.weight = weight; else measured.push({ id: e.id, weight });
   }
 }
-await recordInCatalog(measured);
+try {
+  await recordInCatalog(measured);
+} catch (e) {
+  die(e instanceof Error ? e.message : String(e));
+}
 
 const now = readCatalog();
 for (const e of now.fonts) {

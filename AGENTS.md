@@ -28,7 +28,7 @@ Every film command takes the film id first (default `infotheory`); outputs go to
 |---|---|
 | `just new-film <id> <style>` / `just new-style <id>` | start from a template |
 | `just fonts <film>` | font subsets for the film's text, per style (run after changing any text) |
-| `just validate <film> [--style id]` | schema, timeline, rendering, text inside the 5 % safe area, no overlapping text, WCAG AA contrast; `--json` gives the diagnostics list |
+| `just validate <film> [--style id]` | schema, timeline, rendering, text inside the 5 % safe area, no overlapping text, WCAG AA contrast (as exported, glyph by glyph, on sampled frames); `--json` gives the diagnostics list |
 | `just sheet <film> [--style a,b]` | contact sheet of representative moments in every style: `out/<film>/sheet/sheet.jpg` + `sheet.json` |
 | `just shots <film> 5,20.5 [--style id]` | single frames |
 | `just dev <film>` | preview at http://127.0.0.1:5174 (`?style=<id>`) |
@@ -47,8 +47,10 @@ Every film command takes the film id first (default `infotheory`); outputs go to
 - Fonts come only from `fonts/catalog.json`; a style lists the ids it uses in `fonts.json`. Adding a font to the
   catalog (a download) needs the person's confirmation.
 - Text on a full-frame plate goes over `backdrop(...)` so it stays readable.
-- Done means: `just check`, `just check-imports`, `just validate <film>` (0 errors in every style) pass, and the
-  sheet has been looked at. Report what was verified, what was not, and anything only inferred.
+- Done means: `just check`, `just check-imports`, `just validate <film>` (0 errors in every style) and `just regress
+  <film>` (every style with a baseline) pass, and the sheet has been looked at. The layout checks sample five frames
+  per scene and judge axis-aligned boxes: a strong heuristic, not a proof. Report what was verified, what was not, and
+  anything only inferred.
 
 ## Designing a look
 

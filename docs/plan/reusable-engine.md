@@ -311,6 +311,23 @@ A1 / A1b 评审修正（Codex，gpt-6-astra max：1 BLOCKER / 8 SHOULD_FIX / 2 N
   `templates/style/` + `just new-style`（接口齐全的最小风格包与 `STYLE.md` 骨架；模板风格配模板片 validate 0 error 已测）；
   `check-imports` 把 `templates/style/` 按风格包规则检查；`AGENTS.md`（`CLAUDE.md` 只引用它）与 `.claude/skills/design-style/SKILL.md`。
   未完成：退出条件里的"新会话独立完成一部片子"需要在一个新会话（Claude 或 Codex）里实测。
+- A2 评审修正（Codex，gpt-6-astra max：2 BLOCKER / 11 SHOULD_FIX / 2 NICE_TO_HAVE / 2 NEEDS_VERIFICATION，逐条核实后处理）：
+  - `test-validate` 改用作业专属片名（`validate-fixture-<pid>`），只删除本次创建的目录；`sheet` 不再清空 `--out`：
+    先写临时目录，只替换以前的拼板（有 `sheet.json`）或不存在的目录，其他目录拒绝。
+  - 对比度测量重做（`engine/inspect.ts`）：四遍渲染——无字 / 有字（单采样，定位字形），无字 / 文字换成同色实心框（导出用的
+    3 个运动模糊子帧）。文字颜色取实心框内部经过调色、合成、模糊后的实际像素，不再解析声明颜色（原正则漏匹配括号的问题随之消失）；
+    文字框均分为约一字宽的格子，只计有字形的格子，取最小比值，字落在局部亮块上也能查出；渲染出错时恢复文字与记录模式。
+    第一版实心框测量把框边缘的抗锯齿像素算进了文字颜色、末尾还留下 1 px 细条，已改为取框内实心像素并均分格子。
+  - alpha 0.5–0.9 的文字按实际 alpha 判断并报 warning（可能是淡入中途），0.9 以上报 error，0.5 以下计入报告的未检查数；重叠同样分级。
+  - 字重规范化（`bold` = 700），字号取变换后两个方向中较小的缩放。
+  - 新测法发现 nebula 灰字经暗角后不足 4.5：muted #7586A0→#8D9DB6，看过前后对照后重录 nebula 基线；模板标题页、结尾页小标签提前淡入，
+    使中间帧为稳定状态。`test-validate` 新增：近乎透明的 rgba 文字、局部亮块上的字、稳定半透明低对比文字（warning）。
+  - 拼板：文件名带行号，时刻须有限且在片内，代表时刻按帧去重、限制在所属场景内、取所选风格的并集；`--style` 以首个所选风格加载影片。
+  - 字体：锁内冲突改为抛出异常、`finally` 释放锁（已测）；`fonts.ts` 子集出错同样先清理再以 1 退出（已测）；GitHub 目录列表按目录复用、
+    限流时给出重置时间、可用 `GITHUB_TOKEN`；字重测量脚本经 `-c` 传入，不留文件。
+  - skill / AGENTS：交付前跑全风格 `validate` 与已有基线的 `regress`，新风格批准后只为它记录基线；动效须看连续帧或预览并说明。
+    README 的对比度表述收窄为抽样检查。
+  - 仍未覆盖：逐字形（非轴对齐框）检查；新会话独立验收（见上）。
 - 评审清单：层级是否清楚；对比度与可读性；背景是否抢文字；颜色数量与强调色用法；字体搭配；动效是否克制统一；
   与已有风格是否明显不同；是否符合 brief 的调性。
 - 流程写成项目 skill（`.claude/skills/design-style/`，AGENTS.md 引用，Codex 共用）：

@@ -30,7 +30,7 @@ const nebula: StylePackage = {
     bg2: '#141B2D',
     fg: '#E6EEF7',
     fg2: '#A9B8CC',
-    muted: '#7586A0',
+    muted: '#8D9DB6',
     rule: '#2C3854',
     accent: '#5FD4E8',
     accent2: '#A3EAF5',

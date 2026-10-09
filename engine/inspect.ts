@@ -1,13 +1,16 @@
 /**
- * Measurements of a rendered frame for scripts/validate.ts (export mode only). Everything is measured on the final
- * pixels, after the grade and the overlays, without motion blur.
+ * Measurements of rendered frames for scripts/validate.ts (export mode only), taken on the final pixels: after the
+ * grade, the overlays drawn over it, and the export's motion blur.
  */
-import { ctx, hideTexts, recordText, type TextBox } from './draw';
+import { ctx, recordText, textMode, type TextBox } from './draw';
 import { frame } from './frame';
 import { W, H } from './util';
 
-/** A text box with its measured contrast: text colour vs the background under it, as a WCAG ratio (1–21). */
-export interface ContrastBox extends TextBox { ratio: number; text: [number, number, number]; bg: [number, number, number] }
+/**
+ * A text box with its measured contrast: the lowest WCAG ratio (1–21) over the glyph cells of the box, with the text
+ * and background colours of that cell, and how many cells held glyphs.
+ */
+export interface ContrastBox extends TextBox { ratio: number; text: [number, number, number]; bg: [number, number, number]; cells: number }
 
 /** WCAG 2 relative luminance of an sRGB colour (0–255 channels). */
 function luminance([r, g, b]: [number, number, number]): number {
@@ -15,49 +18,80 @@ function luminance([r, g, b]: [number, number, number]): number {
   return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
 }
 
-/** A canvas-normalised colour (#rrggbb or rgba(r, g, b, a)) as [r, g, b, a]. */
-function parse(c: string): [number, number, number, number] {
-  if (c.startsWith('#')) { const n = parseInt(c.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255, 1]; }
-  const m = c.match(/^rgba?(([^)]+))$/);
-  if (!m) return [NaN, NaN, NaN, NaN];
-  const [r, g, b, al = '1'] = m[1].split(',').map((x) => x.trim());
-  return [+r, +g, +b, +al];
-}
-
 /**
- * The frame at t rendered without any text, then with it (recording the text boxes). For each recorded box whose alpha
- * is at least `minAlpha`: the background is the mean colour of the box in the text-free render (after the grade, the
- * vignette, the overlays below it); the text colour is the colour the text was drawn with, composited at its alpha over
- * that background. Contrast is WCAG's (L_light + 0.05) / (L_dark + 0.05). The declared colour is used, not the rendered
- * glyph pixels, because anti-aliasing never fully covers a pixel with a thin stroke and would understate small text;
- * the grade's small change to text colour is ignored. A fill that is not a plain colour (a gradient) gives NaN.
+ * Contrast of every text box with alpha >= minAlpha in the frame at t. Four renders:
+ *   A1 without text and B1 with text (single sample, recording the boxes): where they differ are the glyphs;
+ *   A  without text and C with every text replaced by a solid box of its fill (both with the export's `samples`
+ *      motion-blur sub-frames): A is the background, C the colour the text ends up with — through the same alpha,
+ *      compositing, grade (scene text) or none (overlays), and blur — measured on solid boxes, so anti-aliasing of
+ *      thin strokes does not dilute it.
+ * Each box is cut into equal cells about one glyph wide; a cell counts if at least 3 of its pixels changed when the text was
+ * drawn, and its ratio is that of the mean of C against the mean of A over the cell. The box's ratio is the lowest
+ * cell's, so a glyph over a bright patch is judged by that patch, not by the average of the whole box. Text and
+ * recording modes are restored even if a render throws.
+ * Not modelled: a text box covering another text (overlap is reported separately), bloom spreading from the solid boxes.
  */
-export function contrastAt(t: number, fps: number, minAlpha = 0.9): ContrastBox[] {
-  hideTexts(true);
-  frame(t, fps, 1);
-  hideTexts(false);
-  const A = ctx.getImageData(0, 0, W, H).data;
-  recordText(true);
-  frame(t, fps, 1);
-  const boxes = recordText(false);
+export function contrastAt(t: number, fps: number, samples: number, minAlpha = 0.5): ContrastBox[] {
+  const grab = () => ctx.getImageData(0, 0, W, H).data;
+  let A1: Uint8ClampedArray, B1: Uint8ClampedArray, A: Uint8ClampedArray, Cc: Uint8ClampedArray, boxes: TextBox[];
+  try {
+    textMode('hide');
+    frame(t, fps, 1);
+    A1 = grab();
+    textMode('draw');
+    recordText(true);
+    frame(t, fps, 1);
+    boxes = recordText(false);
+    B1 = grab();
+    textMode('hide');
+    frame(t, fps, samples);
+    A = grab();
+    textMode('box');
+    frame(t, fps, samples);
+    Cc = grab();
+  } finally {
+    textMode('draw');
+    recordText(false);
+  }
   const out: ContrastBox[] = [];
   for (const b of boxes) {
     if (!(b.alpha >= minAlpha)) continue;
     const x0 = Math.max(0, Math.floor(b.x0)), x1 = Math.min(W, Math.ceil(b.x1));
     const y0 = Math.max(0, Math.floor(b.y0)), y1 = Math.min(H, Math.ceil(b.y1));
     if (x1 <= x0 || y1 <= y0) continue;
-    const bg = [0, 0, 0];
-    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
-      const i = (y * W + x) * 4;
-      bg[0] += A[i]; bg[1] += A[i + 1]; bg[2] += A[i + 2];
+    // equal cells about one glyph wide (no sliver at the end: a 1 px column of edge pixels is not a glyph)
+    const k = Math.max(1, Math.round((x1 - x0) / Math.max(6, b.px * 0.9)));
+    let best: { ratio: number; text: [number, number, number]; bg: [number, number, number] } | null = null;
+    let cells = 0;
+    for (let j = 0; j < k; j++) {
+      const cx = x0 + Math.round(((x1 - x0) * j) / k), cx1 = x0 + Math.round(((x1 - x0) * (j + 1)) / k);
+      let glyph = 0, n = 0, maxd = 0;
+      const bg = [0, 0, 0];
+      for (let y = y0; y < y1; y++) for (let x = cx; x < cx1; x++) {
+        const i = (y * W + x) * 4;
+        if (Math.abs(B1[i] - A1[i]) + Math.abs(B1[i + 1] - A1[i + 1]) + Math.abs(B1[i + 2] - A1[i + 2]) > 24) glyph++;
+        bg[0] += A[i]; bg[1] += A[i + 1]; bg[2] += A[i + 2];
+        maxd = Math.max(maxd, Math.abs(Cc[i] - A[i]) + Math.abs(Cc[i + 1] - A[i + 1]) + Math.abs(Cc[i + 2] - A[i + 2]));
+        n++;
+      }
+      if (glyph < 3) continue;
+      cells++;
+      // the text colour: the solid inside of the box in C (pixels that changed at least 90 % as much as the most changed
+      // one), so the box's anti-aliased and motion-blurred edge does not dilute it on small text
+      const tx = [0, 0, 0];
+      let m = 0;
+      for (let y = y0; y < y1; y++) for (let x = cx; x < cx1; x++) {
+        const i = (y * W + x) * 4;
+        if (Math.abs(Cc[i] - A[i]) + Math.abs(Cc[i + 1] - A[i + 1]) + Math.abs(Cc[i + 2] - A[i + 2]) >= maxd * 0.9) { tx[0] += Cc[i]; tx[1] += Cc[i + 1]; tx[2] += Cc[i + 2]; m++; }
+      }
+      const bgc: [number, number, number] = [bg[0] / n, bg[1] / n, bg[2] / n];
+      const txc: [number, number, number] = [tx[0] / m, tx[1] / m, tx[2] / m];
+      const l1 = luminance(txc), l2 = luminance(bgc);
+      const ratio = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+      if (!best || ratio < best.ratio) best = { ratio, text: txc, bg: bgc };
     }
-    const n = (x1 - x0) * (y1 - y0);
-    const bgc: [number, number, number] = [bg[0] / n, bg[1] / n, bg[2] / n];
-    const [r, g, bl, ca] = parse(b.color);
-    const k = Math.min(1, ca * b.alpha);
-    const txc: [number, number, number] = [r * k + bgc[0] * (1 - k), g * k + bgc[1] * (1 - k), bl * k + bgc[2] * (1 - k)];
-    const l1 = luminance(txc), l2 = luminance(bgc);
-    out.push({ ...b, ratio: (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05), text: txc, bg: bgc });
+    // no cell changed: the text is invisible here (ratio 1: it cannot be read)
+    out.push({ ...b, ...(best ?? { ratio: 1, text: [0, 0, 0] as [number, number, number], bg: [0, 0, 0] as [number, number, number] }), cells });
   }
   return out;
 }

@@ -52,8 +52,11 @@ why). Remove the directions that were not chosen.
 
 ```bash
 just fonts <film>
-just validate <film> --style <id>      # 0 errors: safe area, overlap, contrast, glyphs
+just validate <film>                   # every style of the film: 0 errors (safe area, overlap, contrast, glyphs);
+                                       # read the warnings too (text at 0.5-0.9 alpha, overlaps mid-fade)
+just regress <film>                    # styles that already have a baseline must still pass; a new style has none yet
 just sheet <film> --style <id>,<an existing style>
+just shots <film> <t>,<t+1/30>,<t+2/30> --style <id>   # consecutive frames around each fade or transition
 ```
 
 Look at the sheet image yourself and review against this list, writing the result to
@@ -64,7 +67,9 @@ Look at the sheet image yourself and review against this list, writing the resul
 3. The background supports the text and diagrams; it does not compete with them.
 4. Colour: one accent, used sparingly and meaningfully; diagram colours are distinguishable.
 5. Type: the pairing works in Chinese and Latin; sizes and tracking are consistent.
-6. Motion: fades and transitions are smooth and consistent with the tone.
+6. Motion: fades and transitions are smooth and consistent with the tone. A still sheet cannot show this: look at
+   consecutive frames around the first and last frame of a fade (`just shots`), or watch `just dev <film>`
+   (`?style=<id>`), and say which you did.
 7. Distinct: next to paper-dawn and nebula it is clearly a different look.
 8. It matches the brief's tone, and avoids what the brief says to avoid.
 
@@ -73,8 +78,10 @@ Fix, re-run, review again until the list holds.
 ## 4. Hand over
 
 Give the person the sheet (send the image) and a short note: the direction, what changed in review, the validate
-result, and anything unverified. Their comments start another round of step 3. When they approve: `just regress
-<film> --update --style <id>` (only then), commit, and record the outcome in `review/`.
+and regress results, and anything unverified. Their comments start another round of step 3. When they approve:
+record the new style's baseline with `just regress <film> --update --style <id>` (only then, and only for that
+style; if an existing style's baseline changed too, show its before/after frames first), commit, and record the
+outcome in `review/`.
 
 ## Don'ts
 
