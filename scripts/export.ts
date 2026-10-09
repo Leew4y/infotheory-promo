@@ -7,7 +7,7 @@
  *   bun scripts/export.ts --film <id> --cues [films/<id>/cues.json]          dump the sound-effect cue sheet for the score
  *   bun scripts/export.ts --film <id> --timeline [films/<id>/timeline.json]  dump the resolved timeline (scene frames / seconds)
  *   bun scripts/export.ts --film <id> --scenes                               print the scene list with start/end times
- *   bun scripts/export.ts --film <id> --narration [out/<id>/narration.cues.json]  where each narration line plays
+ *   bun scripts/export.ts --film <id> --narration [out/<id>/narration.cues.json]  where each narration line plays, for audio/mix.py
  *   every form takes [--style <id>]: one of the film's styles (?style=<id>); omitted: the film's default.
  *   The page is the film's build, dist/<id>/ (just build <id>).
  *
@@ -43,6 +43,7 @@ import path from 'node:path';
 import puppeteer, { type Browser, type Page } from 'puppeteer-core';
 import { chromeArgs, findChrome, loadFilm, killTree, serveDist } from './chrome';
 import { mediaDir, requireFilm } from './film-arg';
+import { createHash } from 'node:crypto';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const argv = Bun.argv.slice(2);
@@ -60,8 +61,11 @@ const SINGLE = flag('shots') || flag('cues') || flag('timeline') || flag('scenes
 const WORKERS = SINGLE ? 1 : Math.max(1, +(opt('workers', '4') ?? 4));
 const STYLE = opt('style');
 const OUT = path.resolve(ROOT, opt('out', `out/${FILM}/${FILM}${STYLE ? `-${STYLE}` : ''}.mp4`)!);
-// the loudness-normalized WAV master from the score (the MP3 is only for the preview player)
-const AUDIO = path.resolve(ROOT, opt('audio', `out/${FILM}/music.wav`)!);
+// the audio: --audio, else the final mix out/<film>/master.wav (music + narration, audio/mix.py) when there is one, else
+// the score's loudness-normalized master out/<film>/music.wav (the MP3s are only for the preview player). A final mix
+// must still match what it was made from (master.json: the music, the narration lock, the placements), checked below.
+const MASTER = path.join(ROOT, 'out', FILM, 'master.wav');
+const AUDIO = path.resolve(ROOT, opt('audio') ?? (existsSync(MASTER) ? MASTER : `out/${FILM}/music.wav`));
 const NOAUDIO = flag('noaudio');
 // a command prefix: a plain path, or a JSON array such as ["bun", "stub.ts"] (test hooks)
 const cmdPrefix = (v: string | undefined, d: string): string[] => (v ? (v.startsWith('[') ? JSON.parse(v) : [v]) : [d]);
@@ -206,6 +210,21 @@ async function probe(file: string): Promise<Probe> {
 }
 const audioSeconds = async (file: string) => finite((await runProbe(['-show_entries', 'format=duration', '-of', 'csv=p=0', file])).trim(), `duration of ${file}`);
 
+const sha256 = (b: Uint8Array | string) => createHash('sha256').update(b).digest('hex');
+/** The placements' identity, computed the same way by audio/mix.py (id, start, duration to 1 µs). */
+const placementsDigest = (ps: { id: string; t: number; dur: number }[]) => sha256(ps.map((p) => `${p.id}:${p.t.toFixed(6)}:${p.dur.toFixed(6)}`).join('\n'));
+/** Why the final mix no longer matches its inputs (master.json), or null. */
+function masterStale(placements: { id: string; t: number; dur: number }[]): string | null {
+  const meta = path.join(ROOT, 'out', FILM, 'master.json');
+  if (!existsSync(meta)) return 'no master.json';
+  const m: { music: { path: string; sha256: string } | 'none'; lock: string; placements: string } = JSON.parse(readFileSync(meta, 'utf8'));
+  if (m.music !== 'none' && (!existsSync(m.music.path) || sha256(readFileSync(m.music.path)) !== m.music.sha256)) return 'the music changed';
+  const lock = path.join(ROOT, 'films', FILM, 'narration.lock.json');
+  if (!existsSync(lock) || sha256(readFileSync(lock)) !== m.lock) return 'the narration changed';
+  if (placementsDigest(placements) !== m.placements) return 'the narration moved in the timeline';
+  return null;
+}
+
 interface Worker { id: number; browser: Browser; page: Page; frame: (t: number) => Promise<Buffer>; prefetch: (ts: number[]) => Promise<void>; evaluate: <T>(fn: () => T) => Promise<T> }
 async function launch(id: number, chrome: string, url: string, fps: () => number): Promise<Worker> {
   checkCancel();
@@ -252,6 +271,10 @@ try {
   const gpu = await workers[0].evaluate(() => window.__gpu());
   console.log(`${WORKERS} worker${WORKERS > 1 ? 's' : ''} ready in ${((performance.now() - tLoad) / 1000).toFixed(1)}s   renderer: ${gpu}`);
   if (/swiftshader|llvmpipe|software/i.test(gpu)) console.error('!!! WebGL is on a software renderer');
+  if (!SINGLE && !NOAUDIO && AUDIO === MASTER) {
+    const stale = masterStale(await workers[0].evaluate(() => window.__narration().placements));
+    if (stale) fail(2, `the final mix ${path.relative(ROOT, MASTER)} is stale (${stale}): run just mix ${FILM}`);
+  }
 
   if (flag('scenes')) {
     const list = await workers[0].evaluate(() => window.__scenes());
@@ -269,7 +292,7 @@ try {
       const { placements, unplaced } = await workers[0].evaluate(() => window.__narration());
       if (unplaced.length) fail(1, `narration lines placed in no scene: ${unplaced.join(', ')}`);
       mkdirSync(path.dirname(file), { recursive: true });
-      writeFileSync(file, JSON.stringify(placements, null, 1));
+      writeFileSync(file, JSON.stringify({ film: FILM, duration: tl.duration, placements }, null, 1));
       console.log(`wrote ${placements.length} narration placements to ${file}`);
     }
     if (flag('cues')) {
@@ -300,7 +323,7 @@ try {
       if (secs + 1e-6 < F1 / FPS) fail(1, `audio ${AUDIO} is ${secs.toFixed(3)}s, shorter than the export end ${(F1 / FPS).toFixed(3)}s`);
     }
     tmpOut = `${OUT.replace(/\.mp4$/i, '')}.${process.pid}.partial.mp4`;
-    console.log(`rendering ${N} frames (${F0}..${F1}, ${(F0 / FPS).toFixed(3)}s -> ${(F1 / FPS).toFixed(3)}s @ ${FPS} fps) -> ${OUT}${NOAUDIO ? ' (no audio)' : ''}`);
+    console.log(`rendering ${N} frames (${F0}..${F1}, ${(F0 / FPS).toFixed(3)}s -> ${(F1 / FPS).toFixed(3)}s @ ${FPS} fps) -> ${OUT}${NOAUDIO ? ' (no audio)' : `, audio ${path.relative(ROOT, AUDIO)}`}`);
     const ffArgs = ['-y', '-hide_banner', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', String(FPS), '-c:v', 'mjpeg', '-i', 'pipe:0'];
     if (!NOAUDIO) ffArgs.push('-ss', (F0 / FPS).toFixed(6), '-t', span.toFixed(6), '-i', AUDIO, '-map', '0:v:0', '-map', '1:a:0');
     ffArgs.push('-vf', // accurate_rnd / full_chroma_int: swscale's default rounding shifts colours by 2-6 levels here (measured, see the plan's 1c record)

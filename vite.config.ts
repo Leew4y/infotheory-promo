@@ -13,7 +13,8 @@ const root = fileURLToPath(new URL('.', import.meta.url));
 const FILM = process.env.FILM ?? '';
 const films = readdirSync(path.join(root, 'films')).filter((n) => /^[a-z0-9][a-z0-9-]*$/.test(n) && existsSync(path.join(root, 'films', n, 'main.ts')));
 if (!films.includes(FILM)) throw new Error(`FILM=${JSON.stringify(FILM)} is not a film (films/<id>/main.ts): one of ${films.join(', ')}`);
-const MUSIC = path.join(root, 'out', FILM, 'music.mp3');
+// the preview plays the final mix (music + narration, just mix) when there is one, else the score
+const MUSIC = [path.join(root, 'out', FILM, 'master.mp3'), path.join(root, 'out', FILM, 'music.mp3')].find((f) => existsSync(f)) ?? path.join(root, 'out', FILM, 'music.mp3');
 
 export default defineConfig({
   root,

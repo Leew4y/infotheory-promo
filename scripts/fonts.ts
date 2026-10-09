@@ -12,7 +12,8 @@
  *    (independently of the font cache). A catalog entry must be locked first (sha256 and weight recorded by
  *    scripts/font-catalog.ts --lock); a mismatch is an error.
  * 2. The film's character set: every character in the string and template literals of films/<film>/**\/*.ts and of
- *    the style package (comments removed by a string-aware scanner, escapes decoded), plus printable ASCII, plus
+ *    the style package (comments removed by a string-aware scanner, escapes decoded), plus printable ASCII, plus the
+ *    captions of the film's narration (text and en of every line of films/<film>/narration.json), plus
  *    films/<film>/fonts.extra.txt if present (for text generated at run time, e.g. String.fromCodePoint(...)).
  * 3. Each source is subset to that set with a pinned fontTools (pyftsubset via `uv tool run`, WOFF2, all name records
  *    kept so the copyright and licence notices stay in the fonts) into a temporary directory; only when every face
@@ -102,6 +103,10 @@ const chars = new Set<string>();
 for (let c = 0x20; c < 0x7f; c++) chars.add(String.fromCharCode(c));
 for (const f of [...walk(path.join(ROOT, 'films', FILM)), ...walk(path.join(ROOT, 'styles', STYLE))])
   for (const s of literals(readFileSync(f, 'utf8'))) for (const ch of s) chars.add(ch);
+const NARRATION = path.join(ROOT, 'films', FILM, 'narration.json');
+if (existsSync(NARRATION))
+  for (const l of (JSON.parse(readFileSync(NARRATION, 'utf8')).lines ?? []) as { text?: string; en?: string }[])
+    for (const ch of `${l.text ?? ''}${l.en ?? ''}`) chars.add(ch);
 if (existsSync(EXTRA)) for (const ch of readFileSync(EXTRA, 'utf8')) chars.add(ch);
 for (const ws of ['\n', '\r', '\t', '\b', '\f', '\v', '\0']) chars.delete(ws);
 const text = [...chars].sort().join('');

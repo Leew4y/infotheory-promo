@@ -110,6 +110,23 @@ cues film=film: (build film)
 music film=film: (cues film)
     uv run --project audio python films/{{film}}/score.py
 
+# Synthesize the film's narration (films/<film>/narration.json) into films/<film>/narration/ and the lock; --resynth <ids|all>, --backend fake.
+narrate film=film *args:
+    bun scripts/narrate.ts --film {{film}} {{args}}
+
+# Final mix: the music with the narration over it, ducked and mastered -> out/<film>/master.wav (the export uses it); --music <file|none>.
+mix film=film *args: (build film)
+    bun scripts/export.ts --film {{film}} --narration
+    uv run --project audio python audio/mix.py --film {{film}} {{args}}
+
+# Local text-to-speech (Fun-CosyVoice3-0.5B, pinned) into .cache/tts/: source, Python 3.10 environment, packages, model (~5.4 GB).
+tts-setup:
+    bun scripts/tts-setup.ts
+
+# Narration end to end with the fake voice: timing, captions, anchors, the final mix's levels and loudness.
+test-narration:
+    bun scripts/test-narration.ts
+
 # 1080p30 export -> out/<film>/<film>[-<style>].mp4, e.g. `just export demo 4 18 --noaudio --style nebula`.
 export film=film workers="4" crf="18" *args: (build film)
     bun scripts/export.ts --film {{film}} --workers {{workers}} --crf {{crf}} {{args}}
