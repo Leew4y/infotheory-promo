@@ -15,8 +15,8 @@
 - **实际核对的版本**：*Œuvres de Monsieur de Fontenelle*, nouvelle édition augmentée, t. V（Paris : Michel Brunet, 1742），
   archive.org 条目 `uvres05font`（波士顿公共图书馆藏本扫描）。序言为该卷正文 pp. 1–22。
   页码推算：扫描第 12 帧印有 "Tome V. A"＝p. 1，第 28 帧印有 "Tome V. B"＝p. 17，第 35 帧页眉为 "24"，故印刷页＝帧号 − 11。
-  **对照过扫描图像的页**：pp. 1、9、10、13、17、18、21（帧 12、20、21、24、28、29、32）。
-  **只核了 OCR 的**：S1b（pp. 2–3，帧 13–14）与 S1d 后半句 "ce n'est pas risquer beaucoup"（p. 11，帧 22）——第二阶段补看图像。
+  **对照过扫描图像的页**：pp. 1、2、9、10、11、13、17、18、21（帧 12、13、20、21、22、24、28、29、32）。
+  p. 2（帧 13）与 p. 11（帧 22）于第二阶段补看图像；p. 3（帧 14）只核了 OCR。
 - **日期**："1699" 是该序言所属的年卷（*Histoire de l'Académie royale des sciences, année 1699*）；写作日期与 1702 年初印均只见于搜索摘要，**未核实**。
   旁白应说"为 1699 年卷所写的序言"，不说"1699 年他写道"。
 - **未核实**：1702 年巴黎初印本（*Histoire de l'Académie royale des sciences, année 1699* 卷首序言）。Gallica 扫描
@@ -30,6 +30,7 @@
 | S1d | pp. 10–11 | Amassons toujours des vérités de Mathematique & de Phisique au hazard de ce qui en arrivera, ce n'est pas risquer beaucoup. | 让我们不断积累数学和物理的真理，不管将来会怎样；这冒不了多大的险。 |
 | S1e | p. 13 | Enfin tout ce qui nous éleve à des réflexions, qui quoique purement speculatives, sont grandes & nobles, est d'une utilité qu'on peut appeller spirituelle & Philosophique. L'Esprit a ses besoins, & peut-être aussi étendus que ceux du Corps. Il veut sçavoir ; tout ce qui peut être connu lui est nécessaire… | 最后，凡是把我们提升到那些虽属纯粹思辨、却伟大而高贵的思考的东西，都有一种可以称为精神的、哲学的用途。心智有它的需要，也许和身体的需要一样广。它想要知道；一切可以被知道的，对它都是必需的…… |
 | S1f | pp. 17–18 | Peut-être l'excellence des Methodes Geométriques que l'on invente ou que l'on perfectionne de jour en jour, fera-t-elle voir à la fin le bout de la Geométrie, c'est-à-dire, de l'Art de faire des découvertes en Geométrie, ce qui est tout ; mais la Phisique… aura l'avantage de n'être jamais une science complette. | 也许人们日日发明、改进的几何方法之精良，终将让人看到几何学的尽头，也就是在几何中做出发现之技艺的尽头——而这就是几何的全部；但物理学……将有永远不会完成的好处。 |
+| S1h | p. 11 | Enfin au pis aller, il y en aura qui seront éternellement inutiles. J'entens inutiles, par rapport aux usages sensibles, & pour ainsi dire, grossiers, car du reste elles ne le seront pas. | 最坏的情况，会有一些真理永远无用。我说的无用，是就看得见的、可以说是粗浅的用途而言；在别的意义上，它们并不无用。 |
 | S1g | p. 21 | Ni les lumieres, ni les soins, ni la vie, ni les facultés d'un Particulier n'y suffiroient. | 无论是一个人的学识、心血、寿命还是财力，都不足以完成这件事。（语境：物理实验材料的积累需要受君主保护的学会） |
 
 **解读要点（供论证地图使用）**：Fontenelle 是数学的**辩护者**。他记述"数学被普遍看作无用"，是为了反驳它；他的主要论证是
@@ -176,16 +177,100 @@
 
 ### S11 TechCrunch，"OpenAI forms math advisory group as its AI resolves more than 100 open problems"（2026-09-21）
 
-- 已读（二手报道）。其中提到"25 位菲尔兹奖得主签署公开信"——**该公开信本身未读，未核实，不使用**。
+- 已读（二手报道）。其中提到的菲尔兹奖得主公开信，第二阶段已读到一手（S19），以 S19 为准。
+
+---
+
+## 第二阶段补充核查的来源（2026-10-09）
+
+### S12 R. L. Rivest, A. Shamir, L. Adleman，"A Method for Obtaining Digital Signatures and Public-Key Cryptosystems"
+
+- 出版信息经 Crossref 核实（DOI 10.1145/359340.359342）：*Communications of the ACM* 21(2): 120–126，1978 年 2 月。
+- 正文读的是作者在 MIT 的重排本 <https://people.csail.mit.edu/rivest/Rsapaper.pdf>，已核实。
+- S12a（摘要）："The security of the system rests in part on the difficulty of factoring the published divisor, n."
+- S12b（§VI "The Underlying Mathematics"）："We demonstrate the correctness of the deciphering algorithm using an identity due to Euler and Fermat [7]: for any integer (message) M which is relatively prime to n, M^φ(n) ≡ 1 (mod n)."
+- S12c（引言）："…a 'public-key cryptosystem,' an elegant concept invented by Diffie and Hellman [1]."
+
+### S13 W. Diffie, M. Hellman，"New Directions in Cryptography"
+
+- 只经 Crossref 核实出版信息（DOI 10.1109/TIT.1976.1055638）：*IEEE Transactions on Information Theory* 22(6): 644–654，1976 年 11 月。正文未读。
+
+### S14 Charles L. Fefferman，"Existence and Smoothness of the Navier-Stokes Equation"（Clay 官方题面）
+
+- <https://www.claymath.org/wp-content/uploads/2022/06/navierstokes.pdf>，已核实（PDF 正文，pp. 1–2）。PDF 本身未印日期；该题面随 2000 年千禧年难题公布（S8 正文："unveiled … in Paris in 2000"）。
+- S14a（A）：…"Take f(x, t) to be identically zero. Then there exist smooth functions p(x, t), u_i(x, t) on R³ × [0, ∞) that satisfy…"
+- S14b（B）：周期情形，同样 "we take f(x, t) to be identically zero"。
+- S14c（C）"Breakdown of Navier-Stokes solutions on R³"："Then there exist a smooth, divergence-free vector field u°(x) on R³ and a smooth f(x, t) on R³ × [0, ∞), satisfying (4), (5), for which there exist no solutions (p, u) of (1), (2), (3), (6), (7) on R³ × [0, ∞)."
+- S14d："we ask for a proof of one of the following four statements."
+- **要点**：存在性一侧（A、B）规定外力恒为零；破裂一侧（C、D）允许选取一个光滑外力。这是题面文字上的不对称，可直接从原文读出。
+
+### S15 Abraham Flexner，"The Usefulness of Useless Knowledge"
+
+- *Harper's Magazine* 第 179 卷（1939），pp. 544–552；读的是 IAS 提供的扫描 PDF <https://www.ias.edu/sites/default/files/library/UsefulnessHarpers.pdf>，已核实。
+  PDF 页眉只写 "issue 179, June/November 1939"，**具体月份未核实**。
+- S15a（p. 545）：…"throughout the whole history of science most of the really great discoveries which had ultimately proved to be beneficial to mankind had been made by men and women who were driven not by the desire to be useful but merely the desire to satisfy their curiosity."
+- 背景：Flexner 是 IAS 的创办主任（文中自述 IAS；AGMAI 今天就设在 IAS——**这只是巧合，不作任何推论**）。
+
+### S16 Bertrand Russell，"The Study of Mathematics"
+
+- 1902 年写成，首刊 *New Quarterly*，1907 年 11 月；收入 *Philosophical Essays*（1910）与 *Mysticism and Logic*（1918）。读的是 Project Gutenberg #25447（*Mysticism and Logic*）全文，已核实；出版信息取自该书序言。
+- S16a："In a world so full of evil and suffering, retirement into the cloister of contemplation, to the enjoyment of delights which, however noble, must always be for the few only, cannot but appear as a somewhat selfish refusal to share the burden imposed upon others by accidents in which justice plays no part."
+- S16b："…the true answer is, no doubt, that some must keep alive the sacred fire, some must preserve, in every generation, the haunting vision which shadows forth the goal of so much striving."
+- S16c："Nor does experience give any means of deciding what parts of mathematics will be found useful. Utility, therefore, can be only a consolation in moments of discouragement, not a guide in directing our studies."
+- 线索来源：Cain 注释本 "Context of the Apology" 一文引用了 S16a、S16b（二手），据此找到原文。
+
+### S17 Christiaan Huygens，*Horologium oscillatorium*（Paris: F. Muguet, 1673）
+
+- archive.org 条目 `horologium-oscillatorium`（底本为 Gallica 扫描），只核了 OCR 文本，**未看图像**——部分核实。
+- S17a（扉页后目录）：全书五部分，第二部分 "agit de Descensu gravium, & motu eorum in Cycloide"（论重物下落及其在摆线上的运动）。
+- S17b（第二部分 Propositio XXV）：在轴竖直、顶点朝下的摆线上，物体从任一点释放、到达最低点所用的时间都相等；该时间与沿整条轴自由下落的时间之比，等于半圆周与直径之比。
+- 第一部分的钟表构造中出现 "laminæ cycloidales"（摆线形夹板）。
+
+### S18 Scott Aaronson，"The Age of Wonders and Terrors"（Shtetl-Optimized 博客，2026-09-15）
+
+- <https://scottaaronson.blog/>（RSS 全文，帖子 ?p=10062），已核实。Aaronson 为 UT Austin 理论计算机科学家。
+- S18a："…in whatever years I have left, I don't expect that I'll ever again prove a theorem because I'm actually needed to prove it. If I do, it will only be for my or others' enjoyment or edification."
+- S18b："…it seems safe to say that human mathematicians are forevermore dethroned as the main theorem-proving entities on planet earth."（他转述并认同 Zvi 的观点）
+- S18c："Are we just trying to decide whether various conjectures are true or false? Or are we trying to maintain a human community, across the generations, that understands the conjectures and cares about whether they're true or false and why?"
+- S18d："…partly because of my worries about AI misalignment, I'm not ready to throw in the towel just yet. I still do want to keep insight and understanding at the center of what mathematicians, computer scientists, and physicists do, for as long as we can keep it there…"
+- 文中还提到 Buckmaster 对事件经过的叙述"substantially differs from OpenAI's account"（二手，本片不裁决优先权）。
+
+### S19 "A Severe Misalignment of AI in Mathematics"（菲尔兹奖得主声明，2026-09-11）
+
+- 读的是 Terence Tao 博客转载版 <https://terrytao.wordpress.com/2026/09/11/a-severe-misalignment-of-ai-in-mathematics/>，已核实。
+  Tao 写明 "the list of 25 initial signatories — all Fields Medallists"；文末列出 25 人（含 Tao、Scholze、Viazovska、Hairer、Deligne 等）。
+  有报道说 27 人——可能是后来增补，**本片只说"25 位首批签署者"**。
+- S19a："The goals of the AI companies and the goals of the mathematical community are severely misaligned."
+- S19b："But solving problems is only a tool and proxy for achieving the primary goal of conceptual understanding and insight. Forgetting this in the world of AI may turn the tool against the primary goal."
+- S19c："In many fields and activities, years of training have traditionally served not only to produce a final answer or product, but also to develop understanding and the ability to formulate new questions and ideas."
+- S19d："AI offers the potential of enhancing and accelerating genuine mathematical study and understanding."
+
+### S20 Jeremy Avigad，"The Future of Mathematics"（Tao 博客客座文章，2026-10-05）
+
+- <https://terrytao.wordpress.com/2026/10/05/the-future-of-mathematics/>，已核实。Avigad 为 CMU ICARM 主任（S3 背书列表）。
+- S20a："The good news is that when we do mathematics, we get to choose the problems, grade the solutions, and favor the ones we like best. We decide what's interesting to us, what questions to pursue, and why."
+- S20b："Whether or not AI can think, it can't think for us."
+- S20c："…the AI-generated solutions to open problems we have seen all have a similar character: they are problems that AI could solve by cobbling together available techniques."（他注明这一刻画来自 Matthew Ballard）
+
+### S21 Association for Human Mathematics（AHM），对 OpenAI 10 月 6 日发布的声明（2026-10-07）
+
+- Tao 博客转载 <https://terrytao.wordpress.com/2026/10/07/ahm-statement-on-openais-october-6-release-of-mathematical-documents/>，已核实。
+- S21a："Releasing over 700 files at once is not a demonstration of scholarship, but a demonstration of power."
+- 用途：展示数学界反应的分歧（从 AGMAI 的谨慎到 AHM 的拒斥）；AHM 的立场是一方观点，不代表数学界。
+
+### S22 GitHub issue leanprover/lean4#14576
+
+- 经 GitHub API 核实：标题 "Kernel accepts wrong-structure projections, allowing an axiom-free proof of False"；开立 2026-07-28T03:28Z（kiranandcode），关闭 2026-07-28T13:39Z。正文未读。
 
 ---
 
 ## 未核实清单（不得当作事实使用）
 
-1. Fontenelle 序言 1702 年初印本的文字（只核了 1742 年《全集》本）；英译本（1708?）原书。
+1. Fontenelle 序言 1702 年初印本的文字（只核了 1742 年《全集》本）；英译本原书；序言写作日期。
 2. Hardy 1940 年初版扫描本（页码取自 Cain 注释本标注）。
-3. 数论→公钥密码学、相对论/量子力学→原子武器的具体史实（目前只有 Cain 注 143 的二手概括；第二阶段需找一手来源）。
-4. Fontenelle 关于木卫与经度、摆线与摆钟的技术史陈述是否准确（本片只能作"Fontenelle 说"处理）。
-5. 25 位菲尔兹奖得主公开信；OpenAI 9 月 21 日"100 多个问题"博文原文（只见于 TechCrunch 转述）。
-6. OpenAI 撤回论文的错误由谁发现；Navier–Stokes 证明与 Lean 形式化的正确性；GitHub issue #14576 原帖。
-7. Leiden Declaration 的 arXiv 版本与网页版是否一致。
+3. "相对论/量子力学→原子武器"（只有 Cain 注 143 的二手概括；**本片不用**）。数论→公钥密码学已由 S12 一手核实。
+4. Fontenelle 关于木卫与航海的技术史陈述是否准确（**本片不用**）；摆线与摆钟一例已由 S17 部分核实（OCR）。
+5. OpenAI 9 月 21 日"100 多个问题"博文原文（只见于 TechCrunch 转述，**本片不用**）。
+6. OpenAI 撤回论文的错误由谁发现；Navier–Stokes 证明与 Lean 形式化的正确性；Lean 中的命题是否忠实于题面命题 C。
+7. Leiden Declaration 的 arXiv 版本与网页版是否一致；Flexner 文章的刊出月份；Diffie–Hellman 正文。
+8. Navier–Stokes 优先权争议的事实经过（OpenAI 与 Buckmaster 的叙述不同，S18）——**本片不裁决**。
