@@ -19,8 +19,8 @@
 | fgOnDark / mutedOnDark（全幅页文字） | #F5EEE2 / #CFC0A8 | 配合 backdrop |
 
 ## 字体
-- 中文展示：ZCOOL XiaoWei（catalog 标签 zh, serif, display, elegant, gb2312），用于大字、引文、片名与随笔；它排在 Noto Serif SC 之前，罕用字落到 Noto Serif SC。
-- 中文阅读：Noto Serif SC，用于字幕（`captions()` 直接指定）。展示体只给大字，字幕用阅读体，层级分明。
+- 中文：Noto Serif SC，大字、引文、片名、随笔用字重 400，字幕用 500。
+  原先的展示体 ZCOOL XiaoWei 已去掉（2026-10-10）：上游字体文件本身有字形错误——“回”的内框绕向错误、渲染成实心方块，“己”画成了“巳”（films/math-lessons/review/08-post-acceptance.md）。目录里没有第二款中文衬线体；要换一款展示体需新增字体，先问 Develata。
 - 拉丁：Instrument Serif（含斜体），用于法文引文、来源标注与标签。
 - 公式：STIX Two Text / STIX Two Math（φ、≡、⊢、¬、R³）。等宽：IBM Plex Mono，用于经文编号、年份与计数。
 

@@ -1,7 +1,7 @@
 # math-lessons · 制作包
 
-《对数学，人类应从历史中得到教训》——当机器开始解题，我们是否再次误解了数学？　本片由 Develata 主制。
-片长 4 分 59.5 秒（30 fps，8,985 帧），中文字幕，带配乐，风格 `styles/vigil`（夜祷）。
+《对数学，人类应从历史中得到教训》——当机器开始解题，我们是否再次误解了数学？　片中不署名。
+片长 4 分 59.5 秒（30 fps，8,985 帧），中文字幕，带配乐，风格 `styles/vigil`（夜祷；未选的两个方向在 ../../backup/）。
 
 | 内容 | 文件 |
 |---|---|
@@ -19,7 +19,7 @@
 | 修订记录 | research/revisions.md（R1–R21：初稿原句、证据、改句） |
 | 风格选择与自评 | review/01-directions.md（三个方向）、02-vigil.md（自评、配乐与性能）、05-compare-sheet.jpg（与 paper-dawn、nebula 并排） |
 | 流程记录 | review/workflow-notes.md |
-| 终稿验收 | review/07-final.md |
+| 终稿验收 | review/07-final.md；验收后的修改（字形错误、B/C 移到 backup/、片尾不署名、基线）：review/08-post-acceptance.md |
 | 成片 | out/math-lessons/math-lessons.mp4（不入库；由 `just all math-lessons` 生成） |
 
 命令：`just fonts math-lessons`、`just validate math-lessons`、`just sheet math-lessons`、`just all math-lessons`。

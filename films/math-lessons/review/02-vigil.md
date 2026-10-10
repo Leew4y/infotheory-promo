@@ -1,6 +1,7 @@
 # 02 · vigil 自评（实现阶段）
 
-方向：A 夜祷（Develata 2026-10-09 选定；B、C 按 Develata 要求暂留并仍列在片子里，供对比）。
+方向：A 夜祷（Develata 2026-10-09 选定；B、C 当时暂留供对比，2026-10-10 移到 backup/）。
+后注（2026-10-10）：下文的展示体 ZCOOL XiaoWei 因上游字形错误已换成 Noto Serif SC，见 08-post-acceptance.md。
 范围：全片 15 场、配乐初版。审查依据：design-style skill 第 3 步的八条清单。
 
 ## 第 1 轮

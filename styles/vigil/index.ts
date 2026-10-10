@@ -11,7 +11,7 @@ import { C, F, M, type StylePackage, type SubLine } from '../../engine/style';
 import { clamp, eout, win, W, H } from '../../engine/util';
 import { PLATE_FS } from './shader';
 
-/** Captions are set in the reading face (the display face is for large text only). */
+/** Captions: the same face as the large text (Noto Serif SC), one step heavier. */
 const CAPTION = '"Noto Serif SC", "STIX Two Text", "STIX Two Math", serif';
 
 /** A caption's verse mark: a number in gold mono, or a small outlined diamond for claims. */
@@ -50,7 +50,7 @@ const style: StylePackage = {
     mutedOnDark: '#CFC0A8',
   },
   fonts: {
-    body: '"ZCOOL XiaoWei", "Noto Serif SC", "STIX Two Text", "STIX Two Math", serif',
+    body: '"Noto Serif SC", "STIX Two Text", "STIX Two Math", serif',
     latin: '"Instrument Serif", "STIX Two Text", "Noto Serif SC", "STIX Two Math", serif',
     math: '"STIX Two Text", "Noto Serif SC", "STIX Two Math", serif',
     mono: '"IBM Plex Mono", "STIX Two Text", "Noto Serif SC", "STIX Two Math", monospace',

@@ -1,5 +1,5 @@
 // The closing index: every verse number shown in the film, with its source (script/storyboard.v2.md,
-// research/sources.md), then the credit. Per Develata: the credit names Develata and nothing about tools or audit.
+// research/sources.md). No credit line: per Develata (2026-10-10) the film carries no name, so it can circulate freely.
 import { text, label, rule, background, M, W, C, F, scene, sstep } from '../../../engine';
 import { bell } from '../lib';
 
@@ -43,6 +43,5 @@ scene({
       text(e, x + 48, y, { size: 20, color: C.fg2, alpha: ai });
     });
     label('出处细节与核查状态：research/sources.md、research/facts.md', M, 790, sstep(2.0, 2.6, lt), C.muted, 18);
-    text('本片由 Develata 主制', W / 2, 900, { size: 34, color: C.fg, alpha: sstep(2.8, 3.6, lt), align: 'center', ls: 4 });
   },
 });

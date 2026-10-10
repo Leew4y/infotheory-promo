@@ -3,14 +3,12 @@
 //
 // Conventions of this film (its styles render them):
 //   - captions are Chinese only; a caption's second slot (Sub[3], the "en" line elsewhere) carries the verse mark:
-//     "1".."18" for a factual line (its number in script/storyboard.md, listed on the closing index page), "◇" for a
+//     "1".."19" for a factual line (its number in script/storyboard.md, listed on the closing index page), "◇" for a
 //     claim of the film, a counter-argument or a line of the essay, "" for the later parts of the same sentence;
 //   - chapter labels are [Chinese title, ''].
 import { defineFilm, selectStyle } from '../../engine';
 import vigil from '../../styles/vigil';
-import chapel from '../../styles/math-lessons-b';
-import manifesto from '../../styles/math-lessons-c';
 
-// vigil is the chosen look (2026-10-09); the other two directions stay listed for comparison until Develata decides.
-selectStyle([vigil, chapel, manifesto]);
+// vigil is the chosen look (2026-10-09); the other two directions (Chapel, Manifesto) are kept unused in backup/.
+selectStyle([vigil]);
 export default defineFilm({ id: 'math-lessons', fps: 30, bpm: 60, chapters: 4 });

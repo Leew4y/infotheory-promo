@@ -43,3 +43,7 @@
 16. **两个会话共用一台机器的 GPU / CPU。** 另一个会话在主工作树上跑 `test-export`、`validate`、`regress`（SwiftShader）时，本片的 `just export` 两次超时
     （"Waiting failed: 60000ms exceeded"、"Runtime.callFunctionOn timed out"）。导出器没有给出"资源被占用"的提示，错误信息看起来像片子的问题。
     绕过：等对方空闲后用 2 个 worker 导出。建议：并行会话之间约定渲染时段，或导出器在超时时报告系统负载。
+17. **字形错了，所有检查都通过。** ZCOOL XiaoWei 的上游文件把“回”画成实心块、“己”画成“巳”、“受”画成“要”，中文标点按西文画；`just fonts`（cmap 覆盖）、
+    `validate`（覆盖、重叠、对比度）、拼图和两轮自查都没有拦住——拼图缩得太小，自查时我也没认出来，是 Develata 看成片时发现的（review/08）。
+    建议：给新风格加一步“字形校样”——把影片字符集用每个子集字体逐字渲染成网格，人看一遍（本次用 fontTools + Pillow 做的，脚本没有入库）；
+    或在 `just fonts` 里输出这张校样。catalog 里的字体也应记下已知缺陷（ZCOOL XiaoWei 不宜用于正文）。没有改引擎和 catalog。
