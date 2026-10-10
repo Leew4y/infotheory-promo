@@ -305,7 +305,7 @@ def render(wav_path, mp3_path):
     a = np.exp(-1 / (.09 * SR))
     gs = lfilter([1 - a], [1, -a], g)
     mix *= np.minimum(g, gs).astype(F32)
-    end = int(TOTAL * SR)
+    end = round(TOTAL * SR)  # a whole number of samples up to float error (260.4 * 44100 = 11483639.999999998): int() would drop one
     mix = mix[:, :end]
     mix *= np.minimum(1, (end - np.arange(end)) / (3.0 * SR)).astype(F32)
     mix /= np.max(np.abs(mix)) + 1e-9

@@ -88,6 +88,10 @@ interface Case {
   name: string; args: string[]; env?: Record<string, string>; expect: number | 'nonzero'; within: number;
   success?: { frames: number; audio: number }; prepare?: () => Promise<void> | void; signal?: { after: number; sig: NodeJS.Signals };
   keepLock?: boolean;
+  /** Windows: hold the old target open in another process with this share mode while the job runs (a video player). */
+  hold?: 'Read' | 'ReadWrite';
+  /** The job must keep its verified video as target.verified-<pid>.mp4 with this many frames. */
+  kept?: number;
 }
 type Job = ReturnType<typeof Bun.spawn>;
 const start = (c: Case): Job => Bun.spawn(['bun', path.join(ROOT, 'scripts', 'export.ts'), '--film', FILM, '--out', TARGET, ...c.args], { env: { ...process.env, ...(c.env ?? {}) }, stdout: 'pipe', stderr: 'pipe' });
@@ -117,6 +121,16 @@ async function finish(c: Case, job: Job, t0: number): Promise<{ ok: boolean; not
       if (Math.abs(p.audio - c.success.audio) > 0.03) notes.push(`target audio ${p.audio.toFixed(3)}s, expected ~${c.success.audio.toFixed(3)}s`);
     }
   } else if (!content || content.toString() !== SENTINEL) notes.push('old target was not preserved');
+  const keptFiles = readdirSync(DIR).filter((f) => /^target\.verified-\d+\.mp4$/.test(f));
+  if (c.kept !== undefined) {
+    if (keptFiles.length !== 1) notes.push(`expected one kept target.verified-<pid>.mp4, found ${keptFiles.length}`);
+    else {
+      const p = Bun.spawn(['ffprobe', '-v', 'error', '-count_packets', '-select_streams', 'v:0', '-show_entries', 'stream=nb_read_packets', '-of', 'csv=p=0', path.join(DIR, keptFiles[0])], { stdout: 'pipe', stderr: 'ignore' });
+      const frames = +(await new Response(p.stdout).text()).trim();
+      if (frames !== c.kept) notes.push(`kept video has ${frames} frames, expected ${c.kept}`);
+    }
+  } else if (keptFiles.length) notes.push(`unexpected kept video: ${keptFiles.join(', ')}`);
+  for (const f of keptFiles) rmSync(path.join(DIR, f), { force: true });
   const last = (out + err).trim().split('\n').filter(Boolean).slice(-1)[0] ?? '';
   return { ok: notes.length === 0, notes: [`exit ${code}, ${secs.toFixed(1)}s: ${last.slice(0, 140)}`, ...notes] };
 }
@@ -144,6 +158,11 @@ const cases: Case[] = [
   { name: 'lock of a live process blocks at once', args: ['--from', '30', '--to', '31'], expect: 1, within: 15, keepLock: true,
     prepare: () => writeFileSync(`${TARGET}.lock`, `${process.pid}\n${hostname()}\n2026-01-01T00:00:00Z\n`) },
 ];
+if (process.platform === 'win32')
+  cases.push(
+    { name: 'target open in a player (no write sharing) fails before rendering', args: ['--from', '30', '--to', '31'], expect: 1, within: 20, hold: 'Read' },
+    { name: 'target held without delete sharing: rename retried, verified video kept', args: ['--from', '30', '--to', '31', '--workers', '1'], expect: 1, within: 120, hold: 'ReadWrite', kept: 30 },
+  );
 if (process.platform !== 'win32')
   cases.push({ name: 'real SIGINT during rendering', args: ['--from', '30', '--to', '50'], expect: 130, within: 60, signal: { after: 12, sig: 'SIGINT' } });
 
@@ -152,8 +171,18 @@ for (const c of cases) {
   writeFileSync(TARGET, SENTINEL);
   rmSync(`${TARGET}.lock`, { force: true });
   await c.prepare?.();
+  let holder: Job | null = null;
+  if (c.hold) {
+    const ps = `$f = [IO.File]::Open('${TARGET.replace(/'/g, "''")}', 'Open', 'Read', '${c.hold}'); [Console]::Out.WriteLine('ready'); [Console]::Out.Flush(); Start-Sleep -Seconds 600; $f.Close()`;
+    holder = Bun.spawn(['powershell', '-NoProfile', '-Command', ps], { stdout: 'pipe', stderr: 'ignore' });
+    const reader = (holder.stdout as ReadableStream<Uint8Array>).getReader();
+    const first = await Promise.race([reader.read(), Bun.sleep(20_000).then(() => null)]);
+    reader.releaseLock();
+    if (!first || first.done || !new TextDecoder().decode(first.value).includes('ready')) console.log('       (holder did not start)');
+  }
   const t0 = performance.now();
   const r = await finish(c, start(c), t0);
+  if (holder) await killTree(holder.pid);
   rmSync(`${TARGET}.lock`, { force: true });
   results.push({ name: c.name, ...r });
   console.log(`${r.ok ? 'ok  ' : 'FAIL'} ${c.name}\n       ${r.notes.join('\n       ')}`);

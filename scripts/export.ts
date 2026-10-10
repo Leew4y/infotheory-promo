@@ -30,6 +30,10 @@
  *     every field present and finite) confirms frame count, duration, an audio track as long as the video, and the
  *     colour tags is it renamed over --out (the commit point); on any failure before that, the old --out is left
  *     untouched and the temporary file is deleted;
+ *   - an existing --out that another program holds open without write sharing (a video player, typically) fails the
+ *     job before rendering; if the final rename is refused anyway (the file is held without delete sharing), it is
+ *     retried for 5 s, and if --out is still held, the verified video is kept next to it as
+ *     <out>.verified-<pid>.mp4 and the job fails (exit 1) with that path, so the render is not lost;
  *   - audio is required: a missing audio file is an error unless --noaudio; audio shorter than the span is an error;
  *   - one deadline (--deadline, default max(600 s, 2 s per frame)) covers the whole job, from launching browsers to
  *     the final probe; it, Ctrl+C / SIGTERM, worker launch failure and encoder failure all cancel the job: ffmpeg
@@ -145,6 +149,43 @@ async function cleanup(): Promise<string[]> {
   if (tmpOut && !(await removeFile(tmpOut))) problems.push(`could not delete ${tmpOut}`);
   if (lockPath && !(await removeFile(lockPath))) problems.push(`could not delete ${lockPath}`);
   return problems;
+}
+
+// ---- publishing over an existing --out (Windows: a player holding the file blocks the rename)
+const IN_USE = new Set(['EBUSY', 'EPERM', 'EACCES']);
+/** Fail before rendering if --out exists and another program holds it open without write sharing. */
+function assertReplaceable(out: string): void {
+  if (!existsSync(out)) return;
+  try {
+    closeSync(openSync(out, 'r+'));
+  } catch (e) {
+    const code = (e as NodeJS.ErrnoException).code ?? '';
+    if (IN_USE.has(code)) fail(1, `${out} is in use by another program (${code}): is it open in a video player? Close it and run again`);
+    throw e;
+  }
+}
+/** Rename the verified temporary file over --out, retrying for 5 s while --out is held; if it stays held, keep the
+ *  verified video as <out>.verified-<pid>.mp4 and fail with its path. */
+async function publish(tmp: string, out: string): Promise<void> {
+  const until = performance.now() + 5000;
+  for (;;) {
+    checkCancel();
+    try {
+      renameSync(tmp, out);
+      return;
+    } catch (e) {
+      const code = (e as NodeJS.ErrnoException).code ?? '';
+      if (!IN_USE.has(code)) throw e;
+      if (performance.now() < until) {
+        await Bun.sleep(250);
+        continue;
+      }
+      const kept = `${out.replace(/\.mp4$/i, '')}.verified-${process.pid}.mp4`;
+      renameSync(tmp, kept);
+      tmpOut = null; // kept on purpose: cleanup must not delete it
+      fail(1, `could not replace ${out} (${code}): is it open in a video player? The verified video is kept as ${kept}`);
+    }
+  }
 }
 
 // ---- lock
@@ -296,6 +337,7 @@ try {
     if (!NOAUDIO && opt('audio') !== undefined && !existsSync(AUDIO)) fail(2, `audio ${AUDIO} not found`);
     mkdirSync(path.dirname(OUT), { recursive: true });
     lockPath = takeLock(OUT);
+    assertReplaceable(OUT);
     if (deadline > 0) deadlineTimer = setTimeout(() => cancel(`deadline of ${deadline}s exceeded`), deadline * 1000);
   }
   server = serveDist(DIST, { media: mediaDir(FILM), frames: { token: TOKEN, take: (n, b) => (takeFrame ? takeFrame(n, b) : 'no export is taking frames') } });
@@ -464,7 +506,7 @@ try {
     if (problems.length) throw new Error(`output failed its checks: ${problems.join('; ')}`);
     const size = statSync(tmpOut).size;
     checkCancel();
-    renameSync(tmpOut, OUT); // the commit point: nothing after this may turn the job into a failure
+    await publish(tmpOut, OUT); // the commit point: nothing after this may turn the job into a failure
     tmpOut = null;
     committed = true;
     console.log(`done: ${OUT}  (${(size / 1e6).toFixed(1)} MB, ${((performance.now() - t0) / 60000).toFixed(1)} min, ${p.videoFrames} frames${NOAUDIO ? '' : `, audio ${p.audioDuration!.toFixed(3)}s`})`);
