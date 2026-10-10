@@ -94,9 +94,14 @@ let server: ReturnType<typeof serveDist> | null = null;
 let cancelled: string | null = null;
 const cancelReason = (): string | null => cancelled; // read through a call: it is set from callbacks
 /** Cancel the job: remember why, and kill ffmpeg / ffprobe so that a blocked write or probe returns at once. */
+let onCancel: (why: string) => void = () => {};
+/** Settles (rejects) when the job is cancelled: waits that nothing else would interrupt race against it. */
+const cancelledP = new Promise<never>((_, reject) => { onCancel = (why) => reject(new Error(why)); });
+cancelledP.catch(() => {});
 function cancel(why: string): void {
   if (cancelled) return;
   cancelled = why;
+  onCancel(why);
   for (const c of children) { try { c.kill('SIGKILL'); } catch {} }
 }
 process.on('SIGINT', () => cancel('interrupted'));
@@ -385,13 +390,14 @@ try {
     let failed: Error | null = null;
     const stop = () => failed ?? (cancelReason() ? new Error(cancelReason()!) : enc.exitCode !== null ? new Error(`ffmpeg exited early with code ${enc.exitCode}`) : null);
     // posted frames: frame i of this range is URL number i; anything else is refused and fails the job
+    const taken = new Set<number>();
     takeFrame = (n, body) => {
       const why = !(Number.isInteger(n) && n >= 0 && n < N) ? `frame ${n} is outside 0..${N - 1}`
-        : n < nextWrite || ready.has(n) ? `frame ${n} arrived twice`
+        : taken.has(n) ? `frame ${n} arrived twice`
         : !(body.length > 2 && body[0] === 0xff && body[1] === 0xd8) ? `frame ${n} is not a JPEG`
         : null;
       if (why) failed ??= new Error(`posted frame refused: ${why}`);
-      else ready.set(n, Buffer.from(body.buffer, body.byteOffset, body.byteLength));
+      else { taken.add(n); ready.set(n, Buffer.from(body.buffer, body.byteOffset, body.byteLength)); }
       return why;
     };
     const work = async (w: Worker): Promise<void> => {
@@ -405,7 +411,8 @@ try {
           else for (let i = a; i < b && !stop(); i++) await w.frameTo(i, (F0 + i) / FPS);
         } catch (e) { failed ??= e instanceof Error ? e : new Error(String(e)); }
       }
-      if (TRANSPORT === 'blob' && !stop()) { try { await w.drain(); } catch (e) { failed ??= e instanceof Error ? e : new Error(String(e)); } }
+      // the last uploads; a cancelled job does not wait for them
+      if (TRANSPORT === 'blob' && !stop()) { try { await Promise.race([w.drain(), cancelledP]); } catch (e) { failed ??= e instanceof Error ? e : new Error(String(e)); } }
     };
     const write = async (): Promise<void> => {
       let lastLog = 0;
@@ -434,7 +441,10 @@ try {
       }
     };
     try {
-      await Promise.all([write(), ...workers.map(work)]);
+      await Promise.race([Promise.all([write(), ...workers.map(work)]), cancelledP]);
+      // a failure after the last frame was written (e.g. a lost upload response) still fails the job
+      const late = stop();
+      if (late) throw late;
     } finally {
       // end() can reject asynchronously (EPIPE) when ffmpeg is already gone
       try { Promise.resolve(stdin.end()).catch(() => {}); } catch {}

@@ -40,9 +40,12 @@ async function processes(): Promise<Proc[]> {
     const p = Bun.spawn(['powershell', '-NoProfile', '-Command', 'Get-CimInstance Win32_Process | ForEach-Object { "$($_.ProcessId)`t$($_.ParentProcessId)`t$(if ($_.CreationDate) { $_.CreationDate.ToFileTimeUtc() } else { 0 })`t$($_.CommandLine)" }'], { stdout: 'pipe', stderr: 'ignore' });
     rows = (await new Response(p.stdout).text()).split(/\r?\n/).map((l) => l.split('\t')).filter((v) => v.length >= 4).map(([a, b, c, ...d]) => ({ pid: +a, ppid: +b, start: +c, cmd: d.join('\t') }));
   } else {
-    const p = Bun.spawn(['ps', '-axo', 'pid=,ppid=,etimes=,command='], { stdout: 'pipe' });
-    rows = (await new Response(p.stdout).text()).split('\n').map((l) => l.trim().split(/\s+/)).filter((v) => v.length >= 4).map(([a, b, c, ...d]) => ({ pid: +a, ppid: +b, start: -+c, cmd: d.join(' ') }));
+    // lstart: the start time as a fixed-format date (stable, unlike etimes, which grows)
+    const p = Bun.spawn(['ps', '-axo', 'pid=,ppid=,lstart=,command='], { stdout: 'pipe', env: { ...process.env, LC_ALL: 'C' } });
+    rows = (await new Response(p.stdout).text()).split('\n').map((l) => l.trim().split(/\s+/)).filter((v) => v.length >= 8)
+      .map(([a, b, ...r]) => ({ pid: +a, ppid: +b, start: Date.parse(r.slice(0, 5).join(' ')), cmd: r.slice(5).join(' ') }));
   }
+  if (!rows.length || rows.some((r) => !Number.isFinite(r.start))) throw new Error('could not list processes (start times)');
   return rows;
 }
 /**
