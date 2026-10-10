@@ -110,6 +110,51 @@ const style: StylePackage = {
     ctx.restore();
   },
 
+  // math-lessons shows no screen capture; a plain window in the palette so the style meets the demo contract
+  demo: {
+    area: { x: 170, y: 190, w: W - 340, h: H - 420 },
+    rippleDur: 0.6,
+    pressDur: 0.15,
+    cursorEase: (u) => u * u * (3 - 2 * u),
+    window(r, title, a) {
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.fillStyle = C.bg2;
+      ctx.fillRect(r.x - 1, r.y - 28, r.w + 2, r.h + 29);
+      ctx.strokeStyle = rgba(C.accent, 0.5);
+      ctx.lineWidth = 1;
+      ctx.strokeRect(r.x - 1, r.y - 28, r.w + 2, r.h + 29);
+      ctx.restore();
+      if (title) text(title, r.x + r.w / 2, r.y - 9, { font: F.mono, size: 13, color: C.muted, alpha: a, align: 'center' });
+      return r;
+    },
+    cursor(x, y, press, a) {
+      const s = 1.25 - 0.1 * press;
+      const p: [number, number][] = [[0, 0], [0, 17], [4.2, 13.2], [7, 19.5], [9.6, 18.4], [6.9, 12.2], [12.4, 12.2]];
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.beginPath();
+      p.forEach(([u, v], i) => (i ? ctx.lineTo(x + u * s, y + v * s) : ctx.moveTo(x + u * s, y + v * s)));
+      ctx.closePath();
+      ctx.fillStyle = C.fg;
+      ctx.fill();
+      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = C.bg;
+      ctx.stroke();
+      ctx.restore();
+    },
+    ripple(x, y, k, a) {
+      ctx.save();
+      ctx.globalAlpha = a * (1 - k);
+      ctx.strokeStyle = C.accent;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, y, 8 + 34 * eout(k), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    },
+  },
+
   /** Chinese chapter title top left under a short gold rule; page count bottom right. */
   chapterLabel(lt, d, n, ch, chapters) {
     const a = win(lt, 0.3, d, 1.0, 0.6);
