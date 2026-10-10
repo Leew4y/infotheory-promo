@@ -61,13 +61,22 @@ export async function killTree(pid: number | undefined, waitMs = 5000): Promise<
  * (.cache/captures/<film>/) under /media/. A request may only reach files inside those directories (real paths:
  * scripts/lib/confine.ts).
  */
-export function serveDist(dist: string, o: { media?: string } = {}): { url: string; stop: () => void } {
+/** Where rendered frames are posted (POST /frames/<token>/<n>): `take` returns null, or why the frame is refused. */
+export interface FrameSink { token: string; take: (n: number, body: Uint8Array) => string | null }
+export function serveDist(dist: string, o: { media?: string; frames?: FrameSink } = {}): { url: string; stop: () => void } {
   const server = Bun.serve({
     hostname: '127.0.0.1', port: 0,
     async fetch(req) {
       let p: string;
       try { p = decodeURIComponent(new URL(req.url).pathname); } catch { return new Response('bad request', { status: 400 }); }
       if (p === '/favicon.ico') return new Response(null, { status: 204 });
+      // rendered frames posted by the page, for the job that holds the token
+      const m = /^\/frames\/([0-9a-f]+)\/(\d+)$/.exec(p);
+      if (m && req.method === 'POST') {
+        if (!o.frames || m[1] !== o.frames.token) return new Response('unknown job', { status: 403 });
+        const why = o.frames.take(+m[2], new Uint8Array(await req.arrayBuffer()));
+        return why ? new Response(why, { status: 400 }) : new Response(null, { status: 204 });
+      }
       const file = p.startsWith('/media/') ? (o.media ? confined(o.media, p.slice('/media'.length)) : null) : confined(dist, p === '/' ? '/index.html' : p);
       return file ? new Response(Bun.file(file)) : new Response('not found', { status: 404 });
     },

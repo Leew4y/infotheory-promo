@@ -479,6 +479,19 @@ A1 / A1b 评审修正（Codex，gpt-6-astra max：1 BLOCKER / 8 SHOULD_FIX / 2 N
   安静垫乐四种混音都 −16.1 LUFS、真峰值 −6.1 dBTP、长度等于影片、每句高出垫乐 10.1–10.2 dB 且无空洞；显式 `dur: 1` 时 demo 仍 150 帧）。
 - 未覆盖：正式旁白的听感；macOS 上的 TTS 环境；词级锚点（按决定不做）；GPT 关于 macOS PyTorch 的提示（Intel 无 2.3.1 wheel）已据此拒绝。
 
+导出提速（2026-10-09/10，Develata："生成视频有点太慢了"；与 GPT 讨论两轮）：
+- 测量工具：`scripts/profile-export.ts`（单 worker、连续帧、多轮中位数、记录 commit/Chrome/ffmpeg）与 `engine/perf.ts`（页面内分段计时）。
+  参考片 1080p、K=3、CPU 2D、单 worker：每帧约 216 ms，其中"上传 + 累积"约 110 ms（CPU 光栅化在此兑现）、JPEG 编码约 65 ms、
+  CDP 传 base64 约 33 ms。x264 medium 单独约 20 fps，veryfast 约 40 fps；NVENC 因驱动的 API 版本过旧（需 13.1，现 13.0）不可用。
+- GPU 加速 2D canvas（单 worker 123 ms/帧）被否决：`spikes/0c-gpu2d`（65 帧，与 CPU 2D 逐像素比较）中 50 帧不同，最大差 57 级，
+  42 万像素差 > 2 级；乱序渲染与顺序渲染的结果也不同（历史依赖仍在）。CPU 2D 的第二次冷启动与参考逐像素相同。导出保持 CPU 2D。
+- 采用：帧传输改为页面 `toBlob` 在主线程外编码 JPEG 并 POST 到本地服务器（任务令牌 + 帧号，越界、重复、非 JPEG 即失败），
+  与画下一帧重叠；解码后的帧与旧路径逐帧 md5 相同。`--draft`：每帧 1 个子帧（无运动模糊）、x264 veryfast，配合 `--from/--to` 只渲染正在改的段落。
+- 结果（空闲机器、300 帧、含启动）：终版 4 worker 9.3 fps（原 ≈7）；草稿 2–4 worker 14.5 fps；6 worker 反而更慢（CPU 争用）。
+  90 秒片：终版约 5 分钟，草稿约 3 分钟；改一个 10 秒段落的草稿约 25 秒。
+- 不做（收益小或风险大）：WebCodecs 分段编码、自适应子帧、场景缓存、半分辨率草稿。测量时另一会话的导出会让数字失真（已发生两次），
+  基准须在没有其他导出时运行。
+
 **2c · 计划驱动与 agent 命令。**
 - 契约：`Brief`、`FilmPlan`（Zod，可导出 JSON Schema）。`films/<id>/film-plan.json` 是场景顺序、ID、时长、文案、字幕、素材引用的唯一来源；
   `film.ts` 从它构建影片，场景模块按计划中的 ID 注册。
