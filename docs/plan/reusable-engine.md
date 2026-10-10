@@ -458,6 +458,20 @@ A1 / A1b 评审修正（Codex，gpt-6-astra max：1 BLOCKER / 8 SHOULD_FIX / 2 N
   3 句试听样例合成成功（RTF 1.5–2.2；onnxruntime 只有 CPU provider），音色由 Develata 试听后决定。
   合成进程峰值内存高：系统可提交内存只剩 3–4 GB 时加载模型会段错误，剩约 6 GB 时成功；之前 test-capture、bench 的 Chrome 崩溃也发生在同样的内存压力下（推断）。
 - 音色：Develata 试听后决定先用 `cosyvoice-zero-shot`（2026-10-09）。
+- 换音色（2026-10-10）：Develata 听完两部配音片后认为 `cosyvoice-zero-shot` 太轻佻，要更沉重的声音。根因是参考音频：
+  CosyVoice 自带的示例是年轻女声、句尾带"呦"，而 CosyVoice3 的指令只能调方言、语速、音量、情绪，调不了声线。
+  做法：用 CosyVoice-300M-Instruct（内置说话人"中文男" + 一句说话人描述）生成 5 段约 5 秒的参考音频，CosyVoice3 用每段读同样
+  三句台词做试听；Develata 选了 D（"低沉、稳重、严肃的男教授"，基频中位数约 90 Hz，原音色约 240 Hz）。新音色为
+  `voices/zh-male-professor/`，`voice.json` 记录生成模型各文件 sha256、调用、描述、种子与转写。
+  模板默认音色改为它；`cosyvoice-zero-shot` 保留（test-narration 用它）。两部片全部重新合成：math-lessons 时间轴与画面不变
+  （41 句仍放得下，只有 n25 提前 0.17 s，regress 339/339），raa-demo 随旁白由 46.3 s 变为 50.4 s（配乐按新时间轴重渲染）。
+  语速：math-lessons 上新音色每秒 4.1 个汉字，原音色 4.3 个（skill 里原写的"约 5 个"偏高，已改为约 4 个）。
+- 去静音修正（ADAPTER_VERSION 3）：新音色在 math-lessons 有 5 句开头约 0.6–1 秒空白——句首一个 20–40 ms 的小噪点越过 −45 dBFS，被当作语音起点。
+  raa-demo 末句另有约 1.2 秒 −45 至 −50 dB 的底噪在句首。现在语音的起止要求连续至少 50 ms 的帧高于 −45 dBFS 且高于全句最响帧 −30 dB；
+  在现有 49 句上核对过只剪掉噪声。test-narration 加了这两种情形的用例。
+- 合入 PR #6（The-Walls：--out 被播放器占用时保留已验证的视频；synth 母版长度取整），文本无冲突。Codex 评审（high）认为与本链的
+  取消、提交点、清理逻辑交互无误，另指出一处经复现确认的问题：占用预检以读写方式打开旧文件，在 POSIX 上把只读旧视频误报为
+  "被占用"，而 rename 本可成功——预检现只在 Windows 上做。去静音改动的评审只提了一个 NIT（空样本报错路径），已改。
 - Codex 评审（max，未通过：4 个 BLOCKER、9 个 SHOULD_FIX）后的修复，逐条核实后采纳：
   - narrate 事务化：新音频先写成临时 FLAC，lock 为提交点；提交前任何失败都放回旧文件，同片互斥，工作目录按进程隔离；
   - 混音电平：配乐先按"离开旁白处比人声低 10 dB"重新定标，旁白处再压低 10 dB；母版后逐句复测，任何一句窗内比窗外垫乐高不到 6 dB 就失败、不发布；

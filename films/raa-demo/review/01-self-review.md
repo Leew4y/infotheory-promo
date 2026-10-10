@@ -38,3 +38,9 @@ Footage: real (Playwright recording of the running site), not sped up, nothing r
   rehearsal.
 - Each demo scene reports the clicks that belong to the other scene's part of the shared recording
   (`capture-event-cut` warnings): expected when one recording feeds two scenes.
+
+## After the person's viewing (2026-10-10)
+
+- Develata: the voice (`cosyvoice-zero-shot`) sounds too light. Re-narrated with `zh-male-professor`, chosen by
+  Develata from a five-voice audition; the film is now 50.4 s (the score re-rendered for the new timeline), plan-check
+  and validate still pass with 0 errors, every line 10.3-11.2 dB over the music.

@@ -11,6 +11,7 @@
  *   outro  narratedScene: "term-a" and "term-b", the same text twice (0.8 s each), told apart by id; the scene's drawing
  *          lands on vo("term-b"): .6 + .8 + .35 + .8 + .8 = 3.35 s -> 101 frames.
  * Checks:
+ *   0. the adapter's silence trim starts at the speech, not at an isolated click or the noise before it;
  *   1. narrate: the lock holds every line with the expected duration and the sha256 of its committed FLAC; a second
  *      run synthesizes nothing; a caption-only change updates the lock without synthesis; a changed reading
  *      synthesizes that line only; a lost audio file is an error until --resynth names it; a synthesis that fails
@@ -86,6 +87,12 @@ try {
   const r = run(['bun', 'scripts/new-film.ts', ID, '--style', 'nebula']);
   if (r.code === 0) owned.push(FILM);
   step('new-film', r);
+
+  // 0. the adapter's trim at 1 kHz: a 20 ms click, 1 s of silence, 0.5 s of tone, 0.3 s of silence -> the tone with 30 ms
+  // around it (the click alone is not speech); 1 s of noise at -40 dBFS before a tone at -6 dBFS -> the noise is cut
+  const tr = run(['uv', 'run', '--project', path.join(ROOT, 'audio'), 'python', '-c',
+    "import sys; sys.path.insert(0, 'audio'); import tts; print(*tts.trim([0.1] * 20 + [0.0] * 1000 + [0.1] * 500 + [0.0] * 300, 1000)); print(*tts.trim([0.01] * 1000 + [0.5] * 500, 1000))"]);
+  check(tr.code === 0 && tr.out.trim().split(/\r?\n/).join('|') === '990 1550|970 1500', 'trim: neither an isolated click nor noise before the speech is where it starts', `trim: ${tr.code} "${tr.out.trim()}" ${tr.err.trim().split('\n').slice(-1)[0] ?? ''}`);
 
   // 1. narrate
   writeScript(SCRIPT);

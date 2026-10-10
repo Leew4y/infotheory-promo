@@ -7,8 +7,9 @@ job.json: { "backend": "fake" | "cosyvoice3", "model_dir": ..., "src_dir": ... (
             "lines": [ { "id", "read", "seed", "out" } ] }
 
 Each line's reading is synthesized and written to `out` as a 16-bit mono WAV at the backend's sample rate, with the
-silence before and after the speech trimmed (frames of 10 ms below -45 dBFS RMS; 30 ms kept on each side), so a
-line's placement in the film is where its speech starts. One JSON object per line goes to stdout:
+silence before and after the speech trimmed (speech: a run of at least 50 ms of 10 ms frames whose RMS is above both
+-45 dBFS and the line's loudest frame - 30 dB, so neither an isolated click nor a second of breath noise before the
+first word counts; 30 ms kept on each side), so a line's placement in the film is where its speech starts. One JSON object per line goes to stdout:
 { "id", "out", "rate", "samples" }. Everything else (model logs) goes to stderr.
 
 Backends:
@@ -31,23 +32,31 @@ import struct
 import sys
 import wave
 
-ADAPTER_VERSION = 2
+ADAPTER_VERSION = 3
 FAKE_RATE = 24000
 FAKE_SECONDS_PER_CHAR = 0.2
 TRIM_DB = -45.0
+TRIM_REL = -30.0  # dB below the line's loudest frame
 TRIM_KEEP = 0.03
+TRIM_RUN = 5  # frames: speech starts and ends with a run of this many loud frames
 
 
 def trim(samples, rate):
-    """Indices [a, b) of the speech in a float sample list: 10 ms frames above TRIM_DB RMS, with TRIM_KEEP around."""
-    n = max(1, rate // 100)
-    floor = 10 ** (TRIM_DB / 20)
-    loud = [i for i in range(0, len(samples), n)
-            if math.sqrt(sum(x * x for x in samples[i:i + n]) / len(samples[i:i + n])) > floor]
-    if not loud:
+    """Indices [a, b) of the speech in a float sample list: from the first to the last run of TRIM_RUN 10 ms frames
+    with RMS above TRIM_DB and above the loudest frame + TRIM_REL (any such frame when no run is that long), with
+    TRIM_KEEP around."""
+    if not samples:
         raise SystemExit('tts: a line came out silent')
+    n = max(1, rate // 100)
+    rms = [math.sqrt(sum(x * x for x in samples[i:i + n]) / len(samples[i:i + n])) for i in range(0, len(samples), n)]
+    floor = max(10 ** (TRIM_DB / 20), max(rms) * 10 ** (TRIM_REL / 20))
+    flags = [r > floor for r in rms]
+    if not any(flags):
+        raise SystemExit('tts: a line came out silent')
+    runs = [k for k in range(len(flags) - TRIM_RUN + 1) if all(flags[k:k + TRIM_RUN])]
+    first, last = (runs[0], runs[-1] + TRIM_RUN - 1) if runs else (flags.index(True), len(flags) - 1 - flags[::-1].index(True))
     keep = int(TRIM_KEEP * rate)
-    return max(0, loud[0] - keep), min(len(samples), loud[-1] + n + keep)
+    return max(0, first * n - keep), min(len(samples), last * n + n + keep)
 
 
 def write_wav(path, samples, rate):

@@ -3,7 +3,7 @@
   "fps": 30,
   "bpm": 80,
   "styles": ["paper-dawn"],
-  "voice": "cosyvoice-zero-shot",
+  "voice": "zh-male-professor",
   "scenes": [
     { "id": "title", "kind": "plate", "dur": 3, "title": ["新片", "A new film"], "copy": { "promise": "从想法到演示" } },
     { "id": "idea", "kind": "page", "title": ["一个想法", "One idea"], "lines": [{ "id": "idea-line", "text": "让想法成为现实。", "en": "Make an idea real." }], "copy": { "point": "展示关键一步" } },

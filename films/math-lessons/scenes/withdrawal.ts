@@ -28,4 +28,4 @@ placeNarration(scene({
     label('符号错误 · 撤回 3 篇 · 修订 14 篇', M, 540, a, C.muted, 18);
     label('2026-10-07 · openai/math history.md', M, 572, a, C.muted, 18);
   },
-}), { n24: 0.5, n25: 9.4 });
+}), { n24: 0.5, n25: 9.23 });

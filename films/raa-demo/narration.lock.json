@@ -2,63 +2,63 @@
  "film": "raa-demo",
  "backend": "cosyvoice3",
  "model": "FunAudioLLM/Fun-CosyVoice3-0.5B-2512@29e01c4e8d000f4bcd70751be16fa94bf3d85a18",
- "voice": "cosyvoice-zero-shot",
+ "voice": "zh-male-professor",
  "lines": {
   "t1": {
    "text": "挑一个开源工具之前，往往要先读完它的 README、issue 和代码。",
    "read": "挑一个开源工具之前，往往要先读完它的 README、issue 和代码。",
-   "duration": 4.99,
-   "sha256": "223444e899e3346bbfa8f862c73921b074dfa189528bca6cd568152c32e15da7",
-   "key": "34b21e60272ed37274ea8bf63d56f2c3794a5d613838c56c0ec631a858a4c8d0"
+   "duration": 5.93,
+   "sha256": "f316a3e249e0b25c8f336f5680ea9db205c4942e0d15167b196d830639315641",
+   "key": "9f41724269034ead586fbe0e8889467181c7c15b4987a514202ea808e36c5c57"
   },
   "h1": {
    "text": "Repo-AI-Analysis 为每个仓库写一份结构化报告：",
    "read": "Repo-AI-Analysis 为每个仓库写一份结构化报告：",
-   "duration": 4.8,
-   "sha256": "b9bd95d30f7cdd3c1fed7c0e4573723d27ef129d4d19c2850049acc386b41140",
-   "key": "f8e5ce3eaed7c6756b20b972790f5afa4b872d220c4a1c38c9a8217b6e337a3d"
+   "duration": 3.96,
+   "sha256": "c6fda733b42e12123f84ede7dc19ddece989a316cdf07b340a8a470013b6961c",
+   "key": "756133a20baa08e234aa53c143b4d67e1033ec9ac8599ee606e37e7df2621276"
   },
   "h2": {
    "text": "十个维度打分，优势和短板一眼看清。",
    "read": "十个维度打分，优势和短板一眼看清。",
-   "duration": 3.79,
-   "sha256": "594bccb1c1868df1416a71d9ca96fe63d9622dca857980b8257f8ec774ef64b9",
-   "key": "b89f2366ecf015cf6e4c36d8eb255f995133313bd8420fe79ea96f81caf59575"
+   "duration": 3.46,
+   "sha256": "fe10e154d02c90773c05c9f2d2216b91980cea97d6719b2e2294bdb9edb9b64c",
+   "key": "889f62cee575f365df232675bf5814f1642c9e9130811c5660791028ee9a47ba"
   },
   "c1": {
    "text": "在 Compare 里勾选几个同类仓库，雷达图立刻叠在一起。",
    "read": "在 Compare 里勾选几个同类仓库，雷达图立刻叠在一起。",
-   "duration": 5.01,
-   "sha256": "01e9625a51c4e3bca593bed38641c0640571bc3d49711d3c208715ce69ab924b",
-   "key": "9259568ca0f64bef069d580a29bc0a54ed3ae3c7570b6f82387b9683c78ff1e7"
+   "duration": 5.84,
+   "sha256": "c5ca7a0dc511fe26c34d3193b10e3dacb8761f8f38f6b65eb2fe4183019e84c9",
+   "key": "23cd8baf4378af9545163567f3b0a8ec8fa954c5b4e3bca6a0d385eea9bb986c"
   },
   "c2": {
    "text": "比如三个本地模型运行时：Ollama 4.3 分，vLLM 和 llama.cpp 都是 4.2。",
    "read": "比如三个本地模型运行时：Ollama 四点三分，vLLM 和 llama.cpp 都是四点二。",
-   "duration": 7.95,
-   "sha256": "2373bead77b1bac30882559a705f65358ac3b747bc057b262804e561e4f77cac",
-   "key": "f3f1781ec6d50b1663bae4377139ff140a6a7d8a1ee1bb0b93d8f61e4d2b8a1a"
+   "duration": 10.49,
+   "sha256": "435176b2f6779e9e2bacfa5e632c7426f63bbf3102c0dafd1742930c7d466fcf",
+   "key": "1b84e0aa8119c1dd60a801149718671241a87eb8b821ca5ca200c18552e8f97a"
   },
   "c3": {
    "text": "选择写进网址，分享出去也能还原。",
    "read": "选择写进网址，分享出去也能还原。",
-   "duration": 3.67,
-   "sha256": "c38b0a644ff73eef95019c37a7ce70cd7731d6ec2aa5982979718d03db1e683e",
-   "key": "ce1346b404574c41a1beb67d4b6e01c945569c3bfe1a1cf3cfcd49566981daa5"
+   "duration": 4.48,
+   "sha256": "23270060b84da272dbca85822e986740deb00f0bdf6740a99861469a5d2bf101",
+   "key": "c802d202976223c12f1b1935c2e65ceba868d2fa0555128c0590f71ea6714e7c"
   },
   "n1": {
    "text": "目前收录 152 份报告，覆盖 10 个类别。",
    "read": "目前收录一百五十二份报告，覆盖十个类别。",
-   "duration": 3.93,
-   "sha256": "b184f64742b3c8890be7f6943270d1d214f937c63012ec32c693d681413bddc5",
-   "key": "4bfc48c89dcf5794863b0dc053eb645c5443b7748f938554c399f302ad338a33"
+   "duration": 3.7,
+   "sha256": "1a8cba9283cb01dbc0ccd1605e34223136223fd6a987ff1beb884eebf83c393b",
+   "key": "422a6d1d7844e453d7c5ed6a26fd95cca899cd4334e00deff266f381a8d74033"
   },
   "e1": {
    "text": "选工具之前，先看一眼报告。",
    "read": "选工具之前，先看一眼报告。",
-   "duration": 2.43,
-   "sha256": "fbf5c479ec8718cfdd4dc8ba902e0c59d61ba4f94105c4e6c27b489161673adb",
-   "key": "30c2d001cf8ddd2b0a2143d797211f8098f25d26b39961868427587697e5adcc"
+   "duration": 2.79,
+   "sha256": "8466c5b88ec2f1d5dbe91eb69f0cd7c0e144e2d8f20b271fb2ccd9171e76f0c8",
+   "key": "ee39fff59bde425b0d250dde744b655232d984640188482b368ccd5f903e917f"
   }
  }
 }

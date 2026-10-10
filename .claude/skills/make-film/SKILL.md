@@ -25,7 +25,7 @@ what the product does (live screens) → how it works → result with a number �
 only place for copy and timing: scenes draw, they do not hold text. `just plan-check <id>` must pass before anything
 else.
 
-Narration: about 5 Chinese characters per second with this voice (`cosyvoice-zero-shot`); a line of more than
+Narration: about 4 Chinese characters per second with the default voice (`zh-male-professor`); a line of more than
 ~45 characters reads long on screen — split it. The film's length follows the voice (narrated scenes), never cut
 footage (demo scenes keep at least their edit).
 

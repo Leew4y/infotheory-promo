@@ -3,7 +3,7 @@
  "fps": 30,
  "bpm": 80,
  "styles": ["paper-dawn"],
- "voice": "cosyvoice-zero-shot",
+ "voice": "zh-male-professor",
  "scenes": [
   {
    "id": "title", "kind": "plate", "lead": 1.0, "tail": 1.0,

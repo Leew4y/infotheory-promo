@@ -49,7 +49,7 @@ export const narrationPaths = (film: string) => ({
 });
 
 /** The adapter's version (audio/tts.py ADAPTER_VERSION) and the models: id, pinned revision, files, where they go. */
-const ADAPTER_VERSION = 2;
+const ADAPTER_VERSION = 3;
 const MODELS: Record<string, { model: string; dir?: string }> = {
   fake: { model: 'fake-v1' },
   cosyvoice3: {
