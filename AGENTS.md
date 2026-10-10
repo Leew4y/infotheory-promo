@@ -96,6 +96,12 @@ Every film command takes the film id first (default `infotheory`); outputs go to
   per scene and judge axis-aligned boxes: a strong heuristic, not a proof. Report what was verified, what was not, and
   anything only inferred.
 
+## Making a film
+
+Follow `.claude/skills/make-film/SKILL.md` (brief -> plan -> material -> scenes -> cheap renders -> checks -> a
+self-review round -> export -> the person). `films/raa-demo` is a worked example: a plan-driven demo of a real site,
+with its capture scenario, narration, score and review notes.
+
 ## Designing a look
 
 Follow `.claude/skills/design-style/SKILL.md` (brief -> directions -> style package -> sheet -> self-review -> person).

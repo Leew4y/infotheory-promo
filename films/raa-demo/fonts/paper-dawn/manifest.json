@@ -1,0 +1,137 @@
+{
+ "film": "raa-demo",
+ "style": "paper-dawn",
+ "generator": {
+  "fonttools": "4.66.1",
+  "brotli": "1.2.0"
+ },
+ "charset": " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~·、。一三个为之也享仓代份优先具写几出分别刻前势勾化十原去叠同告和图在地址型如它完工库度开录往懂打报择挑收时是本板构模每比清源用的盖目看眼短码立类结维网能行要覆读起达运还进选都里雷，：",
+ "fonts": [
+  {
+   "family": "Noto Serif SC",
+   "role": "body",
+   "style": "normal",
+   "weight": "200 900",
+   "file": "NotoSerifSC-normal.woff2",
+   "sha256": "e004a6c8eb4a50ee2ef1e2bdc4c750d2a4168c0436a115d37f2218ee2e4a1803",
+   "bytes": 98364,
+   "source": {
+    "file": "NotoSerifSC[wght].ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/notoserifsc/NotoSerifSC%5Bwght%5D.ttf",
+    "sha256": "050080d9255a86808f2945bffac582b31ef32bc36411ce29563b4961670c66f9"
+   },
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSE-NotoSerifSC.txt",
+   "chars": 187,
+   "missing": ""
+  },
+  {
+   "family": "Gelasio",
+   "role": "latin",
+   "style": "normal",
+   "weight": "400 700",
+   "file": "Gelasio-normal.woff2",
+   "sha256": "6b1f4bad3ffa2d3ee1830d6fa36b6b547a89cd6da3780184d724dbf78629af9f",
+   "bytes": 25300,
+   "source": {
+    "file": "Gelasio[wght].ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/gelasio/Gelasio%5Bwght%5D.ttf",
+    "sha256": "4daecea457258c9ebeb8bc99ed3fd24353618bfad3ea4b93fa0b5d0468fc04e4"
+   },
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSE-Gelasio.txt",
+   "chars": 96,
+   "missing": "、。一三个为之也享仓代份优先具写几出分别刻前势勾化十原去叠同告和图在地址型如它完工库度开录往懂打报择挑收时是本板构模每比清源用的盖目看眼短码立类结维网能行要覆读起达运还进选都里雷，："
+  },
+  {
+   "family": "Gelasio",
+   "role": "latin",
+   "style": "italic",
+   "weight": "400 700",
+   "file": "Gelasio-italic.woff2",
+   "sha256": "9dc59331cc098d1e6b92346f9951728aa967e3b3f750425936da730053c18268",
+   "bytes": 29536,
+   "source": {
+    "file": "Gelasio-Italic[wght].ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/gelasio/Gelasio-Italic%5Bwght%5D.ttf",
+    "sha256": "52559e845a4d33514e5f93bb9ae7dbeae1894a53f2c565a15f18af40cd337c09"
+   },
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSE-Gelasio.txt",
+   "chars": 96,
+   "missing": "、。一三个为之也享仓代份优先具写几出分别刻前势勾化十原去叠同告和图在地址型如它完工库度开录往懂打报择挑收时是本板构模每比清源用的盖目看眼短码立类结维网能行要覆读起达运还进选都里雷，："
+  },
+  {
+   "family": "STIX Two Text",
+   "role": "math",
+   "style": "normal",
+   "weight": "400 700",
+   "file": "STIXTwoText-normal.woff2",
+   "sha256": "b348887a5ea3b8b5883dea2d8d42b0a57a1737f859f11f0395fbc4033376ec8b",
+   "bytes": 30492,
+   "source": {
+    "file": "STIXTwoText[wght].ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/stixtwotext/STIXTwoText%5Bwght%5D.ttf",
+    "sha256": "7962b8b7811e6a896c9a91a0bccbb5241047770eb24d4997c5cb5fe21d5c0df2"
+   },
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSE-STIXTwoText.txt",
+   "chars": 96,
+   "missing": "、。一三个为之也享仓代份优先具写几出分别刻前势勾化十原去叠同告和图在地址型如它完工库度开录往懂打报择挑收时是本板构模每比清源用的盖目看眼短码立类结维网能行要覆读起达运还进选都里雷，："
+  },
+  {
+   "family": "STIX Two Text",
+   "role": "math",
+   "style": "italic",
+   "weight": "400 700",
+   "file": "STIXTwoText-italic.woff2",
+   "sha256": "a2bc9201125e01675903a56d0953210f6c468d14f1b09caa2b119d3c1dd1d28e",
+   "bytes": 33872,
+   "source": {
+    "file": "STIXTwoText-Italic[wght].ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/stixtwotext/STIXTwoText-Italic%5Bwght%5D.ttf",
+    "sha256": "88c0e2e316eaff56eddc9e51e4850317e2a1e490bbf758b2dec4793aedba9c74"
+   },
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSE-STIXTwoText.txt",
+   "chars": 96,
+   "missing": "、。一三个为之也享仓代份优先具写几出分别刻前势勾化十原去叠同告和图在地址型如它完工库度开录往懂打报择挑收时是本板构模每比清源用的盖目看眼短码立类结维网能行要覆读起达运还进选都里雷，："
+  },
+  {
+   "family": "Inconsolata",
+   "role": "mono",
+   "style": "normal",
+   "weight": "200 900",
+   "file": "Inconsolata-normal.woff2",
+   "sha256": "983d1f17d8fd90e916d61a3dadca7833c095cca7fc05cc823417ad6e460e27f5",
+   "bytes": 51088,
+   "source": {
+    "file": "Inconsolata[wdth,wght].ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/inconsolata/Inconsolata%5Bwdth%2Cwght%5D.ttf",
+    "sha256": "23ded25b447074d00659392bf9b1123d89df55cb07b0ad9bfef3366d199b5fcb"
+   },
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSE-Inconsolata.txt",
+   "chars": 96,
+   "missing": "、。一三个为之也享仓代份优先具写几出分别刻前势勾化十原去叠同告和图在地址型如它完工库度开录往懂打报择挑收时是本板构模每比清源用的盖目看眼短码立类结维网能行要覆读起达运还进选都里雷，："
+  },
+  {
+   "family": "STIX Two Math",
+   "role": "fallback",
+   "style": "normal",
+   "weight": "400",
+   "file": "STIXTwoMath-normal.woff2",
+   "sha256": "c9a015ee9f236479575a3ae0c4dfde5f67e73c50aaf9e09d8e755b20c6ead4af",
+   "bytes": 21920,
+   "source": {
+    "file": "STIXTwoMath-Regular.ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/stixtwomath/STIXTwoMath-Regular.ttf",
+    "sha256": "562551b15b836e6e01d1b7350909baf3c8c8d83260c1190fbf4544333e6936de"
+   },
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSE-STIXTwoMath.txt",
+   "chars": 96,
+   "missing": "、。一三个为之也享仓代份优先具写几出分别刻前势勾化十原去叠同告和图在地址型如它完工库度开录往懂打报择挑收时是本板构模每比清源用的盖目看眼短码立类结维网能行要覆读起达运还进选都里雷，："
+  }
+ ]
+}

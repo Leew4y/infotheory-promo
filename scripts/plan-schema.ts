@@ -19,7 +19,7 @@ if (import.meta.main) {
   let changed = 0;
   for (const [name, data] of Object.entries(planSchemas())) {
     const file = path.join(ROOT, 'schemas', name);
-    if (existsSync(file) && readFileSync(file, 'utf8') === data) continue;
+    if (existsSync(file) && readFileSync(file, 'utf8').replace(/\r\n/g, '\n') === data) continue; // line endings may follow the checkout
     writeAtomic(file, data);
     changed++;
   }

@@ -53,7 +53,7 @@ export function checkPlan(id: string, options: { schemaDir?: string } = {}): Pla
   const err = (code: string, file: string, text: string) => diags.push(diagnostic(code, file, text));
   for (const [name, data] of Object.entries(planSchemas())) {
     const f = path.join(options.schemaDir ?? path.join(ROOT, 'schemas'), name);
-    if (!existsSync(f) || readFileSync(f, 'utf8') !== data) err('plan-schema-stale', f, 'JSON schema is stale; run just plan-schema');
+    if (!existsSync(f) || readFileSync(f, 'utf8').replace(/\r\n/g, '\n') !== data) err('plan-schema-stale', f, 'JSON schema is stale; run just plan-schema'); // line endings may follow the checkout
   }
   const brief = path.join(dir, 'brief.json');
   if (existsSync(brief)) {

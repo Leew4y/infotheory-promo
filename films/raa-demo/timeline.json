@@ -1,0 +1,50 @@
+{
+ "film": "raa-demo",
+ "style": "paper-dawn",
+ "fps": 30,
+ "bpm": 80,
+ "frames": 1389,
+ "duration": 46.3,
+ "scenes": [
+  {
+   "name": "title",
+   "kind": "plate",
+   "f0": 0,
+   "f1": 210,
+   "start": 0,
+   "end": 7
+  },
+  {
+   "name": "home",
+   "kind": "page",
+   "f0": 210,
+   "f1": 510,
+   "start": 7,
+   "end": 17
+  },
+  {
+   "name": "compare",
+   "kind": "page",
+   "f0": 510,
+   "f1": 1066,
+   "start": 17,
+   "end": 35.53333333333333
+  },
+  {
+   "name": "numbers",
+   "kind": "page",
+   "f0": 1066,
+   "f1": 1238,
+   "start": 35.53333333333333,
+   "end": 41.266666666666666
+  },
+  {
+   "name": "end",
+   "kind": "plate",
+   "f0": 1238,
+   "f1": 1389,
+   "start": 41.266666666666666,
+   "end": 46.3
+  }
+ ]
+}

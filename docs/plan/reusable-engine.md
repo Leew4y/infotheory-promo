@@ -531,6 +531,17 @@ A1 / A1b 评审修正（Codex，gpt-6-astra max：1 BLOCKER / 8 SHOULD_FIX / 2 N
   因此不能将整套旁白回归或 2c 的全量验收标为通过。Python 依赖只从本机已有缓存复制到本 worktree，计划测试复用已入库字体子集，不作网络下载。
   未测真实 TTS 或新计划的全量字体重新裁剪。`films/infotheory`、`films/math-lessons`、styles、audio 的受版本控制文件未改，未重录基线。
 
+阶段 3 实施记录（2026-10-10）：
+- 项目 skill `.claude/skills/make-film/SKILL.md`：brief → film-plan → 素材（录屏、旁白、配乐）→ scaffold 场景 → 草稿局部渲染与拼板 →
+  plan-check / validate / mix → 至少一轮自审 → 导出交给人。AGENTS.md 指向它（Codex 也读 AGENTS.md）。
+- 真实 hackathon 片：比赛（AI 重构产业 · 架构师大赛 48H 初赛）2026-10-10 18:00 才开始，产品尚不存在，正式片只能赛中做。
+  先用一个真实产品做完整演练：`films/raa-demo`，Develata 的 Repo-AI-Analysis（本地运行其站点，Playwright 录屏），46 秒，
+  旁白（CosyVoice3）、配乐（score.py）、字幕全由计划驱动；引擎未为这部片子做任何片内特例。全过程产物（brief、plan、录屏脚本、
+  旁白 lock 与 FLAC、配乐脚本、自审记录 `review/01-self-review.md`）都在片子目录里。
+- 演练暴露并修复的引擎问题：模板 `main.ts` 与 scaffold 生成的场景对真实计划过不了类型检查；JSON schema 新鲜度检查在 CRLF
+  检出时误报；录屏的时钟检查在一次慢的往返上误报（改为三次取最快、容差加上往返误差）。
+- 耗时（机器时间）：录屏 2 次共约 1 分钟，旁白合成 3.5 分钟，拼板、配乐、混音各约 1 分钟，导出见下。
+
 ### 阶段 3 · agent 接口与实战
 
 - AGENTS.md（Claude 与 Codex 共用；CLAUDE.md 只指向它）：分层约定、契约、命令、如何加场景、风格规则、验收清单。

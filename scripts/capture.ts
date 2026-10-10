@@ -172,10 +172,20 @@ try {
     mark: (label) => { raw.push({ t: Date.now(), type: 'mark', label }); },
   };
   /** This process's clock minus the page's (ms): the frames and marks use the one, the events the other. */
-  const clockSkew = async () => {
-    const a = Date.now(), p = await pg.evaluate(() => performance.timeOrigin + performance.now()), b = Date.now();
-    return (a + b) / 2 - p;
+  // Measured over a round trip: the error is at most half of it, so take the quickest of three and report its bound.
+  const clockSkew = async (): Promise<{ skew: number; err: number }> => {
+    let best = { skew: 0, err: Infinity };
+    for (let i = 0; i < 3; i++) {
+      const a = Date.now(), p = await pg.evaluate(() => performance.timeOrigin + performance.now()), b = Date.now();
+      if ((b - a) / 2 < best.err) best = { skew: (a + b) / 2 - p, err: (b - a) / 2 };
+    }
+    return best;
   };
+  /** A clock jump beyond the tolerance and the measurement error of both readings, or null. */
+  const drift = (s0: { skew: number; err: number }, s: { skew: number; err: number }) =>
+    Math.abs(s.skew - s0.skew) > CLOCK_TOLERANCE_MS + s0.err + s.err
+      ? new Error(`the clocks drifted ${(s.skew - s0.skew).toFixed(0)} ms apart during the recording (system clock adjusted or the machine slept?); record again`)
+      : null;
 
   // 2. the encoder, fed while recording: output frame i (at t0 + i / fps) shows the last frame at or before it
   ff = Bun.spawn(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-f', 'image2pipe', '-framerate', String(FPS), '-c:v', 'mjpeg', '-i', 'pipe:0',
@@ -234,7 +244,8 @@ try {
   const skew0 = await clockSkew();
   skewTimer = setInterval(() => {
     clockSkew().then((s) => {
-      if (Math.abs(s - skew0) > CLOCK_TOLERANCE_MS) abort(new Error(`the clocks drifted ${(s - skew0).toFixed(0)} ms apart during the recording (system clock adjusted or the machine slept?); record again`));
+      const e = drift(skew0, s);
+      if (e) abort(e);
     }, () => {});
   }, 1000);
   const deadline = (s: number, what: string) => new Promise<never>((_, reject) => { const t = setTimeout(() => reject(new Error(`${what} did not finish within ${s.toFixed(0)} s`)), s * 1000); t.unref?.(); });
@@ -243,7 +254,8 @@ try {
   await Promise.race([pg.waitForTimeout(500), failure]);
   clearInterval(skewTimer);
   const skew1 = await clockSkew();
-  if (Math.abs(skew1 - skew0) > CLOCK_TOLERANCE_MS) abort(new Error(`the clocks drifted ${(skew1 - skew0).toFixed(0)} ms apart during the recording (system clock adjusted or the machine slept?); record again`));
+  const e1 = drift(skew0, skew1);
+  if (e1) abort(e1);
   if (st.err) throw st.err;
   // the screencast sends a frame only when the page changes: the recording lasts until it is stopped, not until the
   // last frame (a still page repeats its last frame), on the frames' clock (wall-clock milliseconds)

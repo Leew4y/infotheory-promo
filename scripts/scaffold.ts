@@ -15,7 +15,7 @@ planScene('${s.id}', { draw(lt, d) {} });
   return `import { planScene, copy, background, plate, backdrop, text, C, F, M, W, H, type FilmPlan } from '../../../engine';
 import plan from '../film-plan.json';
 
-const content = (plan as FilmPlan).scenes.find((s) => s.id === '${s.id}')!;
+const content = (plan as unknown as FilmPlan).scenes.find((s) => s.id === '${s.id}')!;
 planScene('${s.id}', {
   draw(lt, d) {
     ${s.kind === 'plate' ? 'plate({ time: lt, progress: 0.4, highlight: 0.1 });\n    backdrop(W / 2, H / 2, W - M, H / 2, 1);' : 'background();'}
