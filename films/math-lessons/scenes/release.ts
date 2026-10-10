@@ -2,10 +2,11 @@
 // 4,000 problems, and the results were collected into a catalogue by significance. The source does not say who posed
 // the problems; the film no longer claims "posed and chosen by people" (independent audit, revisions.md R1).
 // 722 squares, one per manuscript (a 38 x 19 grid); behind them a fainter field of about 4,000 dots.
-import { label, background, M, C, scene, sstep, clamp } from '../../../engine';
+import { label, background, M, C, scene, sstep, clamp, placeNarration } from '../../../engine';
 import { bell, count, dots, grid, tiles, verse } from '../lib';
 
-scene({
+// spoken lines (narration.json) where their text first appears on screen
+placeNarration(scene({
   name: 'release', kind: 'page', dur: 17.5, chapter: 2, ch: ['二〇二六', ''],
   subs: [
     [0.5, 2.7, '2026 年 10 月，', '8'],
@@ -29,4 +30,4 @@ scene({
     label('评估中向模型提出了约 4000 个问题', M, 680, b, C.fg2, 20);
     label('再按成果的重要性整理成目录（据 OpenAI 自述）', M, 714, sstep(12.8, 13.6, lt), C.fg2, 20);
   },
-});
+}), { n10: 0.5, n11: 7.35 });

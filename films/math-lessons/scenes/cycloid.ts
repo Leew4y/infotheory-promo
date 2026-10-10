@@ -4,14 +4,15 @@
 // they reach the bottom 1 s after release and then every 2 s: two beats at 60 BPM, where the score changes its bass.
 // The theorem holds for the ideal model, stated on screen: one inverted cycloid, released at rest, uniform gravity,
 // no friction.
-import { text, label, dot, background, M, COL, W, C, F, scene, sstep, clamp } from '../../../engine';
+import { text, label, dot, background, M, COL, W, C, F, scene, sstep, clamp, placeNarration } from '../../../engine';
 import { bell, beadS, cycloid, cycloidAt, flash, voiceLine } from '../lib';
 
 const CX = (COL + W - M) / 2 + 20, YB = 650, R = 120, T0 = 7.6;
 const S0 = [-0.92, -0.62, -0.32].map((k) => k * 4 * R);
 const ARRIVE = [T0 + 1, T0 + 3];
 
-scene({
+// spoken lines (narration.json) where their text first appears on screen
+placeNarration(scene({
   name: 'cycloid', kind: 'page', dur: 12.5, chapter: 1, ch: ['无用', ''],
   subs: [
     [0.5, 3.95, '他举摆线为例：几何学家研究它，', '2'],
@@ -38,4 +39,4 @@ scene({
     label('Huygens《摆钟论》第二部分 · 命题 XXV', M, 772, at, C.muted, 18);
     label('理想模型：同一条倒置摆线 · 静止释放 · 匀强重力 · 无摩擦', M, 804, sstep(T0 + 1.0, T0 + 1.8, lt), C.muted, 18);
   },
-});
+}), { n04: 0.5 });

@@ -1,10 +1,11 @@
 // Chapter 2: "no longer needed" (F-N23, the strongest first-hand form of the opposing view) is not "meaningless";
 // Avigad's answer (F-N25); then the counter-argument in its strongest form (meaning alone does not decide how limited
 // funds and posts are allocated) and the film's concession and narrower claim (revisions.md R9).
-import { background, M, COL, W, scene, sstep, win } from '../../../engine';
+import { background, M, COL, W, scene, sstep, win, placeNarration } from '../../../engine';
 import { bell, quote, voiceLine } from '../lib';
 
-scene({
+// spoken lines (narration.json) where their text first appears on screen
+placeNarration(scene({
   name: 'needed', kind: 'page', dur: 32.5, chapter: 2, ch: ['二〇二六', ''],
   // lines shown verbatim as display text on this page have no caption (the display text is their caption)
   subs: [
@@ -24,4 +25,4 @@ scene({
     quote(['人做数学有意义，', '也不能单凭这一点，', '决定有限的经费与岗位怎样分配。'], [], '', COL + 40, 380, sstep(18.2, 19.0, lt), '◇', 46, 'counter');
     voiceLine('这是真的。本片只说：不应因此停止探索。', W / 2, 760, sstep(27.4, 28.2, lt), 'film', { size: 40, align: 'center', mk: '◇' });
   },
-});
+}), { n12: 0.5, n13: 8.1, n14: 11.75, n15: 18.2, n16: 27.4 });

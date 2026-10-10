@@ -58,10 +58,18 @@ def sha256_file(path):
     return h.hexdigest()
 
 
-def decode(path, channels):
-    """Any audio file -> float32 array (channels, n) at SR, via ffmpeg."""
-    out = subprocess.run(['ffmpeg', '-v', 'error', '-i', path, '-f', 'f32le', '-ac', str(channels), '-ar', str(SR), '-'],
-                         capture_output=True, check=True).stdout
+def snapshot(path):
+    """The bytes of an input and their sha256, read once: what is decoded is exactly what master.json names."""
+    with open(path, 'rb') as f:
+        data = f.read()
+    return data, hashlib.sha256(data).hexdigest()
+
+
+def decode(src, channels):
+    """An audio file (path) or its bytes -> float32 array (channels, n) at SR, via ffmpeg."""
+    data = src if isinstance(src, bytes) else None
+    out = subprocess.run(['ffmpeg', '-v', 'error', '-i', 'pipe:0' if data is not None else src, '-f', 'f32le', '-ac', str(channels), '-ar', str(SR), '-'],
+                         input=data, capture_output=True, check=True).stdout
     return np.frombuffer(out, dtype=np.float32).reshape(-1, channels).T.copy()
 
 
@@ -90,10 +98,12 @@ def fit_music(music, n, bar):
     xf = int(XFADE * SR)
     loop = m
     if bar > 0:
+        # whole bars plus the crossfade, so every repeat starts on a bar line
         bars = int((m - xf) // (bar * SR))
-        if bars >= 1:
-            loop = int(round(bars * bar * SR)) + xf
-    if loop <= 2 * xf:
+        if bars < 1:
+            raise SystemExit(f'the music ({m / SR:.2f}s) is shorter than one bar ({bar:.2f}s) plus the {XFADE}s crossfade: it cannot loop on bar lines')
+        loop = int(round(bars * bar * SR)) + xf
+    if loop - xf <= 0:
         raise SystemExit(f'the music ({m / SR:.2f}s) is too short to loop with a {XFADE}s crossfade')
     out = np.zeros((2, n), np.float32)
     fin = np.sin(np.linspace(0, np.pi / 2, xf, dtype=np.float32))
@@ -134,7 +144,8 @@ def main():
     if cues.get('film') != film:
         raise SystemExit('the placements belong to another film')
     placements = cues['placements']
-    lock = synth.load_json(lock_path) if os.path.exists(lock_path) else None
+    lock_bytes, lock_sha = snapshot(lock_path) if os.path.exists(lock_path) else (None, 'none')
+    lock = json.loads(lock_bytes.decode('utf-8')) if lock_bytes is not None else None
     if placements and lock is None:
         raise SystemExit(f'{os.path.relpath(lock_path, ROOT)} not found: run just narrate {film}')
     if lock is not None and lock.get('film') != film:
@@ -153,9 +164,10 @@ def main():
         if e is None:
             raise SystemExit(f"line {p['id']} is placed but not in the lock: run just narrate {film}")
         f = os.path.join(ROOT, 'films', film, 'narration', f"{p['id']}.flac")
-        if not os.path.exists(f) or sha256_file(f) != e['sha256']:
+        data, sha = snapshot(f) if os.path.exists(f) else (None, None)
+        if sha != e['sha256']:
             raise SystemExit(f"{os.path.relpath(f, ROOT)} is missing or not the audio in the lock (sha256)")
-        x = decode(f, 1)[0]
+        x = decode(data, 1)[0]
         x = x * (10 ** (VOICE_RMS_DB / 20) / max(10 ** (rms_db(x) / 20), 1e-9))
         i = int(round(p['t'] * SR))
         over = i + len(x) - n
@@ -174,21 +186,28 @@ def main():
     else:
         if not os.path.exists(music_path):
             raise SystemExit(f'{os.path.relpath(music_path, ROOT)} not found: run just music {film}, or pass --music none')
-        music = fit_music(decode(music_path, 2), n, float(cues.get('bar') or 0))
+        music_bytes, music_sha = snapshot(music_path)
+        music = fit_music(decode(music_bytes, 2), n, float(cues.get('bar') or 0))
         rel = os.path.relpath(os.path.abspath(music_path), ROOT)
         inside = not rel.startswith('..') and not os.path.isabs(rel)
-        music_meta = {'path': rel.replace(os.sep, '/') if inside else os.path.abspath(music_path), 'external': not inside, 'sha256': sha256_file(music_path)}
+        music_meta = {'path': rel.replace(os.sep, '/') if inside else os.path.abspath(music_path), 'external': not inside, 'sha256': music_sha}
     if placements and music_meta != 'none':
         bed = rms_db(music[:, away]) if away.any() else rms_db(music)
         if bed > -math.inf:
             music *= np.float32(10 ** ((VOICE_RMS_DB - BED_BELOW_DB - bed) / 20))
     gain = 1 - (1 - 10 ** (DUCK_DB / 20)) * np.clip(smooth(duck, RAMP), 0, 1)
+    bed_only = music.mean(axis=0)  # the music at full level (before ducking), for the check when no part is music alone
     mix = (music * gain.astype(np.float32) + voice[None, :]).astype(np.float32)
     peak = float(np.max(np.abs(mix))) or 1.0
     mix /= max(1.0, peak / 0.89)  # headroom before loudnorm; the master stage sets the level
 
-    # master into temporary files; check; publish together
+    # master into temporary files; check; publish together (one mix per film at a time)
     os.makedirs(out_dir, exist_ok=True)
+    lock_dir = os.path.join(out_dir, '.mix.lock')
+    try:
+        os.mkdir(lock_dir)
+    except FileExistsError:
+        raise SystemExit(f'another mix of {film} is running (or one crashed: remove {lock_dir})')
     tag = f'{os.getpid()}.tmp'
     mix_path = os.path.join(out_dir, f'master.mix.{tag}.wav')
     tmp = {k: os.path.join(out_dir, f'master.{tag}.{k}') for k in ('wav', 'mp3', 'json')}
@@ -199,10 +218,17 @@ def main():
             w.setframerate(SR)
             w.writeframes((np.clip(mix, -1, 1).T * 32767).astype(np.int16).tobytes())
         synth.master(mix_path, tmp['wav'])
-        if windows and music_meta != 'none' and away.any():
-            y = decode(tmp['wav'], 1)[0]
-            bed_db = rms_db(y[:n][away])
-            lifts = [(lid, rms_db(y[s:e]) - bed_db) for lid, s, e in windows]
+        if windows and music_meta != 'none':
+            if away.any():
+                # the master: every line's window against the music alone, away from the narration
+                y = decode(tmp['wav'], 1)[0]
+                bed_db = rms_db(y[:n][away])
+                lifts = [(lid, rms_db(y[s:e]) - bed_db) for lid, s, e in windows]
+            else:
+                # narration everywhere, so no music alone in the master: the mix before mastering (mastering is one
+                # linear gain plus a peak limiter), each window against the music at full level in that window
+                mono = mix.mean(axis=0)
+                lifts = [(lid, rms_db(mono[s:e]) - rms_db(bed_only[s:e])) for lid, s, e in windows]
             low = [f'{lid} {d:.1f} dB' for lid, d in lifts if d < MIN_LIFT_DB]
             if low:
                 raise SystemExit(f'narration not clear of the music by {MIN_LIFT_DB} dB in: {", ".join(low)}')
@@ -210,17 +236,43 @@ def main():
         subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', tmp['wav'], '-b:a', '192k', '-f', 'mp3', tmp['mp3']], check=True)
         meta = {
             'version': MIX_VERSION, 'film': film, 'frames': frames, 'fps': fps, 'placements': cues['digest'],
-            'lock': sha256_file(lock_path) if lock is not None else 'none', 'music': music_meta, 'master': sha256_file(tmp['wav']),
+            'lock': lock_sha, 'music': music_meta, 'master': sha256_file(tmp['wav']),
         }
         with open(tmp['json'], 'w', encoding='utf-8') as f:
             json.dump(meta, f, indent=1)
-        # the manifest last: until it is replaced, a new WAV fails the old manifest's sha256 (the export calls that stale)
-        for k in ('wav', 'mp3', 'json'):
-            os.replace(tmp[k], os.path.join(out_dir, f'master.{k}'))
+        # publish: the old set aside, the new one in (the manifest last); a failure before the manifest is in puts the
+        # old set back; after that, only cleanup (warnings)
+        final = {k: os.path.join(out_dir, f'master.{k}') for k in ('wav', 'mp3', 'json')}
+        aside = []
+        try:
+            for k in ('wav', 'mp3', 'json'):
+                bak = f'{final[k]}.{tag}.bak'
+                had = os.path.exists(final[k])
+                if had:
+                    os.replace(final[k], bak)
+                aside.append((final[k], bak if had else None))
+                os.replace(tmp[k], final[k])
+        except Exception:
+            for f, bak in reversed(aside):
+                try:
+                    if os.path.exists(f):
+                        os.remove(f)
+                    if bak:
+                        os.replace(bak, f)
+                except OSError as e:
+                    print(f'could not restore {f}: {e}', file=sys.stderr)
+            raise
+        for _, bak in aside:
+            if bak:
+                try:
+                    os.remove(bak)
+                except OSError as e:
+                    print(f'warning: could not remove {bak}: {e}', file=sys.stderr)
     finally:
         for p in [mix_path, *tmp.values()]:
             if os.path.exists(p):
                 os.remove(p)
+        os.rmdir(lock_dir)
     print(f'mix: {len(placements)} lines over {"silence" if music_meta == "none" else os.path.relpath(music_path, ROOT)} -> {os.path.relpath(os.path.join(out_dir, "master.wav"), ROOT)}')
 
 

@@ -3,7 +3,7 @@
 // checking still works with current versions of both checkers, and a security AI then found more kernel bugs
 // (F-N04, F-N05, F-N06). Then the fourth refrain, and a second note: the formal statement must also be checked
 // against the original question, and novelty and importance judged separately (revisions.md R8).
-import { text, label, rule, arrow, ink, background, M, COL, W, C, F, scene, sstep, clamp } from '../../../engine';
+import { text, label, rule, arrow, ink, background, M, COL, W, C, F, scene, sstep, clamp, placeNarration } from '../../../engine';
 import { bell, verse, voiceLine } from '../lib';
 
 const SX = M + 40, SY = 440;
@@ -19,7 +19,8 @@ function checker(name: string, x: number, y: number, a: number, k: number): void
   ink([[x + 230, y], [x + 244, y + 26], [x + 228, y + 50], [x + 246, y + 90]], k, C.accent, 3, a);
 }
 
-scene({
+// spoken lines (narration.json) where their text first appears on screen
+placeNarration(scene({
   name: 'kernel', kind: 'page', dur: 18.0, chapter: 4, ch: ['检验', ''],
   // lines shown verbatim as display text on this page have no caption (the display text is their caption)
   subs: [
@@ -52,4 +53,4 @@ scene({
     verse('◇', M - 34, 866, d, 30);
     text('还要核对：形式化的命题是不是原来的问题；新颖与重要，另行判断。', M, 866, { size: 21, color: C.fg2, alpha: d });
   },
-});
+}), { n26: 0.5, n27: 11.75 });

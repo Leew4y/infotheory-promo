@@ -1,7 +1,7 @@
 // Chapter 1: three defenders of mathematics. Each spoke of later use and also of knowledge for its own sake
 // (F-H03, F-H05; F-H20, F-H08; F-H09, F-H21): the film no longer sets them up as the "use will come" side against Hardy
 // (independent audit, revisions.md R2). The qualifiers "常常" and "最终造福人类的" are kept.
-import { text, background, M, C, F, scene, sstep } from '../../../engine';
+import { text, background, M, C, F, scene, sstep, placeNarration } from '../../../engine';
 import { bell, verse } from '../lib';
 
 const ROWS: [string, string, string, string, number][] = [
@@ -10,7 +10,8 @@ const ROWS: [string, string, string, string, number][] = [
   ['1939', 'Flexner', '最终造福人类的伟大发现，多出自好奇心', '绝不以用途为研究院辩护', 2.2],
 ];
 
-scene({
+// spoken lines (narration.json) where their text first appears on screen
+placeNarration(scene({
   name: 'defenders', kind: 'page', dur: 7.5, chapter: 1, ch: ['无用', ''],
   subs: [
     [0.5, 2.45, '为数学辩护的人，', '4'],
@@ -28,4 +29,4 @@ scene({
     });
     verse('4', M - 40, 340, sstep(0.6, 1.2, lt), 32);
   },
-});
+}), { n05: 0.5 });

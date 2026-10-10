@@ -2,10 +2,11 @@
 // and checking, the responsorial litany (the voice reads the first half, the screen answers, rising just before the
 // spoken half ends), and the closing sentence of the task, verbatim. The plate's highlight is the fire: it rises when
 // the fire is passed.
-import { plate, backdrop, scene, sstep, win, W } from '../../../engine';
+import { plate, backdrop, scene, sstep, win, W, placeNarration } from '../../../engine';
 import { bell, recite } from '../lib';
 
-scene({
+// spoken lines (narration.json) where their text first appears on screen
+placeNarration(scene({
   name: 'fire', kind: 'plate', dur: 45.5, fi: 1.0, fo: 1.6,
   subs: [],
   sfx: [
@@ -42,4 +43,4 @@ scene({
       ] },
     ], lt);
   },
-});
+}), { n34: 0.5, n35: 9.8, n36: 13.7, n37: 18.55, n38: 21.6, n39: 24.65, n40: 27.7, n41: 30.75 });

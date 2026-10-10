@@ -127,6 +127,34 @@ export function narratedScene(o: NarratedOpts): SceneDef {
   return n.bind(scene({ ...rest, dur: n.dur, subs: [...(subs ?? []), ...n.subs] }));
 }
 
+/**
+ * Place narration lines at fixed times in a registered scene, for a film whose timeline is set by its pictures (the
+ * scene keeps its own length and captions): `at` maps line ids to seconds on the scene's clock. Every line must belong
+ * to this scene in the script, be placed once, end inside the scene and not overlap the next one; otherwise the film
+ * refuses to load (the voice is longer than the picture allows: shorten the line or lengthen the scene).
+ */
+export function placeNarration(s: SceneDef, at: Record<string, number>): SceneDef {
+  if (!script || !lock) throw new Error(`scene "${s.name}": no narration installed (useNarration in film.ts)`);
+  const ps = Object.entries(at).map(([id, t]) => {
+    const line = script!.lines.find((l) => l.id === id);
+    if (!line) throw new Error(`scene "${s.name}": no line "${id}" in the script`);
+    if (line.scene !== s.name) throw new Error(`scene "${s.name}": line "${id}" belongs to scene "${line.scene}" in the script`);
+    if (starts.has(id)) throw new Error(`scene "${s.name}": narration line "${id}" is already placed`);
+    if (!(Number.isFinite(t) && t >= 0)) throw new Error(`scene "${s.name}": line "${id}" at ${t}: a time >= 0`);
+    return { id, t, dur: lock!.lines[id].duration };
+  }).sort((a, b) => a.t - b.t);
+  ps.forEach((p, i) => {
+    const end = i + 1 < ps.length ? ps[i + 1].t : s.d;
+    if (p.t + p.dur > end + 1e-9)
+      throw new Error(`scene "${s.name}": line "${p.id}" (${p.dur.toFixed(2)} s from ${p.t} s) runs ${(p.t + p.dur - end).toFixed(2)} s past ${i + 1 < ps.length ? `line "${ps[i + 1].id}"` : 'the end of the scene'}`);
+  });
+  for (const p of ps) {
+    starts.set(p.id, p.t);
+    placements.push({ id: p.id, t: s.t0 + p.t, dur: p.dur });
+  }
+  return s;
+}
+
 /** A line's start on its scene's clock (seconds), for animations that land on it. Call it inside draw(). */
 export function vo(id: string): number {
   const t = starts.get(id);

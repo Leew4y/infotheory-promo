@@ -1,7 +1,7 @@
 // Chapter 3, the hinge: the four statements of the Clay problem (F-M04, F-H18). On the existence side the force is
 // identically zero; on the breakdown side a smooth force may be chosen. From 10.8 s the breakdown column is marked:
 // OpenAI announced it had established statement C and also D (F-N07, S7b). The film does not judge the proof.
-import { text, label, rule, background, M, C, F, W, scene, sstep, clamp, eout } from '../../../engine';
+import { text, label, rule, background, M, C, F, W, scene, sstep, clamp, eout, placeNarration } from '../../../engine';
 import { bell, verse, voiceLine } from '../lib';
 
 const X0 = M, X1 = W - M, Y0 = 300, ROW = 190, HEAD = 70, LEFT = 260;
@@ -10,7 +10,8 @@ const CELLS: { k: string; col: number; row: number }[] = [
   { k: '(A)', col: 0, row: 0 }, { k: '(B)', col: 0, row: 1 }, { k: '(C)', col: 1, row: 0 }, { k: '(D)', col: 1, row: 1 },
 ];
 
-scene({
+// spoken lines (narration.json) where their text first appears on screen
+placeNarration(scene({
   name: 'statement', kind: 'page', dur: 20.5, chapter: 3, ch: ['题面', ''],
   subs: [
     [0.5, 2.45, 'Clay 的题面写着：', '12'],
@@ -55,4 +56,4 @@ scene({
     }
     voiceLine('本片不判断这个证明的对错。', X0 + 40, 820, sstep(12.5, 13.5, lt), 'film', { size: 26, mk: '◇' });
   },
-});
+}), { n17: 0.5, n18: 10.55 });

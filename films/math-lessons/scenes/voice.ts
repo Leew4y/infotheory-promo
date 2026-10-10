@@ -1,10 +1,11 @@
 // The essay's voice (E09, E05, E06) inside its hypothesis ("随笔设想，有一天"), the counter-argument it must face in
 // its strongest form (autonomy is not acceptability; a system can correctly achieve a harmful goal), and the film's
 // answer: what must be checked is not only the answer but goals, conduct and consequences (revisions.md R1, R3, R4).
-import { plate, backdrop, scene, win, W } from '../../../engine';
+import { plate, backdrop, scene, win, W, placeNarration } from '../../../engine';
 import { recite } from '../lib';
 
-scene({
+// spoken lines (narration.json) where their text first appears on screen
+placeNarration(scene({
   name: 'voice', kind: 'plate', dur: 35.0, fi: 1.0, fo: 1.0,
   subs: [],
   sfx: [[0, 'breath', { dur: 2.5 }], [16.3, 'low', { midi: 33, dur: 1.8 }]],
@@ -31,4 +32,4 @@ scene({
       ] },
     ], lt);
   },
-});
+}), { n28: 0.5, n29: 2.9, n30: 5.3, n31: 12.4, n32: 16.3, n33: 25.65 });

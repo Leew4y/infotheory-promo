@@ -2,14 +2,15 @@
 // of a public-key scheme after his death. Hardy had said "at present at any rate" and "Time may change all this"
 // (F-H13), shown in small print: the change happened, it is not presented as Hardy refuted (revisions.md R7). The
 // refrain does not follow here (that would read as "it became useful, so it is valuable"); it follows Hardy's defence.
-import { text, rule, label, background, M, W, C, F, scene, sstep, clamp } from '../../../engine';
+import { text, rule, label, background, M, W, C, F, scene, sstep, clamp, placeNarration } from '../../../engine';
 import { bell, verse } from '../lib';
 
 const X0 = M + 40, X1 = W - M - 40, Y = 520;
 const at = (year: number) => X0 + ((year - 1940) / (2018 - 1940)) * (X1 - X0);
 const MARKS: [number, string, number][] = [[1940, 'Hardy：数论“无用”', 0.7], [1947, 'Hardy 去世', 3.0], [1978, '公钥密码方案（RSA）', 3.8], [2018, 'TLS 1.3 标准', 6.4]];
 
-scene({
+// spoken lines (narration.json) where their text first appears on screen
+placeNarration(scene({
   name: 'numbers', kind: 'page', dur: 10.5, chapter: 1, ch: ['无用', ''],
   subs: [
     [0.5, 2.95, 'Hardy 眼中“无用”的数论，', '7'],
@@ -40,4 +41,4 @@ scene({
     verse('5', M - 34, 700, ah, 30);
     label('Hardy 也写过：“时间也许会改变这一切。”（§25）', M, 700, ah, C.fg2, 20);
   },
-});
+}), { n06: 0.5 });

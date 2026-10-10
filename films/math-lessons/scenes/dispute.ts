@@ -2,7 +2,7 @@
 // Córdoba (F-N27), the strongest pro-forcing voice in the same report, whose method the construction built on (S9);
 // then the film's claim that the forced case has value of its own if the proof holds but is not the unforced case,
 // the hinge sentence and the third refrain (revisions.md R6).
-import { text, label, background, M, W, C, scene, sstep, win } from '../../../engine';
+import { text, label, background, M, W, C, scene, sstep, win, placeNarration } from '../../../engine';
 import { bell, verse, voiceLine } from '../lib';
 
 const COLS = 3, GAP = 50;
@@ -13,7 +13,8 @@ const VOICES: { mk: string; head: string; lines: string[]; src: string; t: numbe
   { mk: '19', head: '数学家 Diego Córdoba', lines: ['我们知道的流体，', '都受某种外力；', '有外力，完全说得通。'], src: '同一报道 · 该构造沿用了他的方法', t: 7.35 },
 ];
 
-scene({
+// spoken lines (narration.json) where their text first appears on screen
+placeNarration(scene({
   name: 'dispute', kind: 'page', dur: 30.5, chapter: 3, ch: ['题面', ''],
   // lines shown verbatim as display text on this page have no caption (the display text is their caption)
   subs: [
@@ -39,4 +40,4 @@ scene({
     voiceLine('这是一场关于什么值得问的分歧。', W / 2, 700, sstep(22.05, 22.8, lt), 'film', { size: 50, align: 'center', mk: '◇' });
     voiceLine('回答了题目，不等于回答了问题。', W / 2, 800, sstep(26.2, 26.95, lt), 'film', { size: 44, align: 'center', mk: '◇' });
   },
-});
+}), { n19: 0.5, n20: 7.35, n21: 14.45, n22: 22.05, n23: 26.2 });

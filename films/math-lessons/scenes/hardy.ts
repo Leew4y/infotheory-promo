@@ -1,10 +1,11 @@
 // Chapter 1: Hardy refused to defend a mathematician's life by its use (F-H11); he claimed only that he
 // may be judged to have created something worth creating (F-H14). The first of the four refrains follows his defence,
 // not the timeline. No "可……不" opposition to the other defenders (revisions.md R2).
-import { text, background, M, W, C, F, scene, sstep } from '../../../engine';
+import { text, background, M, W, C, F, scene, sstep, placeNarration } from '../../../engine';
 import { bell, quote, verse, voiceLine } from '../lib';
 
-scene({
+// spoken lines (narration.json) where their text first appears on screen
+placeNarration(scene({
   name: 'hardy', kind: 'page', dur: 18.0, chapter: 1, ch: ['无用', ''],
   // lines shown verbatim as display text on this page have no caption (the display text is their caption)
   subs: [
@@ -24,4 +25,4 @@ scene({
     quote(['人们也许会认为，', '我创造了值得创造的东西。'], [], 'G. H. Hardy · A Mathematician’s Apology · 1940 · §29（自译）', M, 470, sstep(7.9, 8.8, lt), '6', 46);
     voiceLine('看不见用途，不等于没有价值。', W / 2, 790, sstep(13.95, 14.7, lt), 'film', { size: 48, align: 'center', mk: '◇' });
   },
-});
+}), { n07: 0.5, n08: 7.85, n09: 13.95 });

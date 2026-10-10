@@ -10,5 +10,5 @@ export { W, H, PI, TAU, clamp, lerp, sstep, eio, eout, ein, eexpo, win, mulberry
 export type { Grade } from './gl';
 export { boot, type BootOptions, type FontManifest } from './boot';
 export { demoScene, type DemoOpts, type CursorKey } from './demo';
-export { useNarration, narratedScene, vo, type NarrationScript, type NarrationLock, type NarrationLine, type NarratedOpts, type NarrationTiming } from './narration';
+export { useNarration, narratedScene, placeNarration, vo, type NarrationScript, type NarrationLock, type NarrationLine, type NarratedOpts, type NarrationTiming } from './narration';
 export type { CaptureAsset, CaptureEvent, CamKey, Rect, Segment } from './capture';

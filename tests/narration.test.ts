@@ -1,7 +1,8 @@
 // Unit tests of narration timing (engine/narration.ts): bun test. Expected values are worked out by hand.
 import { expect, test } from 'bun:test';
 import { defineFilm, FRAMES } from '../engine/film';
-import { narratedScene, narrationReport, useNarration, vo, type NarrationLock, type NarrationScript } from '../engine/narration';
+import { scene } from '../engine/scene';
+import { narratedScene, narrationReport, placeNarration, useNarration, vo, type NarrationLock, type NarrationScript } from '../engine/narration';
 
 defineFilm({ id: 'narration-test', fps: 30, bpm: 80, chapters: 1 });
 const script: NarrationScript = {
@@ -46,9 +47,18 @@ test('2 s of narration over 5 s of footage: the scene keeps the 5 s', () => {
   expect(c.dur).toBe(2);
 });
 
+test('placeNarration: fixed times in a scene of its own length; overlaps and overruns refused', () => {
+  const s = scene({ name: 'nowhere', kind: 'page', dur: 2, subs: [], draw: () => {} });
+  expect(() => placeNarration(s, { a: 0 })).toThrow(/belongs to scene "one"/);
+  expect(() => placeNarration(s, { d: 1.5 })).toThrow(/past the end of the scene/); // 1 s from 1.5 s in a 2 s scene
+  placeNarration(s, { d: 0.5 });
+  expect(vo('d')).toBe(0.5);
+  expect(narrationReport().placements.find((p) => p.id === 'd')!.t).toBeCloseTo(s.t0 + 0.5, 9);
+});
+
 test('a line placed twice is an error, before the scene registers; unplaced lines are reported', () => {
   const before = FRAMES;
   expect(() => narratedScene({ name: 'again', kind: 'page', lines: ['a'], draw: () => {} })).toThrow(/already placed/);
   expect(FRAMES).toBe(before);
-  expect(narrationReport().unplaced).toEqual(['d']);
+  expect(narrationReport().unplaced).toEqual([]);
 });

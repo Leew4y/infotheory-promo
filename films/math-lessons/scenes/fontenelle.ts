@@ -1,8 +1,9 @@
 // Chapter 1: the 1699 preface (F-H01, F-H02). The quote is set large in the left column; the right column stays empty.
-import { background, M, scene, sstep } from '../../../engine';
+import { background, M, scene, sstep, placeNarration } from '../../../engine';
 import { bell, quote } from '../lib';
 
-scene({
+// spoken lines (narration.json) where their text first appears on screen
+placeNarration(scene({
   name: 'fontenelle', kind: 'page', dur: 12.5, chapter: 1, ch: ['无用', ''],
   subs: [
     [0.5, 5.2, '在科学院 1699 年卷的序言里，Fontenelle 写道：', '1'],
@@ -19,4 +20,4 @@ scene({
       M, 380, sstep(5.1, 6.3, lt), '1', 64,
     );
   },
-});
+}), { n03: 0.5 });

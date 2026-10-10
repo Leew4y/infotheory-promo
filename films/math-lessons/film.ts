@@ -6,9 +6,13 @@
 //     "1".."19" for a factual line (its number in script/storyboard.md, listed on the closing index page), "◇" for a
 //     claim of the film, a counter-argument or a line of the essay, "" for the later parts of the same sentence;
 //   - chapter labels are [Chinese title, ''].
-import { defineFilm, selectStyle } from '../../engine';
+import { defineFilm, selectStyle, useNarration } from '../../engine';
+import script from './narration.json';
+import lock from './narration.lock.json';
 import vigil from '../../styles/vigil';
 
 // vigil is the chosen look (2026-10-09); the other two directions (Chapel, Manifesto) are kept unused in backup/.
 selectStyle([vigil]);
 export default defineFilm({ id: 'math-lessons', fps: 30, bpm: 60, chapters: 4 });
+// the voice (2026-10-10): narration.json, made by just narrate; lines placed at fixed times in the scenes
+useNarration(script as never, lock as never);

@@ -1,0 +1,295 @@
+{
+ "film": "math-lessons",
+ "backend": "cosyvoice3",
+ "model": "FunAudioLLM/Fun-CosyVoice3-0.5B-2512@29e01c4e8d000f4bcd70751be16fa94bf3d85a18",
+ "voice": "cosyvoice-zero-shot",
+ "lines": {
+  "n01": {
+   "text": "在完全清醒的时候……把自己的一生烧进去。",
+   "read": "在完全清醒的时候……把自己的一生烧进去。",
+   "duration": 3.35,
+   "sha256": "07fc08fe4132fb05f0c079c8d68cb98e930804d32e32e0122cede5cb52ccaba2",
+   "key": "ac33b4c4ac801534b712e9ac82d2bef9e81c7af52f39e4ed9becb5f838620437"
+  },
+  "n02": {
+   "text": "我们会自己决定，什么东西值得我们发疯。",
+   "read": "我们会自己决定，什么东西值得我们发疯。",
+   "duration": 3.43,
+   "sha256": "2e3344ac9ac2061d7b0acdd255d5bf49953cfaaaa7dc08a1d6ad4c3ab075f6af",
+   "key": "1c81e02466160450a2c9b1eda0cf03c20b821d39710c60300458dbcaaf467c65"
+  },
+  "n03": {
+   "text": "在科学院一六九九年卷的序言里，Fontenelle 写道：人们乐于把自己不懂的东西称为无用，这是一种报复。",
+   "read": "在科学院一六九九年卷的序言里，Fontenelle 写道：人们乐于把自己不懂的东西称为无用，这是一种报复。",
+   "duration": 8.46,
+   "sha256": "ef37cdd5a92735c0cbebe3b794c5ed601a6d97460ca8a41f73b9568dc8154e7d",
+   "key": "e92bf9ff845173aed1a8054b320b0c6f669db47965343b147ff1ae0bb2be63b5"
+  },
+  "n04": {
+   "text": "他举摆线为例：几何学家研究它，只是出于争先的虚荣；后来，摆钟用上了它。",
+   "read": "他举摆线为例：几何学家研究它，只是出于争先的虚荣；后来，摆钟用上了它。",
+   "duration": 7.2,
+   "sha256": "177e53783f8927607c5ed9bb096e18a14c9b5832c39af65f178cdc818054fa1b",
+   "key": "2b78bc676d8565d2e8388f4a54ad904c205e697c911ff4bdbf63a0f753b02b06"
+  },
+  "n05": {
+   "text": "为数学辩护的人，谈过日后的用途，也谈过求知本身。",
+   "read": "为数学辩护的人，谈过日后的用途，也谈过求知本身。",
+   "duration": 4.33,
+   "sha256": "e120d7db84e7f775c8c0f83b565db4fae913aa523b360fee4f28e4d333d5d1b6",
+   "key": "792fa01ce3f766e8014d61411e4931aadcacce6a3d201cd7eda8252430036710"
+  },
+  "n06": {
+   "text": "Hardy 眼中\"无用\"的数论，在他身后成了公钥密码的基础，写进了互联网的加密标准。",
+   "read": "Hardy 眼中\"无用\"的数论，在他身后成了公钥密码的基础，写进了互联网的加密标准。",
+   "duration": 6.82,
+   "sha256": "1d9c0dc90d5b1acd24e1acf3dadf0a1b417bd79ce24ef20a6c1b76c1de26d335",
+   "key": "0b743904b52de571a85be462ed7d4319214f5c79aeda6f039560cbbede283efb"
+  },
+  "n07": {
+   "text": "Hardy 也写道：不能以用途，为一位真正的数学家的一生辩护。",
+   "read": "Hardy 也写道：不能以用途，为一位真正的数学家的一生辩护。",
+   "duration": 5.28,
+   "sha256": "166f298d9b96d1e2e273b4ffe357bf5f62b6791d2aec2a05a4e0799033c8e643",
+   "key": "6d5099b434eba91b1e03dbefac0650d256b3625c20ecc6fda8119275d7b8ec5b"
+  },
+  "n08": {
+   "text": "他只说：人们也许会认为，我创造了值得创造的东西。",
+   "read": "他只说：人们也许会认为，我创造了值得创造的东西。",
+   "duration": 5,
+   "sha256": "4797038d65d1009e1752e6d445cb6d59fc2f81875c9fcf847fd81fb9946500ce",
+   "key": "90b2cda4564a0b36ea8fc146ba1a8c57d898cbb9ef9b48cf4067a36d50f12535"
+  },
+  "n09": {
+   "text": "看不见用途，不等于没有价值。",
+   "read": "看不见用途，不等于没有价值。",
+   "duration": 2.3,
+   "sha256": "71144dfafdae0b9c5f4dca44713ba9de5b1ad30c0ddb0af405f4bf7391f489c5",
+   "key": "0bd4c4558f0a0697200e746a3e5eeaf450df0dda96bf17f375bff49adcdbf4a1"
+  },
+  "n10": {
+   "text": "二〇二六年十月，OpenAI 公布了七百二十二篇模型生成的手稿。",
+   "read": "二〇二六年十月，OpenAI 公布了七百二十二篇模型生成的手稿。",
+   "duration": 5.05,
+   "sha256": "737757c0c14252cdb630a008bf36357e655cd2dbe65d3e200b68c5501a69ba04",
+   "key": "ced61ed84ade2d3b02779e9e724d950f8e50285eeb9429eeb018e51a11e614ef"
+  },
+  "n11": {
+   "text": "据它自述：评估中向模型提出了约四千个问题，再按成果的重要性整理成目录。",
+   "read": "据它自述：评估中向模型提出了约四千个问题，再按成果的重要性整理成目录。",
+   "duration": 6.09,
+   "sha256": "0bbd1f5f0676d2a96d1295e5d8ceb32a9ea50533babd9064128485b771cf681d",
+   "key": "de0c1e7810d449bf649c38b078f9a38688e68e5541f3c9036ec046e531b7817f"
+  },
+  "n12": {
+   "text": "Aaronson 写道：他不再指望，自己还会因为\"真正被需要\"而证明一个定理。",
+   "read": "Aaronson 写道：他不再指望，自己还会因为\"真正被需要\"而证明一个定理。",
+   "duration": 5.84,
+   "sha256": "94f97eab857d5ce2d240f62e14d069398e67c22b35ecac3f9c94d3907497c3f8",
+   "key": "911c6d59c35acd9585d1e7797829be9d784ec7f01b63656ae71bcbdc103dbd61"
+  },
+  "n13": {
+   "text": "不再被需要，不等于没有意义。",
+   "read": "不再被需要，不等于没有意义。",
+   "duration": 2.54,
+   "sha256": "b33c142ea6549a9f4e0bd5d2272858dd953c4952084a3c3425bdf0f7efc880c9",
+   "key": "912e4df8d2b6acdb3d63a778e7680c34f88cc12e51a8bf364dd1fff1c29effa4"
+  },
+  "n14": {
+   "text": "Avigad 写道：无论 AI 能不能思考，它都不能替我们思考。",
+   "read": "Avigad 写道：无论 AI 能不能思考，它都不能替我们思考。",
+   "duration": 4.95,
+   "sha256": "8864fd0ab172a6385a042122110f517f76eb1cbaadf5669c6d69eed3884fa60a",
+   "key": "a4f2774f2dd57e0007670c91cdf02c8e1e05cdaa9b118e8d14118a8af7fcb8c2"
+  },
+  "n15": {
+   "text": "反方会说：人做数学有意义，也不能单凭这一点，决定有限的经费与岗位怎样分配。",
+   "read": "反方会说：人做数学有意义，也不能单凭这一点，决定有限的经费与岗位怎样分配。",
+   "duration": 7.32,
+   "sha256": "8827d3268a13afa14ecb0ba4c1a6480e6534de59d2d4341d545d17b35784d076",
+   "key": "475fe540a2a7fd034a121c007906148e858e21067e4a0a1de8e622b9a1906dd5"
+  },
+  "n16": {
+   "text": "这是真的。本片只说：不应因此停止探索。",
+   "read": "这是真的。本片只说：不应因此停止探索。",
+   "duration": 3.39,
+   "sha256": "c3d87953650cebd6d2fc176fd4ddfc9fd1bc678ce36cfbbba58ad62f17e1cced",
+   "key": "4aadd0e009644b3249b340617d6733754efddbd3e69197b081f85e3f53021309"
+  },
+  "n17": {
+   "text": "Clay 的题面写着：证明解存在且光滑，外力须为零；证明解会破裂，可以选一个光滑的外力。",
+   "read": "Clay 的题面写着：证明解存在且光滑，外力须为零；证明解会破裂，可以选一个光滑的外力。",
+   "duration": 9.39,
+   "sha256": "1ca3e53a73afe34fb6ca611675791cf78d4666164a165856cbfdd7e705eddce9",
+   "key": "86290754a8490be56e512d9fec1c52185c5c9fe67d4c122cdbb18a947d97c179"
+  },
+  "n18": {
+   "text": "九月，OpenAI 宣布，它的内部系统证明了后者。Clay 说：问题看来已经解决；评审，刻意不急。",
+   "read": "九月，OpenAI 宣布，它的内部系统证明了后者。Clay 说：问题看来已经解决；评审，刻意不急。",
+   "duration": 9.15,
+   "sha256": "31580ecf3ba3e40d45e6e65d3288dccec99f5ee63a38a159e1c1d81fdeb3549a",
+   "key": "201661999d1c28489fa9d7364165a81b5e615b34095cb9d0350467c44548b804"
+  },
+  "n19": {
+   "text": "数学家 Silvestre 说：Clay 的题目解决了，但方程的主要问题没有。",
+   "read": "数学家 Silvestre 说：Clay 的题目解决了，但方程的主要问题没有。",
+   "duration": 5.4,
+   "sha256": "67a68aa3e88996de9e7bd42f4daee9f4e2d7fbfaec199604f3e020d09b249e2f",
+   "key": "3e648369ca40f28b367235ef6d128b44dbfc1c74c51797a65d17a02f965baf49"
+  },
+  "n20": {
+   "text": "Córdoba 则说：我们知道的流体都受外力，有外力完全说得通。",
+   "read": "Córdoba 则说：我们知道的流体都受外力，有外力完全说得通。",
+   "duration": 5.41,
+   "sha256": "068d6346bba93f8f353a5be5bb0466d69f2f57c46b29d41d4e45513b2d8ef4e7",
+   "key": "823da259f4f2a04955b9cd2c162ff4890116c693d306b08516b0e9bb4812aff0"
+  },
+  "n21": {
+   "text": "若证明成立，有外力的情形自有价值；只是它不等于无外力的情形。",
+   "read": "若证明成立，有外力的情形自有价值；只是它不等于无外力的情形。",
+   "duration": 6.41,
+   "sha256": "f5cdf9d2ed597515001a724058290ca9402833cfc57c8307ef0c4434e3f76a6f",
+   "key": "bc005a355f74551339b8ec0b4e9869d1876470a7b69eb64cdd5e70707b0f69f9"
+  },
+  "n22": {
+   "text": "这是一场关于什么值得问的分歧。",
+   "read": "这是一场关于什么值得问的分歧。",
+   "duration": 2.57,
+   "sha256": "86a6659a0eae388827aa3e093245d3f6d6e75d907c00055a4ce852bbdee2f678",
+   "key": "c70efd8fc419a52b5d91807f9dae191dbb0cdfe4b7fcc406c5feeb96cdccb767"
+  },
+  "n23": {
+   "text": "回答了题目，不等于回答了问题。",
+   "read": "回答了题目，不等于回答了问题。",
+   "duration": 2.63,
+   "sha256": "aab0f1e03fa68df45ce09d1de7c408a5b3fc111279392253f51145bcc6cdccf4",
+   "key": "9ca66dd5c0dc756a1ff88950588e5da64d25ec4ce3407e1f32cc7ba28ee5c6a0"
+  },
+  "n24": {
+   "text": "公布后的第二天，一个符号错误，让三篇手稿被撤回。七百二十二，变成七百一十九。",
+   "read": "公布后的第二天，一个符号错误，让三篇手稿被撤回。七百二十二，变成七百一十九。",
+   "duration": 8.69,
+   "sha256": "9ec193d1ecb110b021a0eb115ad5c7d42f026de7cdf15cd9d31bc69803a9d6db",
+   "key": "611871e7cbb2b6c097703b6a89eea509d50b13a53c3bdae9e866a20b14a75a06"
+  },
+  "n25": {
+   "text": "这不说明其余的都错了；只说明，发布的时候，检验还没有完成。",
+   "read": "这不说明其余的都错了；只说明，发布的时候，检验还没有完成。",
+   "duration": 5.96,
+   "sha256": "0d17768032db0589ef858724a099ce4ce7636eda24da22f270a3db1add1f7b96",
+   "key": "b934505cdffc8bf576cedd6c56462ee022ac6eb351e5a0a9d064a55fca6a609c"
+  },
+  "n26": {
+   "text": "七月，一份 AI 协助生成的\"否证\"通过了 Lean 的检查——它利用了内核的漏洞。接受了\"假\"，就能\"证明\"一切。",
+   "read": "七月，一份 AI 协助生成的\"否证\"通过了 Lean 的检查——它利用了内核的漏洞。接受了\"假\"，就能\"证明\"一切。",
+   "duration": 8.89,
+   "sha256": "a8d45f3fe623770a741108731ff50faf67532ef9528bc97ba048eb5bb43eff4d",
+   "key": "ed93886b4afdb94df2ba908454e9021a04299456e93d4ec870bedabf8828abd7"
+  },
+  "n27": {
+   "text": "公布，不等于检验。要紧的是独立，不一定是人工。",
+   "read": "公布，不等于检验。要紧的是独立，不一定是人工。",
+   "duration": 4.5,
+   "sha256": "bb6b351c38ebc65ec1a5da0a893fa90fc3e884e1d3859fe622c8d60d0c7889f4",
+   "key": "bc040303bc4f8a7cca04004288769dd5f8148c126762896e546ee29dcfce2cb3"
+  },
+  "n28": {
+   "text": "什么值得我去做？",
+   "read": "什么值得我去做？",
+   "duration": 1.64,
+   "sha256": "e0e061d81ff635d0c9081627f12d302e98bc52a15e2dd0f85afb4cef0961b6b6",
+   "key": "da4734ce90389478d0929aa28ea9290759272507b3976d5005299c4a4fc71cf5"
+  },
+  "n29": {
+   "text": "随笔设想，有一天——",
+   "read": "随笔设想，有一天",
+   "duration": 2.17,
+   "sha256": "cd0e55ff8fb91d5b3b6db51660a8264003ee79c85d667320016acaf646ca748a",
+   "key": "fde816ab7bfb12eddb87704c8d29335906c81f85d115794c3a6f4022a8af0e41"
+  },
+  "n30": {
+   "text": "那是世界上出现了另一个会自己决定什么值得追求的存在。",
+   "read": "那是世界上出现了另一个会自己决定什么值得追求的存在。",
+   "duration": 4.56,
+   "sha256": "999340180b3bcbaab2858edc314ddb659c4ee731d51933b4c4b372c58615ec15",
+   "key": "ca16673bfd48acc71b74f9cac4b7c1c0ace492352ed7c0ed57892f7ce915ca34"
+  },
+  "n31": {
+   "text": "我不在乎它的目标是不是\"高尚\"。",
+   "read": "我不在乎它的目标是不是\"高尚\"。",
+   "duration": 2.52,
+   "sha256": "02d0d732787fd645628286923cb0e79b623fc052b476392afd00c9f16b2f2eff",
+   "key": "57feef37f00b28c37f27440d51850f3267d6117b36aa9b00d78cd59546e0ae43"
+  },
+  "n32": {
+   "text": "反方必须说出来：自主，不等于可以接受；一个系统可以正确地完成一个有害的目标。",
+   "read": "反方必须说出来：自主，不等于可以接受；一个系统可以正确地完成一个有害的目标。",
+   "duration": 7.57,
+   "sha256": "073121ea34a1925c3192de23da6838cd5276e711d4bce058cb23f4acd53cef8e",
+   "key": "422da8e2622c568fbbffb5d04a9d368bd9817c626987432b3a0601046fe9226d"
+  },
+  "n33": {
+   "text": "所以，即使有一天它会自己选择，要检验的也不只是答案，还有目标、行为与后果。",
+   "read": "所以，即使有一天它会自己选择，要检验的也不只是答案，还有目标、行为与后果。",
+   "duration": 8.13,
+   "sha256": "e5fd175f9139ed2dba32bd2bdecaab2ca042cdc1fd6e52ff2318e6ab9bf051b7",
+   "key": "3afad06425594783ac9879f2765d31f18b4706f25422ad85f8f764d89377f858"
+  },
+  "n34": {
+   "text": "Russell 问过自己：退入沉思，是不是一种有些自私的拒绝？他答：总得有人让圣火不灭。",
+   "read": "Russell 问过自己：退入沉思，是不是一种有些自私的拒绝？他答：总得有人让圣火不灭。",
+   "duration": 7.08,
+   "sha256": "b9426a20fbfd8394b3e8bb55fe5dc9bc2dbc1d1d38f7418ce4a5f8bdba6c0a40",
+   "key": "34527774ac65479a2f6196b2815e0638d06003809aa8959031b25db2a3fd67bb"
+  },
+  "n35": {
+   "text": "然后有一天，我们把火递了出去。",
+   "read": "然后有一天，我们把火递了出去。",
+   "duration": 3.35,
+   "sha256": "4fcad7c1d2c4b386e49ccf336e2f3f699ac43a16b9d09e84327a343edfcb1f5e",
+   "key": "7fcd048da3ba0b934207249a16d89504c76d8a2d3e4716b4e202b992259501ed"
+  },
+  "n36": {
+   "text": "递出去的，是选择与检验；不是放下它们。",
+   "read": "递出去的，是选择与检验；不是放下它们。",
+   "duration": 3.53,
+   "sha256": "c1e5baa8bc4a5ee4fc8c46d75384398b4eeb913ab5de488bf396ee33498b2593",
+   "key": "7342af6bf8aa763b79c345bfe6a08ee4dc4aaae3c465aff9e4fe6f93e8b804e1"
+  },
+  "n37": {
+   "text": "看不见用途——",
+   "read": "看不见用途",
+   "duration": 1.03,
+   "sha256": "98a61ff7b980a024be187b1a990d3ad267469f71b03aad47731b47273ad0755e",
+   "key": "695a81317619ad6879573261159f8a6f1a4fe00aa372bbf0ed1878599b530168"
+  },
+  "n38": {
+   "text": "不再被需要——",
+   "read": "不再被需要",
+   "duration": 1.66,
+   "sha256": "6e1fd82004814a0639cf8cee8ae847e06d7415603a8e3f038728b426d4dde15b",
+   "key": "eca5824f40de335843f45eec6cc5baa06e6fb6afe08444e6cf18aaf51714af80"
+  },
+  "n39": {
+   "text": "回答了题目——",
+   "read": "回答了题目",
+   "duration": 0.81,
+   "sha256": "3c34695f8f1bb9834a999ab0c2d345dbbfb1c92f4466c41f671d0f2890948657",
+   "key": "26a9debbfde9811294026c452d1912970941918d1c870d4c33b2bb9a44fae3f3"
+  },
+  "n40": {
+   "text": "公布——",
+   "read": "公布",
+   "duration": 0.39,
+   "sha256": "6a228b2540a72f3bcc2324aa9d46ef3ee6439eff4688c6679ef5bf38fbaea6e1",
+   "key": "9eac20decc1ce47adca9b18d86970210624dbf898ec6e49a5c3ca8c4bedbc546"
+  },
+  "n41": {
+   "text": "我们不应因为机器能够给出答案，就停止人类自己的探索；也不应因为答案来自强大的机器，就放弃检验它的责任。",
+   "read": "我们不应因为机器能够给出答案，就停止人类自己的探索；也不应因为答案来自强大的机器，就放弃检验它的责任。",
+   "duration": 11.7,
+   "sha256": "ede48e3721c983ac9fd0c79609660b1c5ef5c6cefa8c7045292d9ef4b3010de8",
+   "key": "2c87759374fb53d1a11310820517d70f626cc3f58399cafaabdfe7d9bb3976de"
+  }
+ }
+}

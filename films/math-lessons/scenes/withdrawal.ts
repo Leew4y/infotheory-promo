@@ -1,13 +1,14 @@
 // Chapter 4: the day after the release, three manuscripts withdrawn for a sign error (F-N18); 722 becomes 719
 // (F-N16), the only number in the film that goes down. One error does not make the rest wrong; it shows that checking
 // was not finished at release.
-import { label, background, M, C, scene, sstep, clamp } from '../../../engine';
+import { label, background, M, C, scene, sstep, clamp, placeNarration } from '../../../engine';
 import { bell, count, grid, tiles, verse } from '../lib';
 
 // three adjacent squares stand for the three withdrawn manuscripts; the positions are a picture, not their places in the repository
 const GONE = [403, 404, 405];
 
-scene({
+// spoken lines (narration.json) where their text first appears on screen
+placeNarration(scene({
   name: 'withdrawal', kind: 'page', dur: 16.5, chapter: 4, ch: ['检验', ''],
   subs: [
     [0.5, 3.95, '公布后的第二天，一个符号错误，', '15'],
@@ -27,4 +28,4 @@ scene({
     label('符号错误 · 撤回 3 篇 · 修订 14 篇', M, 540, a, C.muted, 18);
     label('2026-10-07 · openai/math history.md', M, 572, a, C.muted, 18);
   },
-});
+}), { n24: 0.5, n25: 9.4 });

@@ -93,6 +93,14 @@ function python(backend: string): string[] {
   return [py];
 }
 
+// one narrate per film at a time, from before anything is read until the lock is committed (a run that read an old
+// state must not commit after another run)
+const workRoot = path.join(ROOT, '.cache', 'tts', 'work');
+mkdirSync(workRoot, { recursive: true });
+const filmLock = path.join(workRoot, `.${FILM}.lock`);
+try { mkdirSync(filmLock); } catch { console.error(`another narrate of ${FILM} is running (or one crashed: remove ${filmLock})`); process.exit(1); }
+// released on every way out (usage errors exit from inside)
+process.on('exit', () => { try { rmSync(filmLock, { recursive: true, force: true }); } catch {} });
 try {
   const P = narrationPaths(FILM);
   const script = readJson<NarrationScript>(P.script, 'narration script');
@@ -134,11 +142,7 @@ try {
     } else todo.push({ id: l.id, read, seed, key });
   }
 
-  // one narrate per film at a time; a private work directory
-  const workRoot = path.join(ROOT, '.cache', 'tts', 'work');
-  mkdirSync(workRoot, { recursive: true });
-  const filmLock = path.join(workRoot, `.${FILM}.lock`);
-  try { mkdirSync(filmLock); } catch { fail(`another narrate of ${FILM} is running (or one crashed: remove ${filmLock})`); }
+  // a private work directory
   const work = path.join(workRoot, `${FILM}-${process.pid}`);
   // new audio is staged beside the committed files; the lock is the commit point
   const staged: { id: string; tmp: string }[] = [];
@@ -197,9 +201,10 @@ try {
   } finally {
     for (const st of staged) tidy(st.tmp);
     tidy(work);
-    tidy(filmLock);
   }
 } catch (e) {
   console.error(e instanceof Error ? e.message : String(e));
+  tidy(filmLock);
   process.exit(1);
 }
+tidy(filmLock);
