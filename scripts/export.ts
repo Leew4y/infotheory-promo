@@ -4,6 +4,10 @@
  *   bun scripts/export.ts --film <id> [--workers 4] [--from 0] [--to <end>] [--crf 18] [--out out/<id>/<id>.mp4] [--draft]
  *     --draft: a quick look while editing, not the film: no motion blur (one sample per frame), x264 veryfast, written
  *     to out/<id>/<id>[-<style>]-draft.mp4 unless --out; with --from/--to it renders just the part being worked on.
+ *   Frames reach this process as JPEG files the page POSTs to the local server (__frameTo: the JPEG is encoded off the
+ *   page's main thread while it draws the next frame), each under the job's random token and its frame number; a
+ *   frame out of range, repeated, already written or not a JPEG is refused and fails the job. --transport dataurl
+ *   uses the older path (the data URL returned over the DevTools protocol), for comparison.
  *                         [--audio out/<id>/music.wav | --noaudio] [--deadline <seconds>]
  *   bun scripts/export.ts --film <id> --shots 5,20.5,60 [--dir out/<id>/shots]  write single frames (JPEG) for checking
  *   bun scripts/export.ts --film <id> --cues [films/<id>/cues.json]          dump the sound-effect cue sheet for the score
@@ -60,6 +64,11 @@ const fail = (exit: number, message: string): never => { throw Object.assign(new
 
 const CRF = opt('crf', '18')!;
 const DRAFT = flag('draft');
+const TRANSPORT = opt('transport', 'blob')!;
+if (!['blob', 'dataurl'].includes(TRANSPORT)) { console.error('--transport blob|dataurl'); process.exit(2); }
+/** The job's token for posted frames, and where they go (set once the frame range is known). */
+const TOKEN = crypto.randomUUID().replace(/-/g, '');
+let takeFrame: ((n: number, body: Uint8Array) => string | null) | null = null;
 const SINGLE = flag('shots') || flag('cues') || flag('timeline') || flag('scenes') || flag('narration');
 const WORKERS = SINGLE ? 1 : Math.max(1, +(opt('workers', '4') ?? 4));
 const STYLE = opt('style');
@@ -238,7 +247,14 @@ function masterStale(tl: { frames: number; fps: number }, placements: { id: stri
   return null;
 }
 
-interface Worker { id: number; browser: Browser; page: Page; frame: (t: number) => Promise<Buffer>; prefetch: (ts: number[]) => Promise<void>; evaluate: <T>(fn: () => T) => Promise<T> }
+interface Worker {
+  id: number; browser: Browser; page: Page; frame: (t: number) => Promise<Buffer>;
+  /** Render frame n (time t) and have the page post it as JPEG n; resolves once drawn (the upload goes on). */
+  frameTo: (n: number, t: number) => Promise<void>;
+  /** Wait for this worker's uploads; throws the first upload error. */
+  drain: () => Promise<void>;
+  prefetch: (ts: number[]) => Promise<void>; evaluate: <T>(fn: () => T) => Promise<T>;
+}
 async function launch(id: number, chrome: string, url: string, fps: () => number): Promise<Worker> {
   checkCancel();
   const browser = await puppeteer.launch({
@@ -255,8 +271,10 @@ async function launch(id: number, chrome: string, url: string, fps: () => number
     const durl: string = await page.evaluate((t, f, k) => window.__frame(t, f, k), t, fps(), DRAFT ? 1 : 3);
     return Buffer.from(durl.slice(durl.indexOf(',') + 1), 'base64');
   };
+  const frameTo = (n: number, t: number) => page.evaluate((u, t, f, k) => window.__frameTo(u, t, f, k), `${url}/frames/${TOKEN}/${n}`, t, fps(), DRAFT ? 1 : 3);
+  const drain = () => page.evaluate(() => window.__drain());
   const prefetch = (ts: number[]) => page.evaluate((ts) => window.__prefetch(ts), ts);
-  return { id, browser, page, frame, prefetch, evaluate: (fn) => page.evaluate(fn) };
+  return { id, browser, page, frame, frameTo, drain, prefetch, evaluate: (fn) => page.evaluate(fn) };
 }
 
 let code = 0;
@@ -275,7 +293,7 @@ try {
     lockPath = takeLock(OUT);
     if (deadline > 0) deadlineTimer = setTimeout(() => cancel(`deadline of ${deadline}s exceeded`), deadline * 1000);
   }
-  server = serveDist(DIST, { media: mediaDir(FILM) });
+  server = serveDist(DIST, { media: mediaDir(FILM), frames: { token: TOKEN, take: (n, b) => (takeFrame ? takeFrame(n, b) : 'no export is taking frames') } });
   let FPS = 30;
   const tLoad = performance.now();
   const workers = await Promise.all(Array.from({ length: WORKERS }, (_, i) => launch(i, chrome, server!.url, () => FPS)));
@@ -366,6 +384,16 @@ try {
     let nextTake = 0, nextWrite = 0;
     let failed: Error | null = null;
     const stop = () => failed ?? (cancelReason() ? new Error(cancelReason()!) : enc.exitCode !== null ? new Error(`ffmpeg exited early with code ${enc.exitCode}`) : null);
+    // posted frames: frame i of this range is URL number i; anything else is refused and fails the job
+    takeFrame = (n, body) => {
+      const why = !(Number.isInteger(n) && n >= 0 && n < N) ? `frame ${n} is outside 0..${N - 1}`
+        : n < nextWrite || ready.has(n) ? `frame ${n} arrived twice`
+        : !(body.length > 2 && body[0] === 0xff && body[1] === 0xd8) ? `frame ${n} is not a JPEG`
+        : null;
+      if (why) failed ??= new Error(`posted frame refused: ${why}`);
+      else ready.set(n, Buffer.from(body.buffer, body.byteOffset, body.byteLength));
+      return why;
+    };
     const work = async (w: Worker): Promise<void> => {
       while (nextTake < N && !stop()) {
         if (nextTake >= nextWrite + AHEAD) { await Bun.sleep(5); continue; }
@@ -373,9 +401,11 @@ try {
         nextTake = b;
         try {
           await w.prefetch(Array.from({ length: b - a }, (_, k) => (F0 + a + k) / FPS));
-          for (let i = a; i < b && !stop(); i++) ready.set(i, await w.frame((F0 + i) / FPS));
+          if (TRANSPORT === 'dataurl') for (let i = a; i < b && !stop(); i++) ready.set(i, await w.frame((F0 + i) / FPS));
+          else for (let i = a; i < b && !stop(); i++) await w.frameTo(i, (F0 + i) / FPS);
         } catch (e) { failed ??= e instanceof Error ? e : new Error(String(e)); }
       }
+      if (TRANSPORT === 'blob' && !stop()) { try { await w.drain(); } catch (e) { failed ??= e instanceof Error ? e : new Error(String(e)); } }
     };
     const write = async (): Promise<void> => {
       let lastLog = 0;
