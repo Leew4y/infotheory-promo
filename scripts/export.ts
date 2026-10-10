@@ -30,7 +30,7 @@
  *     every field present and finite) confirms frame count, duration, an audio track as long as the video, and the
  *     colour tags is it renamed over --out (the commit point); on any failure before that, the old --out is left
  *     untouched and the temporary file is deleted;
- *   - an existing --out that another program holds open without write sharing (a video player, typically) fails the
+ *   - (Windows) an existing --out that another program holds open without write sharing (a video player) fails the
  *     job before rendering; if the final rename is refused anyway (the file is held without delete sharing), it is
  *     retried for 5 s, and if --out is still held, the verified video is kept next to it as
  *     <out>.verified-<pid>.mp4 and the job fails (exit 1) with that path, so the render is not lost;
@@ -153,9 +153,11 @@ async function cleanup(): Promise<string[]> {
 
 // ---- publishing over an existing --out (Windows: a player holding the file blocks the rename)
 const IN_USE = new Set(['EBUSY', 'EPERM', 'EACCES']);
-/** Fail before rendering if --out exists and another program holds it open without write sharing. */
+/** Fail before rendering if --out exists and another program holds it open without write sharing. Windows only: a
+ *  POSIX rename replaces a file whatever holds it, and needs no write access to the old file (a read-only old video
+ *  would fail this probe with EACCES though nothing holds it). */
 function assertReplaceable(out: string): void {
-  if (!existsSync(out)) return;
+  if (process.platform !== 'win32' || !existsSync(out)) return;
   try {
     closeSync(openSync(out, 'r+'));
   } catch (e) {
