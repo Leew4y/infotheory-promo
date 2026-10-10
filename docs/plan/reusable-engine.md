@@ -1,6 +1,6 @@
 # 计划：从一部片子到可复用的 demo 视频引擎
 
-状态：草案 r3（已按两轮 Codex 评审修订）· 2026-10-03
+状态：草案 r3（已按两轮 Codex 评审修订）· 2026-10-03；r4 插入阶段 A（多影片与 agent 风格设计）· 2026-10-07
 
 ## 目标
 
@@ -22,11 +22,12 @@
 - **生产渲染不使用系统字体**：OFL 字体随仓库分发，CJK 按片子子集化，并校验实际文本的字形覆盖。
 - **2D canvas 固定走 CPU 光栅化**；WebGL 有两条路径：GPU（生产，快）与 SwiftShader（回归，逐像素确定）。依据见 0a 与 `spikes/RESULTS.md`。
 - 继续用 bun / vite / uv / just；不改成 Rust，不引入 mise。
+- **每部片子的风格由 agent 按 brief 设计**（阶段 A）：风格包是代码，人做方向选择并看拼板；字体只从预先确认的 OFL 目录里选。
 
 ## 非目标
 
 自建 agent 运行时或工具协议；迁移到 Remotion；生成式音乐替代程序化配乐；Windows 与 macOS 输出字节一致；
-从参考视频自动提取风格；完整的非线性编辑 GUI；一次建很多套风格；批量调度。
+从参考视频自动提取风格；完整的非线性编辑 GUI；预先建一个大风格库（风格按片由 agent 设计）；批量调度。
 
 ## 全局契约
 
@@ -229,6 +230,118 @@ films/<id>/      一部片子：film.ts、scenes/、score.py
 - `entropy` 的 26 列字母步长改为 `min(28, 可用宽度 / 26)`，paper-dawn 仍为 28（逐像素不变），nebula 为 27.7（原本伸进右边距 8 px）；更宽的右栏不再出安全区。
 - 已有证据：nebula 基线录制后由另一轮独立 worker 乱序渲染比对 231/231，帧渲染与 seek 顺序无关。
 
+### 阶段 A · 多影片与 agent 风格设计（2026-10-07 插入，先于阶段 2）
+
+目标：每部新片的背景、版式与场景由 agent 按 brief 设计；人描述需求、在方向上做选择、看拼板。
+
+划分原则（2026-10-07 与 Develata 讨论后定）：**风格是可复用的库；画面（场景）与音乐跟着内容走，留在影片里。**
+- 复用的库：`engine/`（渲染内核与绘图原语）、`styles/<id>/`（风格包）、`fonts/`（字体源目录）、`audio/synth.py`（合成器与乐器）、
+  `templates/`（新片骨架）。库之间、影片之间都不互相导入。
+- 影片 `films/<id>/`：场景、配乐编曲、音效 cue、时间轴、按"影片 × 风格"的字体子集与回归基线。它们按场景名与小节互相引用，是一体的。
+- 暂不拆：场景积木库、音乐素材库、可配置的字幕语言。等第二部片子真的复用时再抽，与"新原语进 engine 前必须有两部片子用到"同一规则。
+- 信息论片保留为参考片，不迁移成新结构；它的数值与像素在本阶段保持不变（regress 证明）。
+
+**A1 · 多影片与库的边界（一个 PR）。**
+- 页面外壳通用：`index.html` 不再写死影片入口，按影片选择；产物在 `dist/<film>/`。
+- 所有命令带影片参数：`just dev|build|validate|regress|fonts|shots|cues|music|export <film>`；`scripts/` 与 `justfile` 里不再写死片名，
+  默认值只在 `justfile` 一处（`infotheory`）。输出路径 `out/<film>/…`。
+- `audio/` 只放合成器库；配乐成品（`music.wav` 母版、`music.mp3` 预览）写到 `out/<film>/`，预览播放器从那里取；
+  `films/<id>/score.py` 仍是该片的编曲。
+- 字体源目录 `fonts/catalog.json`：每个字体族一条（上游 URL 固定到提交、sha256、许可证、可用字重与样式），所有风格共用；
+  风格的字体声明改为引用目录 id（去掉各风格重复的 `fonts.lock.json`）。字体子集仍按"影片 × 风格"写在 `films/<id>/fonts/<style>/` 并入库，
+  构建不需要联网；两部片子的子集各自独立。
+- `check-imports`：影片之间不得互相导入；风格之间、库之间同样。
+- `templates/film/` + `just new-film <id> --style <id>`：最小骨架（标题、一页正文、结尾三个场景，无配乐），立即可 build / validate / 无声导出；目录已存在则拒绝。
+- 0d 的 macOS 运行说明随路径与命令变化更新。
+
+退出条件：用 `new-film` 建第二部片子（约 20 秒），build、validate、无声导出通过；infotheory 两套风格 regress 逐像素不变；
+`just music infotheory` 生成的母版与改动前逐字节相同；影片互相导入被 `check-imports` 拒绝；字体子集重新生成无差异。
+
+A1 实施记录（分支 `engine/a1-films`）：
+- 页面外壳 `index.html` 通用，Vite 按 `FILM`（由 `just dev|build <film>` 传入）选入口，未知片名报错并列出可选；`boot()` 接收片名与标语，开始卡片与标签页标题由片子提供。
+- 工具一律要求 `--film`（`validate`、`regress`、`export`、`fonts`、`test-export`），共用的 `loadFilm` 同时核对片名与风格；`package.json` 不再有 `dev` / `build` 脚本。
+- `fonts/catalog.json` 收拢两套风格的字体来源（11 条，去重后 STIX Two 只出现一次）；风格改为 `fonts.json` 引用 id。两套风格的子集重新生成后逐字节不变。
+- 配乐成品移到 `out/<film>/`（`score.py` 按自身目录名决定），预览从那里取 `music.mp3`；`just music infotheory` 的母版 sha256 与改动前相同。
+- `templates/film/`（标题、一页正文、结尾，20 秒，无配乐）与 `just new-film`；`check-imports` 把 `templates/` 当作片子检查，片子之间、片子到模板的导入被拒（反例已测）。
+- 结果：`new-film demo nebula` → `fonts` → `validate`（0 error）→ 无声导出 600 帧 / 20.000 s，测试片不入库；infotheory `validate` 两套风格 0 error，regress 两套 231/231，
+  test-export 17/17，`tsc`、`check-imports` 通过；预览（标题、字体、音乐路径）在浏览器里确认。spikes 改为读 `dist/infotheory/`，0d 运行说明随之更新。
+
+A1 / A1b 评审修正（Codex，gpt-6-astra max：1 BLOCKER / 8 SHOULD_FIX / 2 NICE_TO_HAVE，逐条核实后全部处理）：
+- `test-export` 原先无条件删除 `out/test-export/`，而 `test-export` 是合法片名：改为先校验片名与前置条件，作业目录在 `out/<film>/.test-export/`。
+- 片名参数：`scripts/film-arg.ts` 统一解析（必填、FilmSpec 格式、`films/<id>/main.ts` 存在），所有工具在派生任何路径前调用；`validate --json` 的参数错误也输出诊断数组。
+  反例已测：`--film ../x` 被拒，不再写出仓库外的文件。
+- 帧率：`regress`、`validate` 从页面时间轴读取 fps，不再假定 30。
+- `new-film`：风格须是合法单层 id 且有 `index.ts` 与 `fonts.json`；模板里风格导入与片名声明两行须各出现一次，替换在内存中完成，复制到临时目录后整体改名，失败不留半成品。
+- `check-imports`：`/films/...` 这类项目根路径与 `import.meta.glob(...)`（按模式的静态目录前缀）都纳入检查，非字面量的 glob 报错；类型导入与动态导入只在代码里匹配，字符串里的文字不再误报。四个反例已测。
+- 字体库：目录 id 必须唯一；风格引用不再修改目录对象；`--lock` 写回时持排他锁、重新读取目录、按 id 合并，再原子替换。两个并发作业分别补齐不同字体的反例已测，结果与原目录逐字节相同。
+- 开发服务器：只提供 `/music.mp3`（支持 Range，播放器可拖动），`out/`、`dist/`、`.cache/` 与 `.env` 一律拒绝；浏览器里确认播放、跳转与 403。
+- 0d 运行说明：明确须用包含 A1 的 `main`，删去旧分支的回退说法。
+
+**A1b · 全幅背景参数与风格无关（一个小 PR）。**
+- `PlateParams { time, light, sun }` 是黎明风格的词汇，场景被迫按它传参。改为语义参数：`progress`（0–1，在叙事中的位置）、
+  `highlight`（0–1，背景里焦点光源的强弱，0 为无），加 `time`（秒，用于缓慢流动）。每个风格自己决定怎么画。
+  （原拟的 `warmth` 目前没有场景需要，不加。）
+- 信息论片四个全幅场景改传参；paper-dawn 与 nebula 内部做映射，使两套风格 regress 都逐像素不变。
+
+**A2 · 风格设计流程（agent 主导，人做选择）。**
+- 入库的设计产物：
+  - `films/<id>/brief.md`：主题、受众、调性关键词、时长、必须出现的内容、参考（文字描述）、禁忌。2c 再把它收成 `Brief` schema。
+  - `styles/<id>/STYLE.md`：情绪、色板及理由、字体、背景概念、版式网格、动效与转场、与已有风格的区别、明确不做的事。
+  - `films/<id>/review/`：每轮拼板的生成命令与自评（按评审清单逐条）、人的意见。拼板图本身不入库，可用命令重现。
+- 字体目录扩充：在 A1 的 `fonts/catalog.json` 里预选一批 OFL 字体（中文衬线、无衬线、风格化各若干，拉丁文与等宽若干），
+  清单与一次性下载经 Develata 确认。agent 只从目录里选；需要新字体时提出，确认后加入目录。
+  已完成（2026-10-08，Develata 确认"除霞鹜文楷外全部"）：新增 31 个文件——中文展示 6 款（站酷小薇、站酷庆科黄油体、站酷快乐体、马善政楷书、志莽行书、龙藏体，
+  实测都覆盖 GB2312 全部 6763 字，标签 `gb2312`）、拉丁无衬线 4 族、衬线 5 族、等宽 3 族、展示 1 族；共 42 个文件，每条带选用标签。
+  `scripts/font-catalog.ts --lock` 下载新条目，先与 GitHub 报告的 git blob id 核对再记录 sha256，并用固定版本的 fontTools 测出字重；
+  记录走字体库锁（`scripts/font-lib.ts`），`fonts.ts` 只接受已登记的条目。同一字体族的静态字重（如 IBM Plex Mono 500）子集文件名带字重。
+- `just new-style <id>`：从最小模板生成风格包（接口齐全、纯色背景、空的着色器模板、`STYLE.md` 骨架）。
+- `just sheet <film> [--style a,b]`：拼板。每个风格取固定的代表时刻：每类场景的中段、全幅页、转场中点、带字幕的帧；
+  并排输出 JPEG，另附 JSON（时刻、场景、风格、路径）。供 agent 自检和人看。
+- `validate` 增加两条（对比度从 2c 提前）：文字对比度（文字颜色与其包围盒内背景采样的 WCAG 对比度 ≥ 4.5，大字 ≥ 3）；
+  同一帧两个可见文字框相交即为 error。
+- 两条新校验已完成（2026-10-08）：`engine/inspect.ts` 把一帧渲染两次（无文字 / 有文字），对每个完全显示的文字框，用声明的文字颜色（按透明度叠到背景上）
+  对比无文字渲染里该框的平均颜色，计算 WCAG 对比度；同一帧两个完全显示（alpha ≥ 0.9）的文字框相交超过 2 px 即重叠。最初用渲染出的字形像素取文字颜色，
+  抗锯齿使小字被低估（16 px 页码实测 153，实际 143），改为声明颜色。`scripts/test-validate.ts`（`just test-validate`）用模板临时建片：
+  原样通过；加一个故意出错的场景后恰好报出对比度、重叠、出画面三类错误。
+  检查发现 paper-dawn 有 499 处低于 AA（Develata 决定修风格，看过对照样张后确认）：页面暗角 0.22→0.12、纸边阴影减半，使渲染出的纸面最暗处从约 211 提到约 226；
+  muted #8F8A80→#5F5C55、accent #C9663D→#9E421C（保持饱和度压暗）、alt2 #7C8C68→#58634A；页码不再带 0.9 透明度；
+  风格接口新增 `backdrop(cx, cy, w, h, a)`（全幅背景上的文字衬底，高斯式衰减、无可见边缘），信息论片 4 个全幅场景与模板标题页调用它。
+  两套风格 validate 0 error；回归基线重录（paper-dawn 全部帧、nebula 仅衬底所在帧变化），每次先看对照样张。
+- 已完成（2026-10-08）：`just sheet`（代表时刻自动选取：首个全幅页、前三个页面场景、带字幕帧、淡出中点、末场景；每个风格一列，附 JSON）；
+  `templates/style/` + `just new-style`（接口齐全的最小风格包与 `STYLE.md` 骨架；模板风格配模板片 validate 0 error 已测）；
+  `check-imports` 把 `templates/style/` 按风格包规则检查；`AGENTS.md`（`CLAUDE.md` 只引用它）与 `.claude/skills/design-style/SKILL.md`。
+  未完成：退出条件里的"新会话独立完成一部片子"需要在一个新会话（Claude 或 Codex）里实测。
+- A2 评审修正（Codex，gpt-6-astra max：2 BLOCKER / 11 SHOULD_FIX / 2 NICE_TO_HAVE / 2 NEEDS_VERIFICATION，逐条核实后处理）：
+  - `test-validate` 改用作业专属片名（`validate-fixture-<pid>`），只删除本次创建的目录；`sheet` 不再清空 `--out`：
+    先写临时目录，只替换以前的拼板（有 `sheet.json`）或不存在的目录，其他目录拒绝。
+  - 对比度测量重做（`engine/inspect.ts`）：四遍渲染——无字 / 有字（单采样，定位字形），无字 / 文字换成同色实心框（导出用的
+    3 个运动模糊子帧）。文字颜色取实心框内部经过调色、合成、模糊后的实际像素，不再解析声明颜色（原正则漏匹配括号的问题随之消失）；
+    文字框均分为约一字宽的格子，只计有字形的格子，取最小比值，字落在局部亮块上也能查出；渲染出错时恢复文字与记录模式。
+    第一版实心框测量把框边缘的抗锯齿像素算进了文字颜色、末尾还留下 1 px 细条，已改为取框内实心像素并均分格子。
+  - alpha 0.5–0.9 的文字按实际 alpha 判断并报 warning（可能是淡入中途），0.9 以上报 error，0.5 以下计入报告的未检查数；重叠同样分级。
+  - 字重规范化（`bold` = 700），字号取变换后两个方向中较小的缩放。
+  - 新测法发现 nebula 灰字经暗角后不足 4.5：muted #7586A0→#8D9DB6，看过前后对照后重录 nebula 基线；模板标题页、结尾页小标签提前淡入，
+    使中间帧为稳定状态。`test-validate` 新增：近乎透明的 rgba 文字、局部亮块上的字、稳定半透明低对比文字（warning）。
+  - 拼板：文件名带行号，时刻须有限且在片内，代表时刻按帧去重、限制在所属场景内、取所选风格的并集；`--style` 以首个所选风格加载影片。
+  - 字体：锁内冲突改为抛出异常、`finally` 释放锁（已测）；`fonts.ts` 子集出错同样先清理再以 1 退出（已测）；GitHub 目录列表按目录复用、
+    限流时给出重置时间、可用 `GITHUB_TOKEN`；字重测量脚本经 `-c` 传入，不留文件。
+  - skill / AGENTS：交付前跑全风格 `validate` 与已有基线的 `regress`，新风格批准后只为它记录基线；动效须看连续帧或预览并说明。
+    README 的对比度表述收窄为抽样检查。
+  - 仍未覆盖：逐字形（非轴对齐框）检查；新会话独立验收（见上）。
+- 评审清单：层级是否清楚；对比度与可读性；背景是否抢文字；颜色数量与强调色用法；字体搭配；动效是否克制统一；
+  与已有风格是否明显不同；是否符合 brief 的调性。
+- 流程写成项目 skill（`.claude/skills/design-style/`，AGENTS.md 引用，Codex 共用）：
+  1. 读 brief，提出 2–3 个方向：文字说明，加每个方向一张用最小风格包渲染的样张。人选一个，或授权 agent 自选。
+  2. 实现风格包与场景。
+  3. 出拼板，按清单自评，修改；至少一轮，记录进 `review/`。
+  4. 全风格 `validate` 与 `regress` 通过后，把拼板交给人；有意见回到 3。
+
+退出条件：
+- 新会话里，agent 只靠 skill 和这些命令，从一份新 brief 做出一套新风格和第二部短片（约 30 秒、4–6 个场景）；
+- `validate` 0 error（含对比度、重叠）；拼板与 paper-dawn、nebula 并排，Develata 认为明显不同且符合 brief；`review/` 记录完整；
+- 每条新校验至少有一个会触发它的失败用例；
+- 引擎改动只限本阶段列出的契约（多影片、字体目录、背景参数、拼板、两条新校验）。
+
 ### 阶段 2 · demo 片基础能力
 
 分三个 PR。
@@ -254,6 +367,62 @@ films/<id>/      一部片子：film.ts、scenes/、score.py
   帧数等于 `round(时长 × fps)`，无重复帧以外的跳帧（用带帧号的测试视频验证）；
 - BrowserDemo 在两套风格下都通过风格解耦验收。
 
+2a 实施记录（分支 `engine/2a-capture`，2026-10-09）：
+- Develata 的决定：源视频放在仓库外，只提交清单与 sha256；Playwright 本轮一起做（用本机 Chrome 与 `playwright-core`，不下载浏览器）。
+- 素材加载（`engine/media.ts`）：按需 fetch + 解码，按内存上限（768 MiB）的 LRU，淘汰时 close；场景用 `need(lt)` 声明要画的素材帧，
+  渲染钩子先 `prepare(t)` 再同步绘制；导出与各检查工具为严格模式，缺帧即报错，只有预览用最近一帧顶替。
+  信息论片两套风格 regress 231/231 不变。工具以 `/media/` 提供 `.cache/captures/<film>/`；顺带修了 dist 服务器可被 `%2f` 路径穿越的问题。
+- 素材与剪辑（`engine/capture.ts`，单元测试 11 个）：清单、剪辑（有序的 `[from, to)` 段，各自变速，段间即剪掉）、源帧 `floor(src × fps + 1e-9)`、
+  镜头关键帧（对数空间缓动缩放）、视图变换（缩放时不露出画面外）。
+- 演示场景（`engine/demo.ts`）：素材帧只由输出帧时刻决定，镜头与光标随运动模糊子帧移动；光标与点击来自录制事件（剪掉的点击记为 warning）或关键帧；
+  窗口、光标、点击波纹的外观由风格包的 `demo` 决定（paper-dawn、nebula、模板各一份）。
+- 导入（`import-capture`）：ffmpeg fps 滤镜拆成 JPEG 序列，帧数须等于 round(时长 × fps)；`--rebuild` 按文件名找源视频、核对 sha256 后重建。
+  录制（`capture`）：screencast 帧与页面事件同一时钟；录到停止时刻为止（静止页面不发帧）；注入一个 2×2 px、不透明度 0.004 的元素持续触发绘制
+  （否则静止后第一帧会晚到 3 帧）；重采样成固定帧率、编码为源视频，再走同一条导入管线。
+- 验收（`test-capture`，连跑两次稳定）：导入 180 帧；带剪掉与 2 倍速的剪辑经真实导出得到 90 帧，逐帧读条码均为剪辑映射的源帧；
+  剪掉的点击报 1 个 warning；缺帧时渲染失败；清空缓存后可从源视频重建，源视频被改动则拒绝；Playwright 测试页的 4 次点击都在页面自己画的标记 4 px 内、
+  0–2 帧内出现。
+- 性能（`bench-capture`，4 worker）：导出改为每次分配 15 帧的连续块并预取该块素材。60 秒录屏演示场景 6.1 帧/秒，为章节页基准（4.8 帧/秒）的 127%；
+  每个 worker 内存峰值 1104 MiB。均在 0b 的预算内（≥ 50%，≤ 2 GiB）。
+- 未覆盖：macOS 上的录制与导入；演示场景在页面上的可读性（对比度检查不看素材里的文字）。
+- Codex 评审（max，未通过：3 个 BLOCKER、19 个 SHOULD_FIX）后的修复，逐条核实后全部采纳：
+  - `--rebuild` 先校验所有清单（id 与文件名一致、源文件名不含路径、数值合法），且所有创建、替换、删除都限定在素材目录内；
+  - 导入在暂存目录完成全部校验后才提交：旧帧先移开、新帧移入、写清单，成功后才删旧帧，失败则还原；同一素材加锁；录制把新源视频写到临时名，
+    导入失败时放回旧源视频；
+  - 剪辑边界：场景内时刻改由整数输出帧计算（`frameOf`、`outputFrame`），段边界判定带 1e-9 容差；非零起点（f0 = 8）与 0.1 + 0.2 的单测；
+  - 帧数不再按容器时长预测：接受 ffmpeg 实际输出（≥ 1 帧、编号连续，五位以上也可），与视频流时长相差不超过 1 帧；显式 `-map 0:v:0`；
+  - 裁剪：清单记录 `crop`（源像素），`toFrame` 先换算到源像素再减裁剪原点；默认 viewport 为源视频尺寸；裁剪用 `exact=1`；
+  - 点击：事件时间保留全精度；波纹与按压从事件所在帧开始（该帧所有子帧），之前不出现；默认时长按帧向上取整；
+  - 剪辑拒绝倒序与重叠；镜头、光标、矩形参数在注册时校验；
+  - 素材缓存固定当前绘制的工作集（预取不会把它淘汰，超预算报错）；预览暂停时 seek 在素材加载后补画；
+  - 录制只保留主页面主 frame 的事件（iframe、弹窗的计数后丢弃），点击带目标元素与边框；帧边到边重采样并流式编码（编码落后 10 秒即失败），
+    `--max-seconds` 截止；单帧静止录制可用；开始与停止时比对页面时钟与进程时钟，漂移超过 50 ms 即失败；参数用 `util.parseArgs`；
+  - `/media` 与 dist 服务器按真实路径约束（`scripts/lib/confine.ts`，含 junction 单测）；
+  - 演示的默认区域、波纹与按压时长移入风格包（`demo.area`、`rippleDur`、`pressDur`）；just 配方给路径加引号；
+  - validate 对注册时的 notes 跨风格去重（两套风格时同一 warning 只报一次）。
+- 修复后验收：`test-capture` 改为独立预期（手算的整数帧映射），两套风格、演示场景从第 7 帧开始，逐帧条码全对；裁剪素材上光标尖端落在
+  手算位置 4 px 内，点击在其所在帧出现、之前无变化；失败导入不改任何东西；路径型 id 被拒绝；改动的源视频被拒绝且帧不受影响。
+  regress 两套风格 231/231；validate 0 错误；test-export 17/17；单测 27 个。
+- `bench-capture` 改为跟踪导出进程树下每个浏览器的进程树内存，取最大者：演示场景 5.70 帧/秒，为基准（5.62 帧/秒）的 101%；单个 worker 峰值 1218 MiB。
+  有一次在后台同时安装 PyTorch 时导出报 `ERR_INSUFFICIENT_RESOURCES` 失败，单独重跑通过（推测为资源争用，未复现确认）。
+- Codex 复核（medium）：原 BLOCKER #1、#3 已关闭，#2 仍有三条素材错配路径，另有 6 个新 SHOULD_FIX；逐条核实后修复：
+  - 录制替换源文件的任一步失败（不只是导入失败）都逆序回滚，本次新建、原先没有的文件也删掉；导入写完清单即为提交点，之后的清理失败只报 warning，
+    退出码 0 一律表示已提交；`--rebuild` 在素材锁内重新读取并校验清单，源文件核对、提取、提交都在同一把锁内；
+  - 录制编码队列按"录到的一帧 + 重复次数"存放，最多 300 个待编码帧，超出立即失败（静止页面的长段重复不占内存、不误报）；编码器退出、积压、
+    时钟漂移都直接中断场景；收尾有截止时间，子进程等待退出；获锁后启动浏览器失败也会释放锁；页面时钟与进程时钟每秒比对一次；
+  - 素材缓存：并发 `ensure()` 中仍在加载的工作集也被固定，同一帧重复引用只计一次；
+  - 点击所属帧回到事件时间的契约 `floor(t × fps + 1e-9)`（`frameOf` 只用于恢复输出帧号）；
+  - benchmark 的进程树按创建时间校验父子关系（PID 复用）并防重复访问，采样失败即停止导出；
+  - 开发服务器读取素材文件出错时返回 404 而不是崩溃；光标缓动移入风格包（`demo.cursorEase`）；`demoScene` 可设 `cursor: false`；
+  - `test-capture` 增加真实 Playwright 录屏进入 demo 场景（剪掉 0.2 秒、1.5 倍速、镜头推近到 1.4），两套风格下逐个点击检查：
+    "有点击"与"无点击"两版相减得到的波纹中心与页面自己画的红色标记相距不超过 3 px；点击所在帧按剪辑手算。
+  - 未改：just 的可变参数 `{{args}}` 中带空格的可选路径（如 `--sources`）仍会被拆开，需直接运行脚本（justfile 中已注明）；
+    时钟跳变没有自动化测试（无法在测试里调系统时钟），只靠每秒比对检测。
+- 复核修复后验收：test-capture 全过（两套风格的波纹中心与页面标记偏差均 < 2.4 px，无系统偏移）；regress 两套风格 231/231；validate 0 错误；
+  test-export 17/17；单测 29 个；bench 演示场景 7.38 帧/秒，为基准（6.52）的 113%，单 worker 进程树峰值 1387 MiB。
+  过程中 test-capture 的第二次导出曾反复失败（Chrome 超时、ffmpeg 无输入）：测试进程逐块重新分配 8 MB 帧缓冲，改为复用单个缓冲后通过——
+  原因按内存压力推断，未直接测量；崩溃留下的 crashpad 进程会让 test-export 的残留检测全部失败，需先清掉。
+
 **2b · 旁白、时间轴与最终混音。**
 - 契约：`Script`（分段、稳定 token ID、读法规范化映射）、`Alignment`（token ID → 起止时刻，含所属分段的音频偏移）。
 - TTS 适配层：本地 Kokoro（英文）与一个云端后端；时间戳优先取 TTS 自带的，没有则对已知文本做强制对齐（WhisperX）。
@@ -268,22 +437,129 @@ films/<id>/      一部片子：film.ts、scenes/、score.py
 - 旁白 2 秒而素材 5 秒的用例按规则延长场景，素材不被截掉；
 - 最终母版中每段旁白在其对齐时间窗内可检出（窗内 RMS 高于窗外垫乐 ≥ 6 dB）；积分响度 −16 LUFS ±0.5，真峰值 ≤ −1.5 dBTP。
 
+2b 实施记录（分支 `engine/2b-narration`，2026-10-09）：
+- 与原计划的偏差（Develata 的决定）：TTS 用本地 Fun-CosyVoice3-0.5B（Windows + CUDA），不用 Kokoro 与云端；时间按句，不做词级对齐（不用 WhisperX）。
+  因此锚点是旁白行的 id（`vo(id)`），不是 token；版本号、金额等写进该行的 `read`（读法），字幕仍显示 `text`；重复出现的术语因按行定位而无歧义。
+  旁白音频提交入库（每句一个 FLAC，`films/<film>/narration/`）：合成是采样的，同一句无法再次得到同样的音频与时长，而时长决定时间轴。
+- 契约（`engine/narration.ts`）：脚本 `narration.json`、lock（每句 text、read、时长、FLAC 的 sha256、合成键）；`useNarration` 拒绝别的片子、别的音色、
+  过期或时长非正的 lock；`narratedScene` 与 `demoScene({ narration })` 的时长 = max(lead + 各句与间隔 + tail, 素材长度或 minDur)，向上取整到整帧；
+  各句即字幕；每句只能放进一个场景，未放置的句子 validate 报 `narration-unplaced`。
+- 合成（`scripts/narrate.ts`、`audio/tts.py`）：合成键 = 适配层版本、后端、模型及其固定 revision、参考音频 sha256 与文字稿、读法、语速、种子（由行 id 得出）；
+  键不变且文件完好则保留，只改字幕不重合成，改读法只重合成该句；文件丢失须 `--resynth` 才重做。适配层顶层只用标准库，fake 后端（每个读法字符 0.2 秒）
+  可在任意 Python 下运行；CosyVoice3 惰性导入，按句设种子，切分出的片段拼接，首尾静音裁掉（−45 dBFS、各留 30 ms），使放置时刻即开口时刻。
+- 混音（`audio/mix.py`）：各句电平统一（−20 dBFS RMS），配乐在旁白前 0.15 秒到后 0.3 秒压低 12 dB（平滑过渡），再用 `synth.master` 两遍 loudnorm 到 −16 LUFS、
+  真峰值 ≤ −1.5 dBTP 并复测；`master.json` 记录配乐、lock、放置的指纹，导出默认使用母版，不匹配即拒绝（"just mix"）。预览播放器也放母版。
+- 字体子集现在包含旁白字幕（`narration.json` 的 text 与 en）——test-narration 首次运行时正因此失败。
+- 验收（`test-narration`，fake 后端）：时长、放置、场景长度均与手算一致（2 秒旁白配 5 秒素材时场景保持 5 秒）；只改字幕不重合成、改读法只合成一句、
+  丢失音频需 `--resynth`；未放置的句子报错；母版 −16.10 LUFS、真峰值 −5.6 dBTP，每句窗口比窗外垫乐高 9.8 dB（要求 ≥ 6 dB）；导出使用母版，旁白位置变化后拒绝过期母版。
+- CosyVoice3 实机（Windows 11、RTX 3060 Laptop、torch 2.3.1+cu121）：`just tts-setup` 从源码、环境、依赖到模型全部按固定版本完成；
+  模型改从 ModelScope 逐文件下载（Hugging Face 直连约 0.5 MB/s），每个文件按 Hugging Face 固定 revision 的 sha256 / git blob 校验。
+  依赖在上游清单基础上按实际导入链补齐（rich、gdown、matplotlib、wget、pyworld），safetensors 固定为 0.5.3（0.8.0 让 transformers 4.51.3 加载时段错误）。
+  3 句试听样例合成成功（RTF 1.5–2.2；onnxruntime 只有 CPU provider），音色由 Develata 试听后决定。
+  合成进程峰值内存高：系统可提交内存只剩 3–4 GB 时加载模型会段错误，剩约 6 GB 时成功；之前 test-capture、bench 的 Chrome 崩溃也发生在同样的内存压力下（推断）。
+- 音色：Develata 试听后决定先用 `cosyvoice-zero-shot`（2026-10-09）。
+- 换音色（2026-10-10）：Develata 听完两部配音片后认为 `cosyvoice-zero-shot` 太轻佻，要更沉重的声音。根因是参考音频：
+  CosyVoice 自带的示例是年轻女声、句尾带"呦"，而 CosyVoice3 的指令只能调方言、语速、音量、情绪，调不了声线。
+  做法：用 CosyVoice-300M-Instruct（内置说话人"中文男" + 一句说话人描述）生成 5 段约 5 秒的参考音频，CosyVoice3 用每段读同样
+  三句台词做试听；Develata 选了 D（"低沉、稳重、严肃的男教授"，基频中位数约 90 Hz，原音色约 240 Hz）。新音色为
+  `voices/zh-male-professor/`，`voice.json` 记录生成模型各文件 sha256、调用、描述、种子与转写。
+  模板默认音色改为它；`cosyvoice-zero-shot` 保留（test-narration 用它）。两部片全部重新合成：math-lessons 时间轴与画面不变
+  （41 句仍放得下，只有 n25 提前 0.17 s，regress 339/339），raa-demo 随旁白由 46.3 s 变为 50.4 s（配乐按新时间轴重渲染）。
+  语速：math-lessons 上新音色每秒 4.1 个汉字，原音色 4.3 个（skill 里原写的"约 5 个"偏高，已改为约 4 个）。
+- 去静音修正（ADAPTER_VERSION 3）：新音色在 math-lessons 有 5 句开头约 0.6–1 秒空白——句首一个 20–40 ms 的小噪点越过 −45 dBFS，被当作语音起点。
+  raa-demo 末句另有约 1.2 秒 −45 至 −50 dB 的底噪在句首。现在语音的起止要求连续至少 50 ms 的帧高于 −45 dBFS 且高于全句最响帧 −30 dB；
+  在现有 49 句上核对过只剪掉噪声。test-narration 加了这两种情形的用例。
+- 合入 PR #6（The-Walls：--out 被播放器占用时保留已验证的视频；synth 母版长度取整），文本无冲突。Codex 评审（high）认为与本链的
+  取消、提交点、清理逻辑交互无误，另指出一处经复现确认的问题：占用预检以读写方式打开旧文件，在 POSIX 上把只读旧视频误报为
+  "被占用"，而 rename 本可成功——预检现只在 Windows 上做。去静音改动的评审只提了一个 NIT（空样本报错路径），已改。
+- Codex 评审（max，未通过：4 个 BLOCKER、9 个 SHOULD_FIX）后的修复，逐条核实后采纳：
+  - narrate 事务化：新音频先写成临时 FLAC，lock 为提交点；提交前任何失败都放回旧文件，同片互斥，工作目录按进程隔离；
+  - 混音电平：配乐先按"离开旁白处比人声低 10 dB"重新定标，旁白处再压低 10 dB；母版后逐句复测，任何一句窗内比窗外垫乐高不到 6 dB 就失败、不发布；
+  - 有旁白的片子默认导出必须有有效母版（`just all` 现为 music → mix → export）；未放置的句子导出前即报错；
+  - 有旁白的 demo 场景，显式 `dur` 只作下限，素材永不截短；narratedScene 的重复放置等检查都在注册场景之前；
+  - 母版事务发布（临时文件 → 复测 → WAV、MP3、清单依次改名，清单最后），清单记录母版自身 sha256、帧数与帧率、
+    音乐的仓库相对路径；放置指纹只由导出端（JS）以整数微秒计算，混音只抄写；
+  - 音频长度向上取整到整样本，重采样造成的尾部 ≤10 ms 越界会被裁掉；
+  - `synth.master` 的 limiter 加 `latency=1`：脉冲实验证明此前所有母版晚 220 样本（5 ms）且末尾样本丢失，现为 0 偏移
+    （这也改变参考片的音频母版，画面不变）；
+  - 音乐长度适配：短音乐按小节切点循环（1 秒等功率交叉淡化），长音乐在片尾 2 秒淡出截断；
+  - 预览按请求选择音轨（母版与当前 lock 匹配才用母版）；
+  - TTS 适配层禁用文本规范器（wetext 运行时下载未固定版本的资源，且此前下载不完整时静默退化为无规范器）：只有固定的
+    CosyVoice 代码处理文本，数字等一律写在 `read` 里；加载了其他前端即失败；适配层版本升到 2（合成键随之变化）；
+  - Windows 安装完全锁定为验证过的环境（`audio/tts-lock-win.txt`，116 个包）；Intel Mac 直接拒绝，Apple Silicon 与 Linux
+    按 requirements 解析并警告未验证；
+  - 测试清理自己的 TTS 工作目录。
+- 修复后验收：test-narration 全过（新增：半途失败不动 lock 与已提交 FLAC；无母版拒绝导出；响垫乐、4 秒循环、30 秒截断、
+  安静垫乐四种混音都 −16.1 LUFS、真峰值 −6.1 dBTP、长度等于影片、每句高出垫乐 10.1–10.2 dB 且无空洞；显式 `dur: 1` 时 demo 仍 150 帧）。
+- 未覆盖：正式旁白的听感；macOS 上的 TTS 环境；词级锚点（按决定不做）；GPT 关于 macOS PyTorch 的提示（Intel 无 2.3.1 wheel）已据此拒绝。
+
+导出提速（2026-10-09/10，Develata："生成视频有点太慢了"；与 GPT 讨论两轮）：
+- 测量工具：`scripts/profile-export.ts`（单 worker、连续帧、多轮中位数、记录 commit/Chrome/ffmpeg）与 `engine/perf.ts`（页面内分段计时）。
+  参考片 1080p、K=3、CPU 2D、单 worker：每帧约 216 ms，其中"上传 + 累积"约 110 ms（CPU 光栅化在此兑现）、JPEG 编码约 65 ms、
+  CDP 传 base64 约 33 ms。x264 medium 单独约 20 fps，veryfast 约 40 fps；NVENC 因驱动的 API 版本过旧（需 13.1，现 13.0）不可用。
+- GPU 加速 2D canvas（单 worker 123 ms/帧）被否决：`spikes/0c-gpu2d`（65 帧，与 CPU 2D 逐像素比较）中 50 帧不同，最大差 57 级，
+  42 万像素差 > 2 级；同一帧的各次 GPU 渲染（顺序、乱序带重复、4 worker）直接互比，65 帧中 1 帧不同（历史依赖仍在，但少见；Codex 复核指出原先的汇总比较不能证明这一点，已改为逐帧互比）。CPU 2D 的第二次冷启动与参考逐像素相同。导出保持 CPU 2D。
+- 采用：帧传输改为页面 `toBlob` 在主线程外编码 JPEG 并 POST 到本地服务器（任务令牌 + 帧号，越界、重复、非 JPEG 即失败），
+  与画下一帧重叠；解码后的帧与旧路径逐帧 md5 相同。`--draft`：每帧 1 个子帧（无运动模糊）、x264 veryfast，配合 `--from/--to` 只渲染正在改的段落。
+- 结果（空闲机器、300 帧、含启动）：终版 4 worker 9.3 fps（原 ≈7）；草稿 2–4 worker 14.5 fps；6 worker 反而更慢（CPU 争用）。
+  90 秒片：终版约 5 分钟，草稿约 3 分钟；改一个 10 秒段落的草稿约 25 秒。
+- 不做（收益小或风险大）：WebCodecs 分段编码、自适应子帧、场景缓存、半分辨率草稿。测量时另一会话的导出会让数字失真（已发生两次），
+  基准须在没有其他导出时运行。
+
 **2c · 计划驱动与 agent 命令。**
 - 契约：`Brief`、`FilmPlan`（Zod，可导出 JSON Schema）。`films/<id>/film-plan.json` 是场景顺序、ID、时长、文案、字幕、素材引用的唯一来源；
   `film.ts` 从它构建影片，场景模块按计划中的 ID 注册。
 - `just plan-check <film>`：schema、引用（素材存在、场景模块与计划 ID 一一对应）、文案只来自计划。
 - `just scaffold <film>`：为计划中新增的场景生成模块骨架；不覆盖已有模块。
-- `just validate` 扩展：cue、字体覆盖、素材、token 引用、对比度（文字与背景采样的 WCAG 对比度 ≥ 4.5，大字 ≥ 3）。
-- `just thumbs <film>`（缩略图拼板）、`just render-scene`、`just render-range`，均输出 JSON 摘要与产物路径。
+- `just validate` 扩展：cue、字体覆盖、素材、token 引用（对比度与文字重叠已在 A2）。
+- `just render-scene`、`just render-range`，输出 JSON 摘要与产物路径（拼板 `just sheet` 已在 A2）。
 - 素材清单：每个非代码素材记录来源、许可证、sha256、生成模型与种子。
 
 退出条件：每条校验规则至少有一个会触发它的失败用例；非法计划在生成场景之前就被 `plan-check` 拒绝；
-agent 只用这些命令就能完成"改计划 → 生成或修改场景 → 看拼板 → 修正"的一轮。
+  agent 只用这些命令就能完成"改计划 → 生成或修改场景 → 看拼板 → 修正"的一轮。
+
+2c 实施记录（分支 `engine/2c-plan`，2026-10-10）：
+- `engine/plan.ts` 提供 Brief / FilmPlan 的 Zod 契约、计划文案和旁白转换；`usePlan` 检查影片身份与帧率，复用现有旁白 lock。
+  `planScene` 的绘制适配放在 `engine/plan-scene.ts`，使 CLI 读取契约时不初始化 Canvas / WebGL；页面 boot 检查实际注册的场景及风格与计划逐项同序。
+  普通场景、旁白场景、录屏场景继续调用 `scene`、`narratedScene`、`demoScene`，没有另一套时间轴。
+- `plan-check` 检查 schema（含交叉字段约束）、风格、capture 清单路径、模块对应及注册、index 顺序、文案、旁白 lock、可选 brief、素材清单与哈希、生成 schema 是否过期。
+  `validate` 先运行这些检查；失败时仍给出相同形状的 JSON diagnostics。模块要求直接调用 `planScene`，页面启动检查实际注册结果。
+  文案规则明确为启发式：解码后的字符串或模板文本片段含 CJK，或含至少四个英文词，必须等于计划中的显示文本；注释忽略，动态拼接不作证明。
+- `scaffold` 在任何写入前验证整个计划，只新建缺失模块，保留现有模块，并原子替换有序 index；新增模块先写临时文件再独占发布。
+  `new-film --plan` 从新模板生成标题 plate、旁白 page、带字幕 page。计划删场景时旧模块不自动删除，检查会报多余模块。
+- `render-scene` / `render-range` 读取现有 export 的页面 timeline，再调用同一 export 完成无声导出与 ffprobe 验证；stdout 只有一行 JSON，日志走 stderr。
+  范围为影片秒数的左闭右开区间，沿用 export 的帧网格取整和末尾裁限；范围文件名使用帧号，timeline 增加实际选中风格以便摘要准确报告默认风格。
+- `narrate` 优先读取计划的 voice / lines，保留 `narration.json` 路径、FLAC、lock、合成键和事务处理。字体子集也读取计划文案及风格，避免新文本漏字。
+  `assets.json` 对 `assets/` 中所有文件检查清单、来源、许可和 sha256；capture、旁白、字体继续各自的清单，不另建通用素材加载层。
+- 必要的接口细节：`usePlan` 的可选第三参数接收影片通过 eager glob 打包的 capture 清单，保持 engine 不导入 films；capture 路径相对影片目录。
+  模板按计划的风格列表选择公共入口，导入检查只为精确的 `styles/*/index.ts` glob 放行。
+  bpm / chapters 默认 80 / 0；旁白计划必须指定 voice；章节须有双语 title；`index` 是场景文件保留名。
+  JSON Schema 提供编辑器结构检查，Zod 的跨字段 refinement 仍由 plan-check / usePlan 执行。
+- 实测：`bunx tsc --noEmit`、`check-imports`（72 文件、0 错误）、`bun test tests/`（39 pass、0 fail、1427 断言）通过。
+  `test-plan` 通过：new-film → scaffold → fake narrate → build → plan-check → render；48 帧旁白场景、9 帧范围、15 帧 demo 均由 ffprobe 独立确认；
+  新片 validate 无错误、拼板已看；缺失或乱序实际注册在页面启动时拒绝，各检查的故意失败用例均得到对应 code，非法计划 scaffold 不写文件。
+  `just plan-schema` 再运行报告 0 文件更新。参考片两种风格各 231/231 帧逐像素回归通过（0 差异、缺帧或未比较帧）；
+  `validate infotheory` 为 28 场景、140 抽样帧、1718 文本框、0 错误、6 条半透明文字对比度 warning。
+- 未完成的验收：离线运行 `test-narration` 在字体准备步骤失败，当前 worktree 没有 `.cache/fonts` 原始字体，且此次禁止下载或触碰其他 worktree。
+  失败前 `narration.json` 路径的合成、音频哈希/时长、二次复用、只改字幕、改读法、丢失音频、半途失败回滚均通过；其后的旧旁白页面、混音/响度、导出回归未跑到。
+  因此不能将整套旁白回归或 2c 的全量验收标为通过。Python 依赖只从本机已有缓存复制到本 worktree，计划测试复用已入库字体子集，不作网络下载。
+  未测真实 TTS 或新计划的全量字体重新裁剪。`films/infotheory`、`films/math-lessons`、styles、audio 的受版本控制文件未改，未重录基线。
+
+阶段 3 实施记录（2026-10-10）：
+- 项目 skill `.claude/skills/make-film/SKILL.md`：brief → film-plan → 素材（录屏、旁白、配乐）→ scaffold 场景 → 草稿局部渲染与拼板 →
+  plan-check / validate / mix → 至少一轮自审 → 导出交给人。AGENTS.md 指向它（Codex 也读 AGENTS.md）。
+- 真实 hackathon 片：比赛（AI 重构产业 · 架构师大赛 48H 初赛）2026-10-10 18:00 才开始，产品尚不存在，正式片只能赛中做。
+  先用一个真实产品做完整演练：`films/raa-demo`，Develata 的 Repo-AI-Analysis（本地运行其站点，Playwright 录屏），46 秒，
+  旁白（CosyVoice3）、配乐（score.py）、字幕全由计划驱动；引擎未为这部片子做任何片内特例。全过程产物（brief、plan、录屏脚本、
+  旁白 lock 与 FLAC、配乐脚本、自审记录 `review/01-self-review.md`）都在片子目录里。
+- 演练暴露并修复的引擎问题：模板 `main.ts` 与 scaffold 生成的场景对真实计划过不了类型检查；JSON schema 新鲜度检查在 CRLF
+  检出时误报；录屏的时钟检查在一次慢的往返上误报（改为三次取最快、容差加上往返误差）。
+- 耗时（机器时间）：录屏 2 次共约 1 分钟，旁白合成 3.5 分钟，拼板、配乐、混音各约 1 分钟，导出见下。
 
 ### 阶段 3 · agent 接口与实战
 
 - AGENTS.md（Claude 与 Codex 共用；CLAUDE.md 只指向它）：分层约定、契约、命令、如何加场景、风格规则、验收清单。
-- 项目 skill：brief → film plan → 场景 → 渲染自检 → 修改。
+- 项目 skill：brief → film plan → 场景 → 渲染自检 → 修改（风格设计部分即 A2 的 `design-style`）。
 - 实战：一个真实 hackathon 项目，60–90 秒，含录屏、旁白、配乐、字幕。
 
 退出条件：
@@ -303,6 +579,8 @@ agent 只用这些命令就能完成"改计划 → 生成或修改场景 → 看
 | 跨平台字体与 GPU 差异 | 字体随仓库并校验覆盖；按平台选后端；0d 实机；正式成片在固定环境渲染 |
 | 模型与素材许可证 | 素材清单必填许可证；默认只用许可明确的模型 |
 | 引擎越长越杂 | 依赖方向强制；新原语进 engine 前必须有两部片子用到 |
+| agent 设计的风格质量不稳 | 先给 2–3 个方向由人选；拼板 + 评审清单自检；对比度与重叠硬校验；字体只从确认过的目录选 |
+| 着色器写坏或过慢 | 风格模板与 WebGL 编译检查（已有）；拼板实际渲染；导出速度写进拼板 JSON |
 
 ## 待确认
 
@@ -310,3 +588,4 @@ agent 只用这些命令就能完成"改计划 → 生成或修改场景 → 看
 - 录屏一律用 viewport = 输出分辨率、DPR 1（0c 实测 DPR 2 不提高录制分辨率）。
 - 0d 需要协作者在 macOS 上配合运行。
 - 字体选择需人眼看样张；字体等素材文件的下载逐项确认。
+- A2 字体目录的候选清单（字体族、用途、体积）需 Develata 确认后一次性下载。

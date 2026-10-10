@@ -8,4 +8,4 @@ const manifests = import.meta.glob('./fonts/*/manifest.json', { import: 'default
 const files = import.meta.glob('./fonts/*/*.woff2', { query: '?url', import: 'default', eager: true }) as Record<string, string>;
 const fontUrls = Object.fromEntries(Object.entries(files).map(([k, v]) => [k.replace('./fonts/', ''), v]));
 
-boot({ fonts: Object.values(manifests), fontUrls });
+boot({ title: { name: '信息论', tagline: 'THE MEASURE OF UNCERTAINTY' }, fonts: Object.values(manifests), fontUrls });

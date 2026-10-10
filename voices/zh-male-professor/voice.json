@@ -1,0 +1,15 @@
+{
+ "id": "zh-male-professor",
+ "description": "Mandarin; low, steady and serious male voice (median F0 about 90 Hz), measured. A generated clip: CosyVoice-300M-Instruct, built-in speaker 中文男 with a speaker description; the narration clones it zero-shot. Chosen by Develata (2026-10-10) over the first voice, cosyvoice-zero-shot, which sounded too light",
+ "file": "prompt.wav",
+ "text": "我们从最简单的问题出发，一步一步，走到它的深处。",
+ "source": "generated with CosyVoice-300M-Instruct (ModelScope iic/CosyVoice-300M-Instruct; llm.pt sha256 ef23893d68b93406eae04719a3b800488921e08b394624e9a5ba69bea3a59a13, flow.pt fd80b089444a95e52956c57cdf177d7f6017a5af13b8a697717628a1d2be6b55, hift.pt 91e679b6ca1eff71187ffb4f3ab0444935594cdcc20a9bd12afad111ef8d6012, spk2info.pt e3b1d62ca87cdcb25a9003fa0c8f2cba5c94f55b0d5f80f0b63ef8c22d919cfc), CosyVoice source at commit 074ca6d, no text normaliser, fp32",
+ "generator": {
+  "call": "inference_instruct(text, '中文男', instruct)",
+  "instruct": "A mature male professor with a low-pitched, steady and serious voice, measured and thoughtful.<|endofprompt|>",
+  "seed": 1
+ },
+ "transcriptSource": "the text the clip was generated from",
+ "license": "Apache-2.0 (the model's licence; the built-in speaker's own provenance is not stated upstream)",
+ "sha256": "347f03777fe0ccf4a36a82330ce711f202b891051f83976fd4c2a87ef5cda446"
+}

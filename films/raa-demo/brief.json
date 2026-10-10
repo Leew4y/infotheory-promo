@@ -1,0 +1,9 @@
+{
+ "product": "Repo-AI-Analysis: structured AI analyses of open-source GitHub repositories (a VitePress site, develata.me/Repo-AI-Analysis)",
+ "audience": "developers choosing an open-source tool; hackathon-style judges watching a short demo",
+ "durationSeconds": 60,
+ "tone": "clear, quiet, factual",
+ "mustShow": ["a report card with its 10-dimension radar", "Compare with three repos of one kind", "the number of reports and categories"],
+ "language": "zh-CN",
+ "notes": "Stage-3 rehearsal of the make-film workflow on a real product (2026-10-10). Every number on screen checked against docs/public/data/reports.json of Repo-AI-Analysis at f98019e: 152 reports, 10 categories; Ollama 4.3, vLLM 4.2, llama.cpp 4.2. Footage is real (Playwright recording of the site's dev server), not sped up."
+}

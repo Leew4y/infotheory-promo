@@ -1,0 +1,64 @@
+{
+ "film": "raa-demo",
+ "backend": "cosyvoice3",
+ "model": "FunAudioLLM/Fun-CosyVoice3-0.5B-2512@29e01c4e8d000f4bcd70751be16fa94bf3d85a18",
+ "voice": "zh-male-professor",
+ "lines": {
+  "t1": {
+   "text": "挑一个开源工具之前，往往要先读完它的 README、issue 和代码。",
+   "read": "挑一个开源工具之前，往往要先读完它的 README、issue 和代码。",
+   "duration": 5.93,
+   "sha256": "f316a3e249e0b25c8f336f5680ea9db205c4942e0d15167b196d830639315641",
+   "key": "9f41724269034ead586fbe0e8889467181c7c15b4987a514202ea808e36c5c57"
+  },
+  "h1": {
+   "text": "Repo-AI-Analysis 为每个仓库写一份结构化报告：",
+   "read": "Repo-AI-Analysis 为每个仓库写一份结构化报告：",
+   "duration": 3.96,
+   "sha256": "c6fda733b42e12123f84ede7dc19ddece989a316cdf07b340a8a470013b6961c",
+   "key": "756133a20baa08e234aa53c143b4d67e1033ec9ac8599ee606e37e7df2621276"
+  },
+  "h2": {
+   "text": "十个维度打分，优势和短板一眼看清。",
+   "read": "十个维度打分，优势和短板一眼看清。",
+   "duration": 3.46,
+   "sha256": "fe10e154d02c90773c05c9f2d2216b91980cea97d6719b2e2294bdb9edb9b64c",
+   "key": "889f62cee575f365df232675bf5814f1642c9e9130811c5660791028ee9a47ba"
+  },
+  "c1": {
+   "text": "在 Compare 里勾选几个同类仓库，雷达图立刻叠在一起。",
+   "read": "在 Compare 里勾选几个同类仓库，雷达图立刻叠在一起。",
+   "duration": 5.84,
+   "sha256": "c5ca7a0dc511fe26c34d3193b10e3dacb8761f8f38f6b65eb2fe4183019e84c9",
+   "key": "23cd8baf4378af9545163567f3b0a8ec8fa954c5b4e3bca6a0d385eea9bb986c"
+  },
+  "c2": {
+   "text": "比如三个本地模型运行时：Ollama 4.3 分，vLLM 和 llama.cpp 都是 4.2。",
+   "read": "比如三个本地模型运行时：Ollama 四点三分，vLLM 和 llama.cpp 都是四点二。",
+   "duration": 10.49,
+   "sha256": "435176b2f6779e9e2bacfa5e632c7426f63bbf3102c0dafd1742930c7d466fcf",
+   "key": "1b84e0aa8119c1dd60a801149718671241a87eb8b821ca5ca200c18552e8f97a"
+  },
+  "c3": {
+   "text": "选择写进网址，分享出去也能还原。",
+   "read": "选择写进网址，分享出去也能还原。",
+   "duration": 4.48,
+   "sha256": "23270060b84da272dbca85822e986740deb00f0bdf6740a99861469a5d2bf101",
+   "key": "c802d202976223c12f1b1935c2e65ceba868d2fa0555128c0590f71ea6714e7c"
+  },
+  "n1": {
+   "text": "目前收录 152 份报告，覆盖 10 个类别。",
+   "read": "目前收录一百五十二份报告，覆盖十个类别。",
+   "duration": 3.7,
+   "sha256": "1a8cba9283cb01dbc0ccd1605e34223136223fd6a987ff1beb884eebf83c393b",
+   "key": "422a6d1d7844e453d7c5ed6a26fd95cca899cd4334e00deff266f381a8d74033"
+  },
+  "e1": {
+   "text": "选工具之前，先看一眼报告。",
+   "read": "选工具之前，先看一眼报告。",
+   "duration": 2.79,
+   "sha256": "8466c5b88ec2f1d5dbe91eb69f0cd7c0e144e2d8f20b271fb2ccd9171e76f0c8",
+   "key": "ee39fff59bde425b0d250dde744b655232d984640188482b368ccd5f903e917f"
+  }
+ }
+}

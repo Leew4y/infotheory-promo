@@ -40,6 +40,7 @@ export const SceneSpec = z.object({
   sfx: z.array(Sfx).optional(),
   cam: fn.optional(),
   draw: fn,
+  need: fn.optional(),
 }).refine((s) => (s.chapter === undefined) === (s.ch === undefined), { message: 'chapter and ch go together', path: ['ch'] });
 
 /** Throw a readable error if `value` does not satisfy `schema`. */

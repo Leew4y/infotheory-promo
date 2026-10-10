@@ -334,7 +334,7 @@ def master(mix_path, wav_path):
     m = subprocess.run(['ffmpeg', '-hide_banner', '-i', mix_path, '-af', ln + ':print_format=json', '-f', 'null', '-'], capture_output=True, text=True).stderr
     m = json.loads(m[m.rindex('{'):m.rindex('}') + 1])
     ln += f":measured_I={m['input_i']}:measured_TP={m['input_tp']}:measured_LRA={m['input_lra']}:measured_thresh={m['input_thresh']}:offset={m['target_offset']}:linear=true"
-    subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', mix_path, '-af', ln + ',alimiter=limit=-1.8dB:level=false',
+    subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', mix_path, '-af', ln + ',alimiter=limit=-1.8dB:level=false:latency=1',
                     '-ar', str(SR), '-c:a', 'pcm_s16le', wav_path], check=True)
     q = measure(wav_path)
     print(f"master: {q['duration']:.3f}s, {q['I']:.2f} LUFS, true peak {q['TP']:.2f} dBTP")

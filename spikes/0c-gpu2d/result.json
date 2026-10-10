@@ -1,0 +1,196 @@
+{
+ "film": "infotheory",
+ "chrome": "Chrome/154.0.8037.93",
+ "platform": "win32 x64",
+ "commit": "749ddbf088265b813b2ad59dd2b4d7714933c825",
+ "frames": [
+  0,
+  150,
+  300,
+  449,
+  450,
+  600,
+  719,
+  720,
+  750,
+  900,
+  1050,
+  1200,
+  1259,
+  1260,
+  1350,
+  1500,
+  1650,
+  1799,
+  1800,
+  1950,
+  1979,
+  1980,
+  2100,
+  2250,
+  2400,
+  2550,
+  2609,
+  2610,
+  2700,
+  2850,
+  3000,
+  3059,
+  3060,
+  3150,
+  3300,
+  3450,
+  3599,
+  3600,
+  3750,
+  3779,
+  3780,
+  3900,
+  4050,
+  4200,
+  4319,
+  4320,
+  4350,
+  4500,
+  4650,
+  4800,
+  4859,
+  4860,
+  4950,
+  5100,
+  5250,
+  5400,
+  5489,
+  5490,
+  5550,
+  5700,
+  5777,
+  5778,
+  5850,
+  6000,
+  6059
+ ],
+ "refSeconds": 38.6,
+ "runs": {
+  "cpu-again": {
+   "frames": 65,
+   "seconds": 38.7,
+   "framesDiffering": 0,
+   "pixelsDiffering": 0,
+   "pixelsOver2": 0,
+   "maxLevel": 0,
+   "worst": []
+  },
+  "gpu": {
+   "frames": 65,
+   "seconds": 29.6,
+   "framesDiffering": 50,
+   "pixelsDiffering": 61287737,
+   "pixelsOver2": 420019,
+   "maxLevel": 57,
+   "worst": [
+    {
+     "frame": 6000,
+     "differ": 1980992,
+     "max": 24
+    },
+    {
+     "frame": 1350,
+     "differ": 1646518,
+     "max": 25
+    },
+    {
+     "frame": 4050,
+     "differ": 1641150,
+     "max": 17
+    },
+    {
+     "frame": 4200,
+     "differ": 1640223,
+     "max": 34
+    },
+    {
+     "frame": 5250,
+     "differ": 1637184,
+     "max": 47
+    }
+   ]
+  },
+  "gpu-mixed": {
+   "frames": 85,
+   "seconds": 42.2,
+   "framesDiffering": 50,
+   "pixelsDiffering": 78319401,
+   "pixelsOver2": 520657,
+   "maxLevel": 57,
+   "worst": [
+    {
+     "frame": 6000,
+     "differ": 1980992,
+     "max": 24
+    },
+    {
+     "frame": 1350,
+     "differ": 1646518,
+     "max": 25
+    },
+    {
+     "frame": 1350,
+     "differ": 1646518,
+     "max": 25
+    },
+    {
+     "frame": 4050,
+     "differ": 1641150,
+     "max": 17
+    },
+    {
+     "frame": 4200,
+     "differ": 1640223,
+     "max": 34
+    }
+   ]
+  },
+  "gpu-4w": {
+   "frames": 65,
+   "seconds": 19.4,
+   "framesDiffering": 50,
+   "pixelsDiffering": 61287737,
+   "pixelsOver2": 420019,
+   "maxLevel": 57,
+   "worst": [
+    {
+     "frame": 6000,
+     "differ": 1980992,
+     "max": 24
+    },
+    {
+     "frame": 1350,
+     "differ": 1646518,
+     "max": 25
+    },
+    {
+     "frame": 4050,
+     "differ": 1641150,
+     "max": 17
+    },
+    {
+     "frame": 4200,
+     "differ": 1640223,
+     "max": 34
+    },
+    {
+     "frame": 5250,
+     "differ": 1637184,
+     "max": 47
+    }
+   ]
+  }
+ },
+ "gpuSelf": [
+  {
+   "frame": 4050,
+   "distinct": 2
+  }
+ ]
+}

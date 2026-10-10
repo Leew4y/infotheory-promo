@@ -8,6 +8,7 @@
  * so values a scene captures at registration (e.g. a fade colour) already come from the active style.
  */
 import type { Grade } from './gl';
+import type { Rect } from './capture';
 import { check, GradeSpec } from './schema';
 
 export interface Palette {
@@ -41,11 +42,18 @@ export interface Fonts {
   mono: string;
 }
 
-/** Parameters of the full-frame plate background; each style interprets them (the dawn style: time of day, sun height). */
+/**
+ * What a scene asks of the full-frame plate background, in style-neutral terms; each style decides how to draw it
+ * (paper-dawn: progress = time of day, highlight = sun height; nebula: progress = gas brightness and density,
+ * highlight = a bright star).
+ */
 export interface PlateParams {
+  /** Seconds, for slow drift (clouds, gas); any origin. */
   time?: number;
-  light?: number;
-  sun?: number;
+  /** 0–1: where the film is in its story, from the opening (dim, early) to the close (full, late). */
+  progress?: number;
+  /** 0–1: the strength of a focal light in the background; 0 for none. */
+  highlight?: number;
 }
 
 export interface SubLine {
@@ -87,6 +95,27 @@ export interface StylePackage {
   label(s: string, x: number, y: number, a: number, color: string, size: number, align: CanvasTextAlign): void;
   /** Cover the scene layer for a scene fade: `amount` in (0, 1], through `color`. */
   transition(amount: number, color: string): void;
+  /**
+   * Text protection on a full-frame background: quietly darken (or calm) the area centred at (cx, cy), about w × h,
+   * so light text drawn over it next stays readable; `a` (0–1) fades it with the text.
+   */
+  backdrop(cx: number, cy: number, w: number, h: number, a: number): void;
+  /** How screen captures look in a demo scene (engine/demo.ts): the window around them, the cursor, a click. */
+  demo: {
+    /** Where a capture's window goes on a page by default (canvas px): clear of the chapter label and the captions. */
+    area: Rect;
+    /** Seconds a click's ripple lasts, and seconds the cursor shows the press after a click. */
+    rippleDur: number;
+    pressDur: number;
+    /** How the cursor moves between its positions: an easing of u in [0, 1] (e.g. smoothstep). */
+    cursorEase: (u: number) => number;
+    /** Draw the window chrome around `r` (title bar, frame, shadow) and return the rect the capture fills. */
+    window(r: Rect, title: string, a: number): Rect;
+    /** The cursor with its tip at (x, y); `press` 0–1 while a click is held. */
+    cursor(x: number, y: number, press: number, a: number): void;
+    /** A click at (x, y), `k` 0–1 through its short animation. */
+    ripple(x: number, y: number, k: number, a: number): void;
+  };
   /** Chapter label and page number overlay on chapter pages. */
   chapterLabel(lt: number, d: number, n: number, ch: [string, string], chapters: number): void;
   /** Bilingual captions overlay at film time T. */
@@ -142,5 +171,6 @@ export function style(): StylePackage {
 
 export const background = (): void => style().background();
 export const plate = (u: PlateParams): void => style().plate(u);
+export const backdrop: StylePackage['backdrop'] = (...a) => style().backdrop(...a);
 export const statement: StylePackage['statement'] = (...a) => style().statement(...a);
 export const row: StylePackage['row'] = (...a) => style().row(...a);

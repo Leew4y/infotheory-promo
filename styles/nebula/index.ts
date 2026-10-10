@@ -4,7 +4,7 @@
  * Fades close in from the edges like an iris; chapter labels and the page count sit top right in mono; captions are
  * centred on a translucent band. The counterpart of paper-dawn for the style-decoupling acceptance.
  */
-import { ctx, text, rule, label, measure } from '../../engine/draw';
+import { ctx, text, rule, label, measure, rgba } from '../../engine/draw';
 import { glPlate } from '../../engine/gl';
 import { C, F, M, type StylePackage, type SubLine } from '../../engine/style';
 import { clamp, eout, sstep, win, W, H } from '../../engine/util';
@@ -23,6 +23,13 @@ function mask(): CanvasRenderingContext2D {
   return MASK.getContext('2d')!;
 }
 
+function arrowPath(x: number, y: number, s: number): void {
+  const p: [number, number][] = [[0, 0], [0, 17], [4.2, 13.2], [7, 19.5], [9.6, 18.4], [6.9, 12.2], [12.4, 12.2]];
+  ctx.beginPath();
+  p.forEach(([u, v], i) => (i ? ctx.lineTo(x + u * s, y + v * s) : ctx.moveTo(x + u * s, y + v * s)));
+  ctx.closePath();
+}
+
 const nebula: StylePackage = {
   id: 'nebula',
   palette: {
@@ -30,7 +37,7 @@ const nebula: StylePackage = {
     bg2: '#141B2D',
     fg: '#E6EEF7',
     fg2: '#A9B8CC',
-    muted: '#7586A0',
+    muted: '#8D9DB6',
     rule: '#2C3854',
     accent: '#5FD4E8',
     accent2: '#A3EAF5',
@@ -54,7 +61,8 @@ const nebula: StylePackage = {
   layout: { margin: 170, column: 1010 },
 
   background: () => glPlate(NEBULA_FS, 1, { time: 0, tint: GAS }),
-  plate: (u) => glPlate(NEBULA_FS, 2, { time: u.time, p: u.light, q: u.sun, tint: GAS }),
+  // progress brightens and thickens the gas, highlight lights a star
+  plate: (u) => glPlate(NEBULA_FS, 2, { time: u.time, p: u.progress, q: u.highlight, tint: GAS }),
 
   /** Slides in from the left behind a short cyan bar; the English line in small mono capitals. */
   statement(zh, en, lt, t0 = 0.4, y = 300, size = 54) {
@@ -76,6 +84,80 @@ const nebula: StylePackage = {
   /** Small mono capitals, light tracking. */
   label(s, x, y, a, color, size, align) {
     text(s.toUpperCase(), x, y, { font: F.mono, size: size * 0.92, ls: size * 0.1, color, alpha: a, align });
+  },
+
+  /**
+   * A shade of the plate's darkest colour behind text: an ellipse twice the asked size whose opacity falls off like a
+   * gaussian (no visible edge), strongest over the text block.
+   */
+  backdrop(cx, cy, w, h, a) {
+    if (a <= 0.002) return;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(w, h);
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+    for (let i = 0; i <= 8; i++) {
+      const r = i / 8;
+      g.addColorStop(r, rgba('#03050A', 0.5 * a * Math.exp(-r * r * 4.5) * (1 - r)));
+    }
+    ctx.fillStyle = g;
+    ctx.fillRect(-1, -1, 2, 2);
+    ctx.restore();
+  },
+
+  /** Captures in a dark glass panel: a cyan hairline with a faint glow, the title in mono on a slim bar. */
+  demo: {
+    // the margins of the layout; below the chapter label, above the captions
+    area: { x: 170, y: 190, w: W - 340, h: H - 420 },
+    rippleDur: 0.6,
+    pressDur: 0.15,
+    cursorEase: (u) => u * u * (3 - 2 * u),
+    window(r, title, a) {
+      const bar = 30;
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.shadowColor = 'rgba(95,212,232,0.25)';
+      ctx.shadowBlur = 30;
+      ctx.fillStyle = C.bg2;
+      ctx.beginPath();
+      ctx.roundRect(r.x, r.y - bar, r.w, r.h + bar, 10);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = rgba(C.accent, 0.55);
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      for (let i = 0; i < 3; i++) {
+        ctx.fillStyle = rgba(C.fg2, 0.5);
+        ctx.beginPath();
+        ctx.arc(r.x + 18 + i * 16, r.y - bar / 2, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+      if (title) text(title.toUpperCase(), r.x + r.w / 2, r.y - bar / 2 + 5, { font: F.mono, size: 13, color: C.muted, alpha: a, align: 'center', ls: 1.5 });
+      return { x: r.x, y: r.y, w: r.w, h: r.h };
+    },
+    cursor(x, y, press, a) {
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.shadowColor = rgba(C.accent, 0.8);
+      ctx.shadowBlur = 10;
+      arrowPath(x, y, 1.25 - 0.1 * press);
+      ctx.fillStyle = C.fg;
+      ctx.fill();
+      ctx.restore();
+    },
+    ripple(x, y, k, a) {
+      ctx.save();
+      ctx.globalAlpha = a * (1 - k);
+      ctx.strokeStyle = C.accent;
+      ctx.shadowColor = C.accent;
+      ctx.shadowBlur = 12;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, y, 6 + 40 * eout(k), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    },
   },
 
   /**

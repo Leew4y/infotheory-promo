@@ -1,0 +1,23 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>capture test page</title>
+<style>
+  html, body { margin: 0; width: 100%; height: 100%; background: #f4f4f2; overflow: hidden; font: 16px sans-serif; }
+  .b { position: absolute; width: 160px; height: 80px; background: #dfe3ea; border: 1px solid #9aa3b0; }
+  .m { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; background: #ff0000; pointer-events: none; }
+</style></head>
+<body>
+<!-- buttons to click; every press leaves a pure red 12 px square centred on the press point (the page's own marker) -->
+<div class="b" id="b1" style="left: 300px; top: 200px"></div>
+<div class="b" id="b2" style="left: 1300px; top: 260px"></div>
+<div class="b" id="b3" style="left: 820px; top: 640px"></div>
+<div class="b" id="b4" style="left: 1500px; top: 760px"></div>
+<script>
+  addEventListener('pointerdown', (e) => {
+    const m = document.createElement('div');
+    m.className = 'm';
+    m.style.left = e.clientX + 'px';
+    m.style.top = e.clientY + 'px';
+    document.body.appendChild(m);
+  });
+</script>
+</body></html>

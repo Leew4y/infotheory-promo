@@ -1,0 +1,49 @@
+{
+ "film": "raa-demo",
+ "fps": 30,
+ "bpm": 80,
+ "styles": ["paper-dawn"],
+ "voice": "zh-male-professor",
+ "scenes": [
+  {
+   "id": "title", "kind": "plate", "lead": 1.0, "tail": 1.0,
+   "lines": [{ "id": "t1", "text": "挑一个开源工具之前，往往要先读完它的 README、issue 和代码。" }],
+   "copy": { "name": "Repo-AI-Analysis", "promise": "用 AI 读懂一个开源仓库" }
+  },
+  {
+   "id": "home", "kind": "demo", "lead": 0.6, "tail": 0.6,
+   "capture": {
+    "asset": "captures/site.json", "title": "Repo-AI-Analysis",
+    "edit": [{ "from": 0.3, "to": 8.3 }],
+    "camera": [{ "t": 0, "x": 720, "y": 405, "zoom": 1 }, { "t": 2.2, "x": 720, "y": 405, "zoom": 1 }, { "t": 4.6, "x": 440, "y": 400, "zoom": 1.45 }]
+   },
+   "lines": [
+    { "id": "h1", "text": "Repo-AI-Analysis 为每个仓库写一份结构化报告：", "pause": 0.2 },
+    { "id": "h2", "text": "十个维度打分，优势和短板一眼看清。" }
+   ]
+  },
+  {
+   "id": "compare", "kind": "demo", "lead": 0.4, "tail": 0.8,
+   "capture": {
+    "asset": "captures/site.json", "title": "Repo-AI-Analysis · Compare",
+    "edit": [{ "from": 8.8, "to": 20.0 }],
+    "camera": [{ "t": 0, "x": 720, "y": 405, "zoom": 1 }, { "t": 8.4, "x": 720, "y": 405, "zoom": 1 }, { "t": 10.4, "x": 910, "y": 440, "zoom": 1.4 }]
+   },
+   "lines": [
+    { "id": "c1", "text": "在 Compare 里勾选几个同类仓库，雷达图立刻叠在一起。" },
+    { "id": "c2", "text": "比如三个本地模型运行时：Ollama 4.3 分，vLLM 和 llama.cpp 都是 4.2。", "read": "比如三个本地模型运行时：Ollama 四点三分，vLLM 和 llama.cpp 都是四点二。" },
+    { "id": "c3", "text": "选择写进网址，分享出去也能还原。" }
+   ]
+  },
+  {
+   "id": "numbers", "kind": "page", "lead": 0.6, "tail": 1.2,
+   "lines": [{ "id": "n1", "text": "目前收录 152 份报告，覆盖 10 个类别。", "read": "目前收录一百五十二份报告，覆盖十个类别。" }],
+   "copy": { "count": "152", "unit": "份报告", "detail": "覆盖 10 个类别 · 每份十个维度打分" }
+  },
+  {
+   "id": "end", "kind": "plate", "lead": 0.6, "tail": 2.0,
+   "lines": [{ "id": "e1", "text": "选工具之前，先看一眼报告。" }],
+   "copy": { "url": "develata.me/Repo-AI-Analysis" }
+  }
+ ]
+}

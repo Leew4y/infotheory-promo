@@ -7,6 +7,7 @@
  */
 import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { confined } from './lib/confine';
 
 export type Gpu = 'platform' | 'swiftshader';
 
@@ -55,37 +56,53 @@ export async function killTree(pid: number | undefined, waitMs = 5000): Promise<
   return !alive();
 }
 
-/** A static file server for a built page directory; '/' is index.html. */
-export function serveDist(dist: string): { url: string; stop: () => void } {
+/**
+ * Serve a built film (dist/<film>/) on a free local port, and, if given, the film's media frames
+ * (.cache/captures/<film>/) under /media/. A request may only reach files inside those directories (real paths:
+ * scripts/lib/confine.ts).
+ */
+/** Where rendered frames are posted (POST /frames/<token>/<n>): `take` returns null, or why the frame is refused. */
+export interface FrameSink { token: string; take: (n: number, body: Uint8Array) => string | null }
+export function serveDist(dist: string, o: { media?: string; frames?: FrameSink } = {}): { url: string; stop: () => void } {
   const server = Bun.serve({
     hostname: '127.0.0.1', port: 0,
     async fetch(req) {
-      const p = decodeURIComponent(new URL(req.url).pathname);
+      let p: string;
+      try { p = decodeURIComponent(new URL(req.url).pathname); } catch { return new Response('bad request', { status: 400 }); }
       if (p === '/favicon.ico') return new Response(null, { status: 204 });
-      const f = Bun.file(path.join(dist, p === '/' ? 'index.html' : p));
-      return (await f.exists()) ? new Response(f) : new Response('not found', { status: 404 });
+      // rendered frames posted by the page, for the job that holds the token
+      const m = /^\/frames\/([0-9a-f]+)\/(\d+)$/.exec(p);
+      if (m && req.method === 'POST') {
+        if (!o.frames || m[1] !== o.frames.token) return new Response('unknown job', { status: 403 });
+        const why = o.frames.take(+m[2], new Uint8Array(await req.arrayBuffer()));
+        return why ? new Response(why, { status: 400 }) : new Response(null, { status: 204 });
+      }
+      const file = p.startsWith('/media/') ? (o.media ? confined(o.media, p.slice('/media'.length)) : null) : confined(dist, p === '/' ? '/index.html' : p);
+      return file ? new Response(Bun.file(file)) : new Response('not found', { status: 404 });
     },
   });
   return { url: `http://127.0.0.1:${server.port}`, stop: () => server.stop(true) };
 }
 
 /**
- * Open the built film in export mode, in one of its styles ('' = the default), and wait until it can render.
+ * Open the built film `film` in export mode, in one of its styles ('' = the default), and wait until it can render.
  * Fails fast and with the page's own message when the page throws while loading (e.g. an unknown style id), when it
- * names no style or another style than requested (a stale dist/), or when __ready() throws (e.g. a missing font bundle).
+ * renders another film or names no style or another style than requested (a stale dist/), or when __ready() throws
+ * (e.g. a missing font bundle).
  */
-export async function loadFilm(page: import('puppeteer-core').Page, url: string, style: string, timeout = 60_000): Promise<{ style: string; styles: string[] }> {
+export async function loadFilm(page: import('puppeteer-core').Page, url: string, film: string, style: string, timeout = 60_000): Promise<{ style: string; styles: string[] }> {
   const thrown = new Promise<never>((_, reject) => page.once('pageerror', (e) => reject(new Error(`page threw while loading: ${e instanceof Error ? e.message : String(e)}`))));
   thrown.catch(() => {});
   await Promise.race([page.goto(`${url}/?export=1${style ? `&style=${encodeURIComponent(style)}` : ''}`, { waitUntil: 'load' }), thrown]);
   await Promise.race([page.waitForFunction(() => typeof window.__frame === 'function', { timeout }), thrown]);
-  const got = await page.evaluate(() => ({ style: window.__style, styles: window.__styles }));
-  if (typeof got.style !== 'string' || !got.style || !Array.isArray(got.styles)) throw new Error('the page names no style (__style / __styles missing: a build from before style selection? run bun run build)');
-  if (style && got.style !== style) throw new Error(`the page renders style "${got.style}", not "${style}" (stale dist/? run bun run build)`);
+  const got = await page.evaluate(() => ({ film: window.__film, style: window.__style, styles: window.__styles }));
+  if (got.film !== film) throw new Error(`the page renders film "${got.film}", not "${film}" (stale dist/? run just build ${film})`);
+  if (typeof got.style !== 'string' || !got.style || !Array.isArray(got.styles)) throw new Error('the page names no style (__style / __styles missing: a build from before style selection? run just build ${film})');
+  if (style && got.style !== style) throw new Error(`the page renders style "${got.style}", not "${style}" (stale dist/? run just build ${film})`);
   const ready = await Promise.race([page.waitForFunction(() => {
     try { return window.__ready() ? 'ok' : false; } catch (e) { return `error: ${e instanceof Error ? e.message : String(e)}`; }
   }, { timeout }), thrown]);
   const r = await ready.jsonValue();
   if (r !== 'ok') throw new Error(`the page is not ready: ${r}`);
-  return got;
+  return { style: got.style, styles: got.styles };
 }

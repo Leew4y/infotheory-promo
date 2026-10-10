@@ -3,13 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "export": "bun scripts/export.ts"
-  },
   "devDependencies": {
     "@types/bun": "^1.4.2",
+    "playwright-core": "1.63.0",
     "puppeteer-core": "^25.12.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.1"

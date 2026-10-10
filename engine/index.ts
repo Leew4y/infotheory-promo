@@ -3,9 +3,14 @@
  * styles may also use the engine's internal modules. Enforced by scripts/check-imports.ts.
  */
 export { ctx, text, measure, label, para, rgba, rule, ink, circlePts, circle, dot, hatch, arrow, rollNumber, bits, type TextOpts } from './draw';
-export { C, F, M, COL, background, plate, statement, row, useStyle, selectStyle, type Palette, type Fonts, type PlateParams, type StylePackage } from './style';
+export { C, F, M, COL, background, plate, backdrop, statement, row, useStyle, selectStyle, type Palette, type Fonts, type PlateParams, type StylePackage } from './style';
 export { scene, camDrift, type Cam, type SceneDef, type Sfx, type Sub } from './scene';
 export { defineFilm, film, bars, BAR, BEAT, BPM, EIGHTH, FPS, FRAMES, TOTAL, type FilmMeta } from './film';
 export { W, H, PI, TAU, clamp, lerp, sstep, eio, eout, ein, eexpo, win, mulberry, hash1, noise1 } from './util';
 export type { Grade } from './gl';
 export { boot, type BootOptions, type FontManifest } from './boot';
+export { demoScene, type DemoOpts, type CursorKey } from './demo';
+export { useNarration, narratedScene, placeNarration, vo, type NarrationScript, type NarrationLock, type NarrationLine, type NarratedOpts, type NarrationTiming } from './narration';
+export type { CaptureAsset, CaptureEvent, CamKey, Rect, Segment } from './capture';
+export { BriefSpec, FilmPlanSpec, usePlan, copy, type Brief, type FilmPlan } from './plan';
+export { planScene, type PlanDraw } from './plan-scene';

@@ -10,32 +10,50 @@
  *   __styles           ids of all the film's styles, the default first
  *   __timeline()       the resolved timeline (frames and seconds per scene), written to timeline.json
  *   __layout(t)        text boxes of the frame at t (for scripts/validate.ts)
+ *   __contrast(t)      measured contrast of every text box (alpha >= 0.5) of the frame at t as exported (for scripts/validate.ts)
  *   __gpu()            WebGL renderer string
  *   __cues()           the sound-effect cue sheet (the film's score reads it as cues.json)
- *   __scenes()         name/start/end of every scene (for the shot list)
+ *   __scenes()         name, kind, start/end, fade lengths and caption times (film seconds) of every scene
+ *   __narration()      where each narration line plays (film seconds), for the final mix, and the lines no scene placed
+ *   __notes()          notes recorded while the film registered (e.g. a recorded click an edit cuts), for validate
+ *   __prefetch(ts)     start loading the media of the given times (export look-ahead)
+ *   __perf(on?)        stage timings of __frame (engine/perf.ts), for scripts/profile-export.ts
  * A film's main.ts imports its film.ts and scenes, then calls boot().
  */
 import { cv, recordText, setCoverage, type TextBox } from './draw';
-import { frame } from './frame';
+import { contrastAt, type ContrastBox } from './inspect';
+import { frame, needsAt, prepare } from './frame';
+import { prefetch, setStrict } from './media';
+import { allNotes, type Note } from './notes';
+import { lap, perfOn, perfReport } from './perf';
+import { narrationReport, type LinePlacement } from './narration';
 import { gpuName } from './gl';
 import { SC, sceneAt } from './scene';
 import { style, styleIds } from './style';
 import { clamp, fmtTime } from './util';
 import { film, FPS, FRAMES, TOTAL } from './film';
+import { assertPlanScenes } from './plan';
 
 declare global {
   interface Window {
     __ready: () => boolean;
-    __frame: (t: number, fps?: number) => string;
+    __frame: (t: number, fps?: number, samples?: number) => Promise<string>;
+    __perf: (on?: boolean) => Record<string, number>;
+    __frameTo: (url: string, t: number, fps?: number, samples?: number) => Promise<void>;
+    __drain: () => Promise<void>;
+    __prefetch: (ts: number[]) => void;
+    __notes: () => Note[];
+    __narration: () => { placements: LinePlacement[]; unplaced: string[] };
     __duration: number;
     __film: string;
     __style: string;
     __styles: string[];
-    __timeline: () => { film: string; fps: number; bpm: number; frames: number; duration: number; scenes: { name: string; kind: string; f0: number; f1: number; start: number; end: number }[] };
+    __timeline: () => { film: string; style: string; fps: number; bpm: number; frames: number; duration: number; scenes: { name: string; kind: string; f0: number; f1: number; start: number; end: number }[] };
     __gpu: () => string;
     __cues: () => { t: number; name: string; [k: string]: number | string }[];
-    __scenes: () => { name: string; start: number; end: number }[];
-    __layout: (t: number, fps?: number) => TextBox[];
+    __scenes: () => { name: string; kind: string; start: number; end: number; fadeIn: number; fadeOut: number; subs: [number, number][] }[];
+    __layout: (t: number, fps?: number) => Promise<TextBox[]>;
+    __contrast: (t: number, fps?: number) => Promise<ContrastBox[]>;
     __fonts: () => FontManifest;
   }
 }
@@ -45,6 +63,8 @@ export interface FontEntry { family: string; style: string; weight: string; file
 export interface FontManifest { film: string; style: string; charset: string; fonts: (FontEntry & { missing: string })[] }
 
 export interface BootOptions {
+  /** The page title and the player's start card: name, tagline (one line under it), browser tab title (default: "name · tagline"). */
+  title: { name: string; tagline?: string; page?: string };
   /** The film's font manifests, one per style, and the bundled URL of each file, keyed "<style>/<file>" (from import.meta.glob). */
   fonts: FontManifest[];
   fontUrls: Record<string, string>;
@@ -53,7 +73,12 @@ export interface BootOptions {
 }
 
 export function boot(o: BootOptions): void {
+  assertPlanScenes(styleIds());
   const EXPORT = /[?&]export=1/.test(location.search);
+  document.title = o.title.page ?? (o.title.tagline ? `${o.title.name} · ${o.title.tagline}` : o.title.name);
+  const h1 = document.getElementById('title'), tag = document.getElementById('tagline');
+  if (h1) h1.textContent = o.title.name;
+  if (tag) tag.textContent = o.title.tagline ?? '';
   const params = new URLSearchParams(location.search);
 
   // Fonts: only the active style's bundled subsets for this film, loaded explicitly. A missing bundle or a face that
@@ -73,13 +98,17 @@ export function boot(o: BootOptions): void {
   }))
     .then(() => {
       if (!manifest) throw new Error(`no bundled fonts for film "${film().id}" in style "${sid}" (run: bun scripts/fonts.ts --style ${sid})`);
+      // the first frame's media too, so the page is ready to draw it
+      return prepare(0);
+    })
+    .then(() => {
       fontsReady = true;
       const l = document.getElementById('load');
       if (l) l.textContent = o.readyText ?? '字体已就绪 · 建议全屏观看（F）';
       frame(0);
     })
     .catch((e) => {
-      fontError = `fonts failed to load: ${e instanceof Error ? e.message : String(e)}`;
+      fontError = `page not ready: ${e instanceof Error ? e.message : String(e)}`;
       console.error(fontError);
       const l = document.getElementById('load');
       if (l) l.textContent = fontError;
@@ -90,31 +119,71 @@ export function boot(o: BootOptions): void {
     return fontsReady;
   };
   window.__fonts = () => fonts;
-  window.__frame = (t, fps = 30) => {
-    frame(t, fps, 3);
-    return cv.toDataURL('image/jpeg', 0.95);
+  // every hook that renders first loads the media the frame needs (engine/media.ts), then draws synchronously
+  window.__frame = async (t, fps = 30, samples = 3) => {
+    let t0 = performance.now();
+    await prepare(t);
+    t0 = lap('prepare (media)', t0);
+    frame(t, fps, samples);
+    t0 = performance.now();
+    const url = cv.toDataURL('image/jpeg', 0.95);
+    lap('JPEG encode (toDataURL)', t0);
+    return url;
   };
+  window.__perf = (v?: boolean) => { if (v !== undefined) perfOn(v); return perfReport(); };
+  // __frameTo: render, then JPEG-encode a snapshot off the main thread (toBlob) and POST it to `url`, without waiting:
+  // the next frame draws while this one encodes and uploads. At most two in flight; __drain waits for them (and throws
+  // the first upload error).
+  const inflight = new Set<Promise<void>>();
+  window.__frameTo = async (url, t, fps = 30, samples = 3) => {
+    while (inflight.size >= 2) await Promise.race(inflight);
+    let t0 = performance.now();
+    await prepare(t);
+    t0 = lap('prepare (media)', t0);
+    frame(t, fps, samples);
+    t0 = performance.now();
+    const p = new Promise<Blob>((res, rej) => cv.toBlob((b) => (b ? res(b) : rej(new Error('toBlob gave no image'))), 'image/jpeg', 0.95))
+      .then((b) => fetch(url, { method: 'POST', body: b }))
+      .then((r) => { if (!r.ok) throw new Error(`frame upload: ${r.status}`); });
+    lap('snapshot (toBlob call)', t0);
+    inflight.add(p);
+    p.then(() => inflight.delete(p), () => {});
+  };
+  window.__drain = async () => { await Promise.all(inflight); };
+  /** Start loading the media of frames a worker will render next (look-ahead; never waits). */
+  window.__prefetch = (ts) => { for (const t of ts) prefetch(needsAt(t)); };
   window.__duration = TOTAL;
   window.__film = film().id;
   window.__style = sid;
   window.__styles = styleIds();
   window.__timeline = () => ({
-    film: film().id, fps: FPS, bpm: film().bpm, frames: FRAMES, duration: TOTAL,
+    film: film().id, style: sid, fps: FPS, bpm: film().bpm, frames: FRAMES, duration: TOTAL,
     scenes: SC.map((s) => ({ name: s.name, kind: s.kind, f0: s.f0, f1: s.f1, start: s.t0, end: s.t0 + s.d })),
   });
   // text boxes of the frame at t (no motion blur), for scripts/validate.ts
-  window.__layout = (t, fps = 30) => {
+  // the same motion-blur sub-frames as __frame (the export)
+  window.__contrast = async (t, fps = 30) => { await prepare(t); return contrastAt(t, fps, 3); };
+  window.__layout = async (t, fps = 30) => {
+    await prepare(t);
     recordText(true);
     frame(t, fps, 1);
     return recordText(false);
   };
   window.__gpu = gpuName;
+  window.__notes = allNotes;
+  window.__narration = narrationReport;
   window.__cues = () =>
     SC.flatMap((s) => (s.sfx ?? []).map(([t, name, o]) => ({ t: +(s.t0 + t).toFixed(4), name, ...(o ?? {}) }))).sort((a, b) => a.t - b.t);
-  window.__scenes = () => SC.map((s) => ({ name: s.name, start: +s.t0.toFixed(3), end: +(s.t0 + s.d).toFixed(3) }));
+  window.__scenes = () => SC.map((s) => ({
+    name: s.name, kind: s.kind, start: +s.t0.toFixed(3), end: +(s.t0 + s.d).toFixed(3),
+    fadeIn: s.fi ?? style().motion.fadeIn, fadeOut: s.fo ?? style().motion.fadeOut,
+    subs: s.subs.map(([a, b]) => [+(s.t0 + a).toFixed(3), +(s.t0 + b).toFixed(3)] as [number, number]),
+  }));
 
   const au = document.getElementById('au') as HTMLAudioElement;
 
+  // export and the check tools: a frame must never be drawn with media missing
+  setStrict(EXPORT);
   if (EXPORT) {
     document.body.classList.add('export');
   } else {
@@ -130,14 +199,22 @@ export function boot(o: BootOptions): void {
     const info = document.getElementById('info')!;
     document.getElementById('dur')!.textContent = fmtTime(TOTAL);
     const now = () => (useAudio ? au.currentTime : (performance.now() - clock0) / 1000);
+    // a paused seek draws at once (with stand-in frames if media is still loading), then again once its media is in;
+    // a later seek makes the earlier one's redraw stale
+    let seekSeq = 0;
     const setT = (t: number) => {
       au.currentTime = clamp(t, 0, TOTAL - 0.01);
       if (!useAudio) clock0 = performance.now() - au.currentTime * 1000;
-      if (!playing) draw(au.currentTime);
+      if (playing) return;
+      const T = au.currentTime, seq = ++seekSeq;
+      draw(T);
+      prepare(T).then(() => { if (seq === seekSeq && !playing) draw(T); }, () => {});
     };
     // nothing is drawn before the bundled fonts are in: no frame may use a system font
     const draw = (T: number) => {
       if (!fontsReady) return;
+      // the preview never waits: start loading the next second of media; a missing frame shows the nearest loaded one
+      for (let k = 0; k < 30; k += 3) prefetch(needsAt(T + k / 30));
       frame(T);
       fill.style.width = `${(T / TOTAL) * 100}%`;
       tm.textContent = fmtTime(T);

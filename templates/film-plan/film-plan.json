@@ -1,0 +1,12 @@
+{
+  "film": "template",
+  "fps": 30,
+  "bpm": 80,
+  "styles": ["paper-dawn"],
+  "voice": "zh-male-professor",
+  "scenes": [
+    { "id": "title", "kind": "plate", "dur": 3, "title": ["新片", "A new film"], "copy": { "promise": "从想法到演示" } },
+    { "id": "idea", "kind": "page", "title": ["一个想法", "One idea"], "lines": [{ "id": "idea-line", "text": "让想法成为现实。", "en": "Make an idea real." }], "copy": { "point": "展示关键一步" } },
+    { "id": "end", "kind": "page", "dur": 3, "title": ["开始吧", "Try it"], "captions": [[0.5, 2.5, "下一步，亲自试试。", "Now try it yourself."]], "copy": { "action": "现在开始" } }
+  ]
+}

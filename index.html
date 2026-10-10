@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>信息论 · 不确定的度量</title>
+<title></title>
 <style>
   :root { --paper: #F3F1EA; --ink: #1A1917; --rust: #C9663D; --grey: #8F8A80; }
   html, body { margin: 0; height: 100%; background: #0d0b09; color: var(--ink); overflow: hidden; }
@@ -30,13 +30,13 @@
 <body>
 <div id="stage"><canvas id="c" width="1920" height="1080"></canvas></div>
 <div id="start">
-  <h1>信息论</h1>
-  <p>THE MEASURE OF UNCERTAINTY</p>
+  <h1 id="title"></h1>
+  <p id="tagline"></p>
   <button id="go">播放</button>
   <small id="load">载入字体中…</small>
 </div>
 <div id="ui" class="hide"><button id="pp">❚❚</button><span id="tm">0:00</span><div id="bar"><div id="fill"></div></div><span id="dur">0:00</span><span id="info"></span><button id="fs">⛶</button></div>
 <audio id="au" preload="auto"></audio>
-<script type="module" src="/films/infotheory/main.ts"></script>
+<script type="module" src="%FILM_ENTRY%"></script>
 </body>
 </html>

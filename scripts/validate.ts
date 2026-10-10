@@ -1,7 +1,7 @@
 /**
  * Static checks of a built film, for people and agents.
  *
- *   bun run build && bun scripts/validate.ts [--film infotheory] [--style <id>] [--dist dist] [--json]
+ *   just build <id> && bun scripts/validate.ts --film <id> [--style <id>] [--dist dist/<id>] [--json]
  *
  * Without --style every style of the film is checked (the page's __styles, default first); with it, that one.
  * - page load: the page renders the requested film; film and scene declarations satisfy FilmSpec / SceneSpec
@@ -12,13 +12,21 @@
  *   (alpha >= 0.02 after the scene's fade, after the camera transform) lies inside the frame and inside the safe area
  *   (5 % each side); both are errors. Five frames per scene are a sample: nothing is proved
  *   about the frames in between.
- * Diagnostics: { level, code, path, message }, also written to out/validate/<film>.json. With --json, stdout is only
+ * - overlap: on the same frames, two text boxes that intersect by more than 2 px each way: an error when both are
+ *   fully shown (alpha >= 0.9), a warning when both are at least half shown.
+ * - contrast: on the same frames, rendered as exported (motion blur), each text box against what is under it, glyph by
+ *   glyph (engine/inspect.ts), WCAG AA: 4.5, large text (>= 24 px, or >= 18.66 px bold) 3. Below AA: an error for
+ *   fully shown text, a warning for text at 0.5–0.9 alpha; text below 0.5 alpha is counted as unchecked in the report.
+ *   Boxes are axis-aligned and sampled on five frames per scene: a heuristic, not a proof of glyph-level legibility.
+ * Diagnostics: { level, code, path, message }, also written to out/<film>/validate.json. With --json, stdout is only
  * the JSON list and the summary goes to stderr. Exit code 1 on any error, 2 if the tool itself could not run.
  */
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import puppeteer, { type Browser } from 'puppeteer-core';
 import { chromeArgs, findChrome, loadFilm, serveDist } from './chrome';
+import { filmArg, mediaDir } from './film-arg';
+import { checkPlan } from './plan-check';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const argv = Bun.argv.slice(2);
@@ -30,27 +38,51 @@ for (let i = 0; i < argv.length; i++) {
 }
 const opt = (k: string, d: string) => (argv.includes(`--${k}`) ? argv[argv.indexOf(`--${k}`) + 1] : d);
 const JSON_OUT = argv.includes('--json');
-const FILM = opt('film', 'infotheory');
+const filmR = filmArg(argv);
+if (filmR.error !== undefined) {
+  // a usage error still answers in the diagnostics format
+  const d = [{ level: 'error', code: 'usage', path: 'argv', message: filmR.error }];
+  if (argv.includes('--json')) console.log(JSON.stringify(d, null, 1));
+  console.error(filmR.error);
+  process.exit(2);
+}
+const FILM = filmR.film;
 /** One of the film's styles (?style=<id>); omitted: all of them. */
 const STYLE = opt('style', '');
-const DIST = path.resolve(ROOT, opt('dist', 'dist'));
-const FPS = 30, W = 1920, H = 1080, SAFE = 0.05, MIN_ALPHA = 0.02;
-const OUT = path.join(ROOT, 'out', 'validate', `${FILM}.json`);
+const DIST = path.resolve(ROOT, opt('dist', `dist/${FILM}`));
+const W = 1920, H = 1080, SAFE = 0.05, MIN_ALPHA = 0.02;
+/** Text at least this opaque counts as fully shown (overlap and contrast checks); WCAG large text: 24 px, or 18.66 px bold. */
+const FULL_ALPHA = 0.9, HALF_ALPHA = 0.5, LARGE_PX = 24, LARGE_BOLD_PX = 18.66;
+const OUT = path.join(ROOT, 'out', FILM, 'validate.json');
 
 interface Diag { level: 'error' | 'warning'; style: string; code: string; path: string; message: string }
 const diags: Diag[] = [];
 /** The style being checked ('default' until the default page has loaded and named it). */
 let cur = STYLE || 'default';
 const err = (code: string, p: string, message: string) => diags.push({ level: 'error', style: cur, code, path: p, message });
+const warn = (code: string, p: string, message: string) => diags.push({ level: 'warning', style: cur, code, path: p, message });
+
+if (existsSync(path.join(ROOT, 'films', FILM, 'film-plan.json'))) {
+  diags.push(...checkPlan(FILM).map((d) => ({ ...d, style: 'plan' })));
+  if (diags.some((d) => d.level === 'error')) {
+    mkdirSync(path.dirname(OUT), { recursive: true });
+    writeFileSync(OUT, JSON.stringify({ film: FILM, styles: [], diagnostics: diags }, null, 1));
+    if (JSON_OUT) console.log(JSON.stringify(diags, null, 1));
+    else for (const d of diags) console.log(`${d.level}: ${d.code} ${d.path}: ${d.message}`);
+    (JSON_OUT ? console.error : console.log)(`FAIL validate ${FILM}: ${diags.length} plan error(s) -> ${OUT}`);
+    process.exit(1);
+  }
+}
 
 let CHROME = '';
 try { CHROME = findChrome(); } catch (e) { console.error((e as Error).message); process.exit(2); }
-if (!existsSync(path.join(DIST, 'index.html'))) { console.error(`${DIST}/index.html missing: run \`bun run build\``); process.exit(2); }
+if (!existsSync(path.join(DIST, 'index.html'))) { console.error(`${DIST}/index.html missing: run \`just build ${FILM}\``); process.exit(2); }
 
-const server = serveDist(DIST);
+const server = serveDist(DIST, { media: mediaDir(FILM) });
 let browser: Browser | null = null;
-let scenesChecked = 0, framesChecked = 0, boxesChecked = 0, toolError: string | null = null;
+let scenesChecked = 0, framesChecked = 0, boxesChecked = 0, contrastChecked = 0, contrastUnchecked = 0, toolError: string | null = null;
 const checked: string[] = [];
+const noted = new Set<string>();
 try {
   browser = await puppeteer.launch({
     executablePath: CHROME, headless: true, defaultViewport: { width: W, height: H, deviceScaleFactor: 1 },
@@ -65,7 +97,7 @@ try {
     let ready = false;
     try {
       // fails fast when the page throws (e.g. a declaration fails its schema), names no or another style, or is not ready
-      await loadFilm(page, server.url, id, 30_000);
+      await loadFilm(page, server.url, FILM, id, 30_000);
       ready = true;
     } catch (e) {
       err('page-load', 'page', `film did not load: ${e instanceof Error ? e.message : String(e)}`);
@@ -77,10 +109,18 @@ try {
     for (const d of diags) if (d.style === cur) d.style = pageStyle;
     cur = pageStyle;
     checked.push(pageStyle);
+    const { unplaced } = await page.evaluate(() => window.__narration());
+    for (const id of unplaced) if (!noted.has(`unplaced|${id}`)) { noted.add(`unplaced|${id}`); err('narration-unplaced', `narration:${id}`, `narration line "${id}" is placed in no scene (narratedScene / demoScene narration)`); }
+    // notes the film recorded while registering (engine/notes.ts) are warnings, once (they recur in every style)
+    for (const n of await page.evaluate(() => window.__notes())) {
+      const k = `${n.code}|${n.path}|${n.message}`;
+      if (!noted.has(k)) { noted.add(k); warn(n.code, n.path, n.message); }
+    }
     const pageFilm: string | undefined = await page.evaluate(() => window.__film);
     if (pageFilm !== FILM) err('film-mismatch', 'page', `the built page renders film "${pageFilm}", not "${FILM}"`);
     else {
       const scenes: { name: string; start: number; end: number }[] = await page.evaluate(() => window.__scenes());
+      const FPS: number = await page.evaluate(() => window.__timeline().fps);
       const duration: number = await page.evaluate(() => window.__duration);
       const eps = 1e-6;
       if (!scenes.length) err('timeline-empty', 'timeline', 'no scenes registered');
@@ -102,7 +142,7 @@ try {
           framesChecked++;
           let boxes: { s: string; x0: number; y0: number; x1: number; y1: number; alpha: number }[];
           try {
-            boxes = await page.evaluate((t) => window.__layout(t, 30), t);
+            boxes = await page.evaluate((t, fps) => window.__layout(t, fps), t, FPS);
           } catch (e) {
             // the film failed to render this frame (e.g. a character no bundled font covers)
             err('render-error', `scene:${s.name}@${tag}(${t.toFixed(2)}s)`, (e instanceof Error ? e.message : String(e)).split(/\r?\n/)[0]);
@@ -115,6 +155,32 @@ try {
             const box = `[${b.x0.toFixed(0)},${b.y0.toFixed(0)}]-[${b.x1.toFixed(0)},${b.y1.toFixed(0)}]`;
             if (b.x0 < 0 || b.y0 < 0 || b.x1 > W || b.y1 > H) err('text-overflow', where, `"${b.s}" ${box} leaves the frame (alpha ${b.alpha.toFixed(2)})`);
             else if (b.x0 < sx0 || b.y0 < sy0 || b.x1 > sx1 || b.y1 > sy1) err('text-safe-area', where, `"${b.s}" ${box} is outside the ${SAFE * 100}% safe area (alpha ${b.alpha.toFixed(2)})`);
+          }
+          const where = `scene:${s.name}@${tag}(${t.toFixed(2)}s)`;
+          // overlapping text boxes (more than 2 px each way): an error when both are fully shown, a warning when both are
+          // at least half shown (steady semi-transparent text, or the middle of a crossfade)
+          const shown = boxes.filter((b) => b.alpha >= HALF_ALPHA);
+          for (let i = 0; i < shown.length; i++) for (let j = i + 1; j < shown.length; j++) {
+            const a = shown[i], b = shown[j];
+            const w = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0), h = Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0);
+            if (w <= 2 || h <= 2) continue;
+            const full = a.alpha >= FULL_ALPHA && b.alpha >= FULL_ALPHA;
+            (full ? err : warn)(full ? 'text-overlap' : 'text-overlap-partial', where, `"${a.s}" and "${b.s}" overlap by ${w.toFixed(0)}x${h.toFixed(0)} px${full ? '' : ` (alpha ${a.alpha.toFixed(2)} / ${b.alpha.toFixed(2)})`}`);
+          }
+          // contrast of each text box against what is under it, as exported (engine/inspect.ts); WCAG AA: 4.5, large 3.
+          // Fully shown text below AA is an error; text shown at 0.5–0.9 alpha is judged at that alpha and reported as a
+          // warning (it may be a fade in progress); text below 0.5 alpha is not judged and is counted as unchecked.
+          const cs: { s: string; px: number; weight: number; alpha: number; ratio: number; text: number[]; bg: number[] }[] = await page.evaluate((t, fps) => window.__contrast(t, fps), t, FPS);
+          contrastChecked += cs.length;
+          contrastUnchecked += boxes.filter((b) => b.alpha >= MIN_ALPHA && b.alpha < HALF_ALPHA).length;
+          for (const c of cs) {
+            const large = c.px >= LARGE_PX || (c.px >= LARGE_BOLD_PX && c.weight >= 700);
+            const need = large ? 3 : 4.5;
+            if (c.ratio >= need) continue;
+            const rgb = (v: number[]) => `rgb(${v.map((x) => Math.round(x)).join(',')})`;
+            const msg = `"${c.s}" (${c.px.toFixed(0)} px${large ? ', large' : ''}, alpha ${c.alpha.toFixed(2)}) contrast ${c.ratio.toFixed(2)} < ${need}: ${rgb(c.text)} on ${rgb(c.bg)}`;
+            if (c.alpha >= FULL_ALPHA) err('text-contrast', where, msg);
+            else warn('text-contrast-partial', where, msg);
           }
         }
       }
@@ -137,7 +203,7 @@ try {
 }
 
 mkdirSync(path.dirname(OUT), { recursive: true });
-writeFileSync(OUT, JSON.stringify({ film: FILM, styles: checked, scenesChecked, framesChecked, boxesChecked, diagnostics: diags }, null, 1));
+writeFileSync(OUT, JSON.stringify({ film: FILM, styles: checked, scenesChecked, framesChecked, boxesChecked, contrastChecked, contrastUnchecked, diagnostics: diags }, null, 1));
 const errors = diags.filter((d) => d.level === 'error').length, warnings = diags.length - errors;
 const summary = `${errors ? 'FAIL' : 'PASS'} validate ${FILM} [${checked.join(', ') || 'no style loaded'}]: ${scenesChecked} scenes, ${framesChecked} frames, ${boxesChecked} text boxes, ${errors} error(s), ${warnings} warning(s) -> ${OUT}`;
 if (JSON_OUT) {

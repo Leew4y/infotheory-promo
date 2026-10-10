@@ -2,7 +2,7 @@
  * "Paper and dawn": warm paper, ink lines, one rust accent, serif type; full-frame plates are a procedural dawn
  * horizon. No glows, no neon: everything reads as printed or photographed. The look of the information-theory film.
  */
-import { ctx, text, rule, label, measure } from '../../engine/draw';
+import { ctx, text, rule, label, measure, rgba } from '../../engine/draw';
 import { glPlate } from '../../engine/gl';
 import { C, F, M, type StylePackage, type SubLine } from '../../engine/style';
 import { clamp, eout, mulberry, sstep, win, W, H } from '../../engine/util';
@@ -36,10 +36,17 @@ function paper(tone = C.bg): void {
   ctx.fillRect(0, 0, W, H);
   const g = ctx.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, H * 1.05);
   g.addColorStop(0, 'rgba(60,40,20,0)');
-  g.addColorStop(1, 'rgba(60,40,20,.10)');
+  g.addColorStop(1, 'rgba(60,40,20,.05)');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, W, H);
   ctx.restore();
+}
+
+function arrowPath(x: number, y: number, s: number): void {
+  const p: [number, number][] = [[0, 0], [0, 17], [4.2, 13.2], [7, 19.5], [9.6, 18.4], [6.9, 12.2], [12.4, 12.2]];
+  ctx.beginPath();
+  p.forEach(([u, v], i) => (i ? ctx.lineTo(x + u * s, y + v * s) : ctx.moveTo(x + u * s, y + v * s)));
+  ctx.closePath();
 }
 
 const paperDawn: StylePackage = {
@@ -49,12 +56,12 @@ const paperDawn: StylePackage = {
     bg2: '#E8E4D9',
     fg: '#1A1917',
     fg2: '#4A4640',
-    muted: '#8F8A80',
+    muted: '#5F5C55',
     rule: '#C9C4B8',
-    accent: '#C9663D',
+    accent: '#9E421C',
     accent2: '#E58B5B',
     alt: '#5C7A99',
-    alt2: '#7C8C68',
+    alt2: '#58634A',
     fgOnDark: '#F3EDE0',
     mutedOnDark: '#D9CFBD',
   },
@@ -68,14 +75,15 @@ const paperDawn: StylePackage = {
     mono: '"Inconsolata", "STIX Two Text", "Noto Serif SC", "STIX Two Math", monospace',
   },
   // pages: no halation, light grain; plates: a little sun halation and more grain
-  grade: { bloom: 0, ca: 0.0005, vig: 0.22, grain: 0.05, sat: 0.98, split: 0.35, tintS: [0.97, 0.98, 1.03], tintH: [1.03, 1.0, 0.96] },
+  grade: { bloom: 0, ca: 0.0005, vig: 0.12, grain: 0.05, sat: 0.98, split: 0.35, tintS: [0.97, 0.98, 1.03], tintH: [1.03, 1.0, 0.96] },
   plateGrade: { bloom: 0.22, ca: 0.0012, vig: 0.42, grain: 0.085, sat: 1.0 },
   fills: { page: '#F3F1EA', plate: '#0d0b09' },
   motion: { fadeIn: 0.6, fadeOut: 0.6, drift: 0.025 },
   layout: { margin: 150, column: 1000 },
 
   background: () => paper(),
-  plate: (u) => glPlate(PLATE_FS, 3, { time: u.time, p: u.light, q: u.sun }),
+  // progress is the time of day (first light -> morning), highlight the sun's height above the horizon
+  plate: (u) => glPlate(PLATE_FS, 3, { time: u.time, p: u.progress, q: u.highlight }),
 
   statement(zh, en, lt, t0 = 0.4, y = 300, size = 54) {
     const k = clamp((lt - t0) / 0.9);
@@ -97,6 +105,71 @@ const paperDawn: StylePackage = {
     text(s.toUpperCase(), x, y, { font: F.latin, size, ls: size * 0.28, color, alpha: a, align });
   },
 
+  /**
+   * A shade of the plate's darkest colour behind text: an ellipse twice the asked size whose opacity falls off like a
+   * gaussian (no visible edge), strongest over the text block.
+   */
+  backdrop(cx, cy, w, h, a) {
+    if (a <= 0.002) return;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(w, h);
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+    for (let i = 0; i <= 8; i++) {
+      const r = i / 8;
+      g.addColorStop(r, rgba('#0d0b09', 0.62 * a * Math.exp(-r * r * 4.5) * (1 - r)));
+    }
+    ctx.fillStyle = g;
+    ctx.fillRect(-1, -1, 2, 2);
+    ctx.restore();
+  },
+
+  /** Captures as prints pasted on the page: a thin ink border, a soft shadow, the title as a small caps label above. */
+  demo: {
+    // the margins of the layout; below the chapter label, above the captions
+    area: { x: 150, y: 190, w: W - 300, h: H - 420 },
+    rippleDur: 0.6,
+    pressDur: 0.15,
+    cursorEase: (u) => u * u * (3 - 2 * u),
+    window(r, title, a) {
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.shadowColor = 'rgba(60,40,20,0.22)';
+      ctx.shadowBlur = 28;
+      ctx.shadowOffsetY = 10;
+      ctx.fillStyle = C.bg;
+      ctx.fillRect(r.x, r.y, r.w, r.h);
+      ctx.restore();
+      rule(r.x, r.y, r.x + r.w, r.y, C.fg2, a, 1);
+      rule(r.x + r.w, r.y, r.x + r.w, r.y + r.h, C.fg2, a, 1);
+      rule(r.x + r.w, r.y + r.h, r.x, r.y + r.h, C.fg2, a, 1);
+      rule(r.x, r.y + r.h, r.x, r.y, C.fg2, a, 1);
+      if (title) label(title, r.x, r.y - 16, a, C.muted, 15);
+      return { x: r.x + 1, y: r.y + 1, w: r.w - 2, h: r.h - 2 };
+    },
+    cursor(x, y, press, a) {
+      ctx.save();
+      ctx.globalAlpha = a;
+      arrowPath(x, y, 1.25 - 0.1 * press);
+      ctx.fillStyle = C.bg;
+      ctx.fill();
+      ctx.lineWidth = 1.6;
+      ctx.strokeStyle = C.fg;
+      ctx.stroke();
+      ctx.restore();
+    },
+    ripple(x, y, k, a) {
+      ctx.save();
+      ctx.globalAlpha = a * (1 - k);
+      ctx.strokeStyle = C.accent;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, y, 8 + 34 * eout(k), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    },
+  },
+
   /** Fades go through a flat colour (paper or dark). */
   transition(amount, color) {
     ctx.fillStyle = color;
@@ -115,7 +188,7 @@ const paperDawn: StylePackage = {
     rule(x + 52, y - 9, x + 52 + 40 * eout(clamp((lt - 0.3) / 0.8)), y - 9, C.accent, a, 1.5);
     text(ch[0], x + 108, y, { size: 26, weight: 600, color: C.fg, alpha: a, ls: 3 });
     label(ch[1], x + 108 + measure(ch[0], 26, F.body, 600, 3) + 60, y - 1, a, C.muted, 17);
-    label(`${num} / ${String(chapters).padStart(2, '0')}`, W - 150, H - 96, a * 0.9, C.muted, 16, 'right');
+    label(`${num} / ${String(chapters).padStart(2, '0')}`, W - 150, H - 96, a, C.muted, 16, 'right');
   },
 
   captions(T: number, subs: SubLine[]) {

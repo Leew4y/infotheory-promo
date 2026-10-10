@@ -1,0 +1,10 @@
+{
+ "id": "cosyvoice-zero-shot",
+ "description": "Mandarin; CosyVoice's own zero-shot example prompt (the voice is cloned from this 3.5 s clip)",
+ "file": "prompt.wav",
+ "text": "希望你以后能够做的比我还好呦。",
+ "source": "https://github.com/FunAudioLLM/CosyVoice/blob/074ca6dc9e80a2f424f1f74b48bdd7d3fea531cc/asset/zero_shot_prompt.wav",
+ "transcriptSource": "example.py at the same commit (the prompt text passed with this clip)",
+ "license": "Apache-2.0 (the repository's licence; the clip's own provenance is not stated upstream)",
+ "sha256": "c7b31d6dbe7cc6a716dded00550db5b50940bf209e424e4ad207b12e657c8ff6"
+}

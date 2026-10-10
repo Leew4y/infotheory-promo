@@ -1,7 +1,7 @@
 /**
  * Phase 0d: GPU capability check and sample frames on this machine.
  *
- *   bun run build && bun spikes/0d-macos/gpu-check.ts [--out spikes/0d-macos]
+ *   just build infotheory && bun spikes/0d-macos/gpu-check.ts [--out spikes/0d-macos]
  *
  * Launches Chrome the way the exporter would on this platform (ANGLE d3d11 on Windows, browser default elsewhere;
  * CPU 2D canvas), then reports: WebGL2 availability, renderer, EXT_color_buffer_float, OES_texture_float_linear,
@@ -15,8 +15,8 @@ import puppeteer from 'puppeteer-core';
 const ROOT = path.resolve(import.meta.dir, '../..');
 const argv = Bun.argv.slice(2);
 const OUT = path.resolve(ROOT, argv.includes('--out') ? argv[argv.indexOf('--out') + 1] : 'spikes/0d-macos');
-const DIST = path.join(ROOT, 'dist');
-if (!existsSync(path.join(DIST, 'index.html'))) throw new Error('dist/index.html missing: run `bun run build` first');
+const DIST = path.join(ROOT, 'dist', 'infotheory');
+if (!existsSync(path.join(DIST, 'index.html'))) throw new Error('dist/index.html missing: run `just build infotheory` first');
 const CHROME = [process.env.CHROME_PATH, 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/usr/bin/google-chrome'].find((p) => p && existsSync(p));
 if (!CHROME) throw new Error('Chrome not found (set CHROME_PATH)');
 mkdirSync(path.join(OUT, 'frames'), { recursive: true });
@@ -79,7 +79,7 @@ const caps = await page.evaluate(() => {
 // sample frames: horizon plate (dawn), a page (surprise), the dusk1 -> compress transition
 const frames = [[10, 'dawn-plate'], [33, 'surprise-page'], [65.8, 'dusk1-fade']] as const;
 for (const [t, name] of frames) {
-  await page.evaluate((t) => void window.__frame(t, 30), t);
+  await page.evaluate((t) => window.__frame(t, 30), t);
   const png: string = await page.evaluate(() => (document.getElementById('c') as HTMLCanvasElement).toDataURL('image/png'));
   writeFileSync(path.join(OUT, 'frames', `${name}.png`), Buffer.from(png.slice(png.indexOf(',') + 1), 'base64'));
 }

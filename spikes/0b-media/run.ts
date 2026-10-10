@@ -10,7 +10,7 @@
  *       full export through ffmpeg (H.264, as scripts/export.ts) with frames handed out in 1 s chunks;
  *       wall time from launching browsers to ffmpeg exit, peak working set per worker's Chrome process tree;
  *       for --page diag also decodes the output and checks the barcode sequence is 0..N-1.
- *       --page film exports the real film (needs `bun run build`) as the throughput baseline.
+ *       --page film exports the real film (needs `just build infotheory`) as the throughput baseline.
  * All runs use the CPU 2D canvas (--disable-accelerated-2d-canvas), per phase 0a. Prints and writes JSON.
  */
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
@@ -48,8 +48,8 @@ if (PAGE === 'diag') {
   if (!b.success) throw new Error(b.logs.join('\n'));
   writeFileSync(path.join(SITE, 'index.html'), '<!doctype html><meta charset="utf-8"><body style="margin:0"><canvas id="c" width="1920" height="1080"></canvas><script type="module" src="/page.js"></script>');
 }
-const DIST = PAGE === 'film' ? path.join(ROOT, 'dist') : SITE;
-if (!existsSync(path.join(DIST, 'index.html'))) throw new Error(`${DIST}/index.html missing (film: run \`bun run build\`)`);
+const DIST = PAGE === 'film' ? path.join(ROOT, 'dist', 'infotheory') : SITE;
+if (!existsSync(path.join(DIST, 'index.html'))) throw new Error(`${DIST}/index.html missing (film: run \`just build infotheory\`)`);
 const server = Bun.serve({
   hostname: '127.0.0.1', port: 0,
   async fetch(req) {

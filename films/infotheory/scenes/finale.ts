@@ -1,5 +1,5 @@
 // 12. Morning over the horizon with the closing lines (a plate), then a page of sources (its own page scene, so it keeps the paper grade).
-import { text, label, rule, background, plate, M, C, F, scene, clamp, eout, sstep, win, W, H, bars } from '../../../engine';
+import { text, label, rule, background, plate, backdrop, M, C, F, scene, clamp, eout, sstep, win, W, H, bars } from '../../../engine';
 
 const SOURCES: [string, string, string][] = [
   ['1948', 'C. E. Shannon', 'A Mathematical Theory of Communication. Bell System Technical Journal.'],
@@ -18,8 +18,9 @@ scene({
   sfx: [[0, 'swell', { dur: 6 }], [1.6, 'tone', { midi: 64 }], [5.6, 'tone', { midi: 60 }]],
   cam: (lt, d) => ({ z: 1 + (0.035 * lt) / d }),
   draw(lt) {
-    plate({ time: lt + 140, light: 0.9, sun: 0.32 });
+    plate({ time: lt + 140, progress: 0.9, highlight: 0.32 });
     const a1 = win(lt, 1.4, 5.2, 0.9, 0.7);
+    backdrop(W / 2, 410, 1500, 300, Math.max(a1, win(lt, 5.6, 9.6, 0.9, 0.6)));
     text('它把不确定，变成可以计算的量。', W / 2, 390, { size: 52, weight: 500, color: C.fgOnDark, alpha: a1, align: 'center', ls: 5 });
     text('It turns uncertainty into a quantity.', W / 2, 448, { font: F.latin, style: 'italic', size: 26, color: C.mutedOnDark, alpha: a1, align: 'center' });
     const a2 = win(lt, 5.6, 9.6, 0.9, 0.6);

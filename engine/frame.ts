@@ -6,9 +6,11 @@
 import { ctx, scaleText, textMark } from './draw';
 import { accumulate, glc, post, type Grade } from './gl';
 import { SC, sceneAt, camDrift } from './scene';
-import { film, TOTAL } from './film';
+import { film, FPS, frameOf, TOTAL } from './film';
 import { style, type SubLine } from './style';
 import { clamp, sstep, W, H } from './util';
+import { ensure, type MediaRef } from './media';
+import { lap } from './perf';
 
 export type { SubLine };
 export const SUBS = (): SubLine[] => SC.flatMap((s) => s.subs.map(([a, b, zh, en]) => ({ a: s.t0 + a, b: s.t0 + b, zh, en, plate: s.kind === 'plate' })));
@@ -44,6 +46,23 @@ export function drawLayer(t: number, jx: number, jy: number): void {
   }
 }
 
+/**
+ * The output frame (its index on the film's frame grid) while frame() runs. Media (a capture's source frame) is chosen
+ * from it, never from a motion-blur sub-frame's time: the global contract "sub-frames move the camera and vector
+ * drawing, not footage". An index, not a time: local times computed from it are exact multiples of 1 / fps.
+ */
+let outF = 0;
+export const outputFrame = (): number => outF;
+
+/** The media frames the output frame at T needs (from its scene's need(), at the frame's local time). */
+export function needsAt(T: number): MediaRef[] {
+  T = clamp(T, 0, TOTAL - 1e-3);
+  const sc = sceneAt(T);
+  return sc.need ? sc.need((frameOf(T) - sc.f0) / FPS, sc.d) : [];
+}
+/** Load everything frame(T) will draw; resolves when it can be drawn synchronously. */
+export const prepare = (T: number): Promise<void> => ensure(needsAt(T));
+
 let subsCache: SubLine[] | null = null;
 function overlays(T: number): void {
   const sc = sceneAt(T);
@@ -59,21 +78,28 @@ const JIT: [number, number][] = [[0.5, 0.5], [0.25, 0.75], [0.75, 0.25], [0.125,
 /** Render the frame at time T. samples > 1 averages the scene's `mb` sub-frames over half a frame (motion blur). */
 export function frame(T: number, fps = 30, samples = 1): void {
   T = clamp(T, 0, TOTAL - 1e-3);
+  outF = frameOf(T);
   const sc = sceneAt(T);
   const K = samples > 1 ? Math.max(1, sc.mb ?? 3) : 1;
+  let t0 = performance.now();
   for (let k = 0; k < K; k++) {
     let tk = K > 1 ? Math.max(0, T + ((k + 0.5) / K - 0.5) * (SHUTTER / fps)) : T;
     if (sceneAt(tk) !== sc) tk = T;
     drawLayer(tk, K > 1 ? JIT[k][0] - 0.5 : 0, K > 1 ? JIT[k][1] - 0.5 : 0);
+    t0 = lap('draw (2D, per sub-frame summed)', t0);
     accumulate(k, K);
+    t0 = lap('upload + accumulate', t0);
   }
   const S = style();
   const g: Grade = { ...S.grade, ...(sc.kind === 'plate' ? S.plateGrade : {}), ...(sc.grade ?? {}) };
   post(T, g, fps);
+  t0 = lap('post (GL calls)', t0);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = 'copy';
   ctx.drawImage(glc, 0, 0);
   ctx.globalCompositeOperation = 'source-over';
+  t0 = lap('GL -> 2D readback', t0);
   overlays(T);
+  lap('overlays', t0);
 }
