@@ -19,6 +19,7 @@
 | 修订记录 | research/revisions.md（R1–R21：初稿原句、证据、改句） |
 | 风格选择与自评 | review/01-directions.md（三个方向）、02-vigil.md（自评、配乐与性能）、05-compare-sheet.jpg（与 paper-dawn、nebula 并排） |
 | 流程记录 | review/workflow-notes.md |
+| 终稿验收 | review/07-final.md |
 | 成片 | out/math-lessons/math-lessons.mp4（不入库；由 `just all math-lessons` 生成） |
 
 命令：`just fonts math-lessons`、`just validate math-lessons`、`just sheet math-lessons`、`just all math-lessons`。
