@@ -1,0 +1,11 @@
+{
+ "comment": "Fonts of the math-lessons-b direction (Chapel): ids in fonts/catalog.json, in the order the manifest lists them; role is informational. Subsets per film: just fonts <film>.",
+ "fonts": [
+  { "id": "noto-sans-sc", "role": "body" },
+  { "id": "manrope", "role": "latin" },
+  { "id": "ibm-plex-mono", "role": "mono" },
+  { "id": "stix-two-text", "role": "math" },
+  { "id": "stix-two-text-italic", "role": "math" },
+  { "id": "stix-two-math", "role": "fallback" }
+ ]
+}

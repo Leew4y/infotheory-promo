@@ -1,0 +1,137 @@
+{
+ "film": "math-lessons",
+ "fps": 30,
+ "bpm": 60,
+ "frames": 8985,
+ "duration": 299.5,
+ "scenes": [
+  {
+   "name": "invocation",
+   "kind": "plate",
+   "f0": 0,
+   "f1": 330,
+   "start": 0,
+   "end": 11
+  },
+  {
+   "name": "title",
+   "kind": "plate",
+   "f0": 330,
+   "f1": 450,
+   "start": 11,
+   "end": 15
+  },
+  {
+   "name": "fontenelle",
+   "kind": "page",
+   "f0": 450,
+   "f1": 825,
+   "start": 15,
+   "end": 27.5
+  },
+  {
+   "name": "cycloid",
+   "kind": "page",
+   "f0": 825,
+   "f1": 1200,
+   "start": 27.5,
+   "end": 40
+  },
+  {
+   "name": "defenders",
+   "kind": "page",
+   "f0": 1200,
+   "f1": 1425,
+   "start": 40,
+   "end": 47.5
+  },
+  {
+   "name": "numbers",
+   "kind": "page",
+   "f0": 1425,
+   "f1": 1740,
+   "start": 47.5,
+   "end": 58
+  },
+  {
+   "name": "hardy",
+   "kind": "page",
+   "f0": 1740,
+   "f1": 2280,
+   "start": 58,
+   "end": 76
+  },
+  {
+   "name": "release",
+   "kind": "page",
+   "f0": 2280,
+   "f1": 2805,
+   "start": 76,
+   "end": 93.5
+  },
+  {
+   "name": "needed",
+   "kind": "page",
+   "f0": 2805,
+   "f1": 3780,
+   "start": 93.5,
+   "end": 126
+  },
+  {
+   "name": "statement",
+   "kind": "page",
+   "f0": 3780,
+   "f1": 4395,
+   "start": 126,
+   "end": 146.5
+  },
+  {
+   "name": "dispute",
+   "kind": "page",
+   "f0": 4395,
+   "f1": 5310,
+   "start": 146.5,
+   "end": 177
+  },
+  {
+   "name": "withdrawal",
+   "kind": "page",
+   "f0": 5310,
+   "f1": 5805,
+   "start": 177,
+   "end": 193.5
+  },
+  {
+   "name": "kernel",
+   "kind": "page",
+   "f0": 5805,
+   "f1": 6345,
+   "start": 193.5,
+   "end": 211.5
+  },
+  {
+   "name": "voice",
+   "kind": "plate",
+   "f0": 6345,
+   "f1": 7395,
+   "start": 211.5,
+   "end": 246.5
+  },
+  {
+   "name": "fire",
+   "kind": "plate",
+   "f0": 7395,
+   "f1": 8760,
+   "start": 246.5,
+   "end": 292
+  },
+  {
+   "name": "colophon",
+   "kind": "page",
+   "f0": 8760,
+   "f1": 8985,
+   "start": 292,
+   "end": 299.5
+  }
+ ]
+}

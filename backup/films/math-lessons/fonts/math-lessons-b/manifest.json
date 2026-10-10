@@ -1,0 +1,119 @@
+{
+ "film": "math-lessons",
+ "style": "math-lessons-b",
+ "generator": {
+  "fonttools": "4.66.1",
+  "brotli": "1.2.0"
+ },
+ "charset": " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~§¬³·Óçó̈φ–—’“”†…−≡⊢◇、。〇《》一丁三上下不与专且世东两个中为主举么义乎乐也了争二于互五些人什仍从他以们价任份会伟估似但位低体何余使例修倒候值假做停先光克入全公六关其内再写决准几凭出分切列则创初判利别到制刻力加助匀化千协卒单即卷历原去反发受变另只可史号各同后向否启告命器回因团国圣在地场型基处复外多够大天奇好如始存学它安完定审宣害家密对导小尚就岗工己已布帮常年序应度开弃式引强当录形得心必态怎思急性总情想意慰懂成我或所手托找把护报拒择指按据探接推提摆摩撤擦改放效教数整断斯新方无日时明是显智更替最月有望本机条来构果某查标样核案检模次止正此歧求沉没沿法注洞流清滑漏火灭点烧然片版状独猜现理生用由界疯白的盘目看真眼着知码研破础确福禧私种科称程稿究立笔符第等答篇类系索紧约纳线细终经给绝统维网置美考者而联能自节若荣虚行补被裂西要见解言订认让训许论设证评译该误说谈责费趣身辨辩边达过还这进迪述追退选递途通造道那部都配醒释里重钟钥错门问间队限院随难集零需静面须颖题验高（），：；？",
+ "fonts": [
+  {
+   "family": "Noto Sans SC",
+   "role": "body",
+   "style": "normal",
+   "weight": "100 900",
+   "file": "NotoSansSC-normal.woff2",
+   "sha256": "7d102029063f54a72f0807cbd288b00c4e0647afe53439dae7760f0a358ff810",
+   "bytes": 165136,
+   "source": {
+    "file": "NotoSansSC[wght].ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/notosanssc/NotoSansSC%5Bwght%5D.ttf",
+    "sha256": "a3041811a78c361b1de50f953c805e0244951c21c5bd412f7232ef0d899af0da"
+   },
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSE-NotoSansSC.txt",
+   "chars": 537,
+   "missing": "̈⊢"
+  },
+  {
+   "family": "Manrope",
+   "role": "latin",
+   "style": "normal",
+   "weight": "200 800",
+   "file": "Manrope-normal.woff2",
+   "sha256": "847e487ec9bfe8639a1e4792280394b71592a2e4313ce7121f2c72a5a7e8054e",
+   "bytes": 17428,
+   "source": {
+    "file": "Manrope[wght].ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/manrope/Manrope%5Bwght%5D.ttf",
+    "sha256": "3ae11c49db0455a3cc33e37d380f20fdb8c7f8b41dc07625c177e3d87a9d6ae6"
+   },
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSE-Manrope.txt",
+   "chars": 111,
+   "missing": "̈≡⊢◇、。〇《》一丁三上下不与专且世东两个中为主举么义乎乐也了争二于互五些人什仍从他以们价任份会伟估似但位低体何余使例修倒候值假做停先光克入全公六关其内再写决准几凭出分切列则创初判利别到制刻力加助匀化千协卒单即卷历原去反发受变另只可史号各同后向否启告命器回因团国圣在地场型基处复外多够大天奇好如始存学它安完定审宣害家密对导小尚就岗工己已布帮常年序应度开弃式引强当录形得心必态怎思急性总情想意慰懂成我或所手托找把护报拒择指按据探接推提摆摩撤擦改放效教数整断斯新方无日时明是显智更替最月有望本机条来构果某查标样核案检模次止正此歧求沉没沿法注洞流清滑漏火灭点烧然片版状独猜现理生用由界疯白的盘目看真眼着知码研破础确福禧私种科称程稿究立笔符第等答篇类系索紧约纳线细终经给绝统维网置美考者而联能自节若荣虚行补被裂西要见解言订认让训许论设证评译该误说谈责费趣身辨辩边达过还这进迪述追退选递途通造道那部都配醒释里重钟钥错门问间队限院随难集零需静面须颖题验高（），：；？"
+  },
+  {
+   "family": "IBM Plex Mono",
+   "role": "mono",
+   "style": "normal",
+   "weight": "400",
+   "file": "IBMPlexMono-normal.woff2",
+   "sha256": "cd23df68cb48de111a25cd8595e23c38fd79ea69f55a0f50dddd9fbe214343c2",
+   "bytes": 7604,
+   "source": {
+    "file": "IBMPlexMono-Regular.ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/ibmplexmono/IBMPlexMono-Regular.ttf",
+    "sha256": "6a3412f058c7d8dfd9170c41e85ade48e5156ecb89356110ca57a0a27734af46"
+   },
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSE-IBMPlexMono.txt",
+   "chars": 111,
+   "missing": "φ≡⊢◇、。〇《》一丁三上下不与专且世东两个中为主举么义乎乐也了争二于互五些人什仍从他以们价任份会伟估似但位低体何余使例修倒候值假做停先光克入全公六关其内再写决准几凭出分切列则创初判利别到制刻力加助匀化千协卒单即卷历原去反发受变另只可史号各同后向否启告命器回因团国圣在地场型基处复外多够大天奇好如始存学它安完定审宣害家密对导小尚就岗工己已布帮常年序应度开弃式引强当录形得心必态怎思急性总情想意慰懂成我或所手托找把护报拒择指按据探接推提摆摩撤擦改放效教数整断斯新方无日时明是显智更替最月有望本机条来构果某查标样核案检模次止正此歧求沉没沿法注洞流清滑漏火灭点烧然片版状独猜现理生用由界疯白的盘目看真眼着知码研破础确福禧私种科称程稿究立笔符第等答篇类系索紧约纳线细终经给绝统维网置美考者而联能自节若荣虚行补被裂西要见解言订认让训许论设证评译该误说谈责费趣身辨辩边达过还这进迪述追退选递途通造道那部都配醒释里重钟钥错门问间队限院随难集零需静面须颖题验高（），：；？"
+  },
+  {
+   "family": "STIX Two Text",
+   "role": "math",
+   "style": "normal",
+   "weight": "400 700",
+   "file": "STIXTwoText-normal.woff2",
+   "sha256": "041d1c52de925a5d7b525a868bdb739c27b05cdcf06d5204bedaaaad694cf96c",
+   "bytes": 33944,
+   "source": {
+    "file": "STIXTwoText[wght].ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/stixtwotext/STIXTwoText%5Bwght%5D.ttf",
+    "sha256": "7962b8b7811e6a896c9a91a0bccbb5241047770eb24d4997c5cb5fe21d5c0df2"
+   },
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSE-STIXTwoText.txt",
+   "chars": 112,
+   "missing": "≡⊢◇、。〇《》一丁三上下不与专且世东两个中为主举么义乎乐也了争二于互五些人什仍从他以们价任份会伟估似但位低体何余使例修倒候值假做停先光克入全公六关其内再写决准几凭出分切列则创初判利别到制刻力加助匀化千协卒单即卷历原去反发受变另只可史号各同后向否启告命器回因团国圣在地场型基处复外多够大天奇好如始存学它安完定审宣害家密对导小尚就岗工己已布帮常年序应度开弃式引强当录形得心必态怎思急性总情想意慰懂成我或所手托找把护报拒择指按据探接推提摆摩撤擦改放效教数整断斯新方无日时明是显智更替最月有望本机条来构果某查标样核案检模次止正此歧求沉没沿法注洞流清滑漏火灭点烧然片版状独猜现理生用由界疯白的盘目看真眼着知码研破础确福禧私种科称程稿究立笔符第等答篇类系索紧约纳线细终经给绝统维网置美考者而联能自节若荣虚行补被裂西要见解言订认让训许论设证评译该误说谈责费趣身辨辩边达过还这进迪述追退选递途通造道那部都配醒释里重钟钥错门问间队限院随难集零需静面须颖题验高（），：；？"
+  },
+  {
+   "family": "STIX Two Text",
+   "role": "math",
+   "style": "italic",
+   "weight": "400 700",
+   "file": "STIXTwoText-italic.woff2",
+   "sha256": "d1e64bb0f6970553033118ff2c468d090e22c6079892d34dfae0380f4b0fc8b4",
+   "bytes": 37716,
+   "source": {
+    "file": "STIXTwoText-Italic[wght].ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/stixtwotext/STIXTwoText-Italic%5Bwght%5D.ttf",
+    "sha256": "88c0e2e316eaff56eddc9e51e4850317e2a1e490bbf758b2dec4793aedba9c74"
+   },
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSE-STIXTwoText.txt",
+   "chars": 112,
+   "missing": "≡⊢◇、。〇《》一丁三上下不与专且世东两个中为主举么义乎乐也了争二于互五些人什仍从他以们价任份会伟估似但位低体何余使例修倒候值假做停先光克入全公六关其内再写决准几凭出分切列则创初判利别到制刻力加助匀化千协卒单即卷历原去反发受变另只可史号各同后向否启告命器回因团国圣在地场型基处复外多够大天奇好如始存学它安完定审宣害家密对导小尚就岗工己已布帮常年序应度开弃式引强当录形得心必态怎思急性总情想意慰懂成我或所手托找把护报拒择指按据探接推提摆摩撤擦改放效教数整断斯新方无日时明是显智更替最月有望本机条来构果某查标样核案检模次止正此歧求沉没沿法注洞流清滑漏火灭点烧然片版状独猜现理生用由界疯白的盘目看真眼着知码研破础确福禧私种科称程稿究立笔符第等答篇类系索紧约纳线细终经给绝统维网置美考者而联能自节若荣虚行补被裂西要见解言订认让训许论设证评译该误说谈责费趣身辨辩边达过还这进迪述追退选递途通造道那部都配醒释里重钟钥错门问间队限院随难集零需静面须颖题验高（），：；？"
+  },
+  {
+   "family": "STIX Two Math",
+   "role": "fallback",
+   "style": "normal",
+   "weight": "400",
+   "file": "STIXTwoMath-normal.woff2",
+   "sha256": "75692facaf77f8caff2a71a80bc9aa17b9316327656903f691c770a94d71f512",
+   "bytes": 23804,
+   "source": {
+    "file": "STIXTwoMath-Regular.ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/stixtwomath/STIXTwoMath-Regular.ttf",
+    "sha256": "562551b15b836e6e01d1b7350909baf3c8c8d83260c1190fbf4544333e6936de"
+   },
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSE-STIXTwoMath.txt",
+   "chars": 115,
+   "missing": "、。〇《》一丁三上下不与专且世东两个中为主举么义乎乐也了争二于互五些人什仍从他以们价任份会伟估似但位低体何余使例修倒候值假做停先光克入全公六关其内再写决准几凭出分切列则创初判利别到制刻力加助匀化千协卒单即卷历原去反发受变另只可史号各同后向否启告命器回因团国圣在地场型基处复外多够大天奇好如始存学它安完定审宣害家密对导小尚就岗工己已布帮常年序应度开弃式引强当录形得心必态怎思急性总情想意慰懂成我或所手托找把护报拒择指按据探接推提摆摩撤擦改放效教数整断斯新方无日时明是显智更替最月有望本机条来构果某查标样核案检模次止正此歧求沉没沿法注洞流清滑漏火灭点烧然片版状独猜现理生用由界疯白的盘目看真眼着知码研破础确福禧私种科称程稿究立笔符第等答篇类系索紧约纳线细终经给绝统维网置美考者而联能自节若荣虚行补被裂西要见解言订认让训许论设证评译该误说谈责费趣身辨辩边达过还这进迪述追退选递途通造道那部都配醒释里重钟钥错门问间队限院随难集零需静面须颖题验高（），：；？"
+  }
+ ]
+}
