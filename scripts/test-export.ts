@@ -32,17 +32,45 @@ if (!existsSync(path.join(ROOT, 'out', FILM, 'music.wav'))) { console.error(`out
 rmSync(DIR, { recursive: true, force: true });
 mkdirSync(DIR, { recursive: true });
 
-/** Command lines of running processes that belong to these tests. */
-async function ours(): Promise<string[]> {
-  let lines: string[];
+type Proc = { pid: number; ppid: number; start: number; cmd: string };
+/** Every process: id, parent id, start (orders starts) and command line. */
+async function processes(): Promise<Proc[]> {
+  let rows: { pid: number; ppid: number; start: number; cmd: string }[];
   if (process.platform === 'win32') {
-    const p = Bun.spawn(['powershell', '-NoProfile', '-Command', "Get-CimInstance Win32_Process -Filter \"Name='chrome.exe' or Name='ffmpeg.exe' or Name='ffprobe.exe' or Name='msedge.exe' or Name='bun.exe'\" | ForEach-Object { $_.CommandLine }"], { stdout: 'pipe', stderr: 'ignore' });
-    lines = (await new Response(p.stdout).text()).split(/\r?\n/);
+    const p = Bun.spawn(['powershell', '-NoProfile', '-Command', 'Get-CimInstance Win32_Process | ForEach-Object { "$($_.ProcessId)`t$($_.ParentProcessId)`t$(if ($_.CreationDate) { $_.CreationDate.ToFileTimeUtc() } else { 0 })`t$($_.CommandLine)" }'], { stdout: 'pipe', stderr: 'ignore' });
+    rows = (await new Response(p.stdout).text()).split(/\r?\n/).map((l) => l.split('\t')).filter((v) => v.length >= 4).map(([a, b, c, ...d]) => ({ pid: +a, ppid: +b, start: +c, cmd: d.join('\t') }));
   } else {
-    const p = Bun.spawn(['ps', '-axo', 'command'], { stdout: 'pipe' });
-    lines = (await new Response(p.stdout).text()).split('\n');
+    const p = Bun.spawn(['ps', '-axo', 'pid=,ppid=,etimes=,command='], { stdout: 'pipe' });
+    rows = (await new Response(p.stdout).text()).split('\n').map((l) => l.trim().split(/\s+/)).filter((v) => v.length >= 4).map(([a, b, c, ...d]) => ({ pid: +a, ppid: +b, start: -+c, cmd: d.join(' ') }));
   }
-  return lines.filter((l) => /puppeteer_dev_chrome_profile|test-export[\\/]|test-fixtures/.test(l) && !/test-export\.ts/.test(l));
+  return rows;
+}
+/**
+ * The processes the export job `root` started, directly or not (its launcher, Chrome, ffmpeg, ffprobe, stubs), followed
+ * while it runs: every sample adds the descendants of what is already known, through parent ids (a parent counts only
+ * if it started no later than the child: ids are reused). Another export on the machine is not counted, and a leaked
+ * process is still recognised after its parents exited.
+ */
+function family(root: number) {
+  const known = new Map<number, number>([[root, -Infinity]]); // pid -> start
+  const add = (rows: Proc[]) => {
+    for (let grew = true; grew;) {
+      grew = false;
+      for (const r of rows) if (!known.has(r.pid) && known.has(r.ppid) && known.get(r.ppid)! <= r.start) { known.set(r.pid, r.start); grew = true; }
+    }
+  };
+  let on = true;
+  const loop = (async () => { while (on) { add(await processes()); await Bun.sleep(500); } })();
+  return {
+    /** Command lines of the job's processes still running. */
+    async left(): Promise<string[]> {
+      on = false;
+      await loop;
+      const rows = await processes();
+      add(rows);
+      return rows.filter((r) => r.pid !== root && known.get(r.pid) === r.start).map((r) => r.cmd);
+    },
+  };
 }
 async function probeTarget(): Promise<{ frames: number; audio: number } | null> {
   const p = Bun.spawn(['ffprobe', '-v', 'error', '-count_packets', '-show_entries', 'stream=codec_type,nb_read_packets,duration', '-of', 'json', TARGET], { stdout: 'pipe', stderr: 'ignore' });
@@ -61,6 +89,7 @@ interface Case {
 type Job = ReturnType<typeof Bun.spawn>;
 const start = (c: Case): Job => Bun.spawn(['bun', path.join(ROOT, 'scripts', 'export.ts'), '--film', FILM, '--out', TARGET, ...c.args], { env: { ...process.env, ...(c.env ?? {}) }, stdout: 'pipe', stderr: 'pipe' });
 async function finish(c: Case, job: Job, t0: number): Promise<{ ok: boolean; notes: string[] }> {
+  const fam = family(job.pid!);
   let killed = false;
   const watchdog = setTimeout(async () => { killed = true; await killTree(job.pid); }, (c.within + 30) * 1000);
   if (c.signal) setTimeout(() => { try { process.kill(job.pid, c.signal!.sig); } catch {} }, c.signal.after * 1000);
@@ -72,7 +101,7 @@ async function finish(c: Case, job: Job, t0: number): Promise<{ ok: boolean; not
   if (killed) notes.push('watchdog had to kill the job');
   if (c.expect === 'nonzero' ? code === 0 : code !== c.expect) notes.push(`exit ${code}, expected ${c.expect}`);
   if (secs > c.within) notes.push(`took ${secs.toFixed(1)}s, bound ${c.within}s`);
-  const left = await ours();
+  const left = await fam.left();
   if (left.length) notes.push(`${left.length} process(es) left running: ${left[0].slice(0, 100)}`);
   const stray = readdirSync(DIR).filter((f) => /partial|\.lock/.test(f) && !(c.keepLock && f.endsWith('.lock')));
   if (stray.length) notes.push(`left behind: ${stray.join(', ')}`);

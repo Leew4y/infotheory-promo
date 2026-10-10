@@ -131,5 +131,5 @@ test-narration:
 export film=film workers="4" crf="18" *args: (build film)
     bun scripts/export.ts --film {{film}} --workers {{workers}} --crf {{crf}} {{args}}
 
-# Everything for a film with a score: cues -> music -> video.
-all film=film: (music film) (export film)
+# Everything for a film with a score: cues -> music -> final mix (with the narration, if any) -> video.
+all film=film: (music film) (mix film) (export film)

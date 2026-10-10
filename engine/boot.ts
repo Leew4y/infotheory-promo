@@ -17,6 +17,7 @@
  *   __narration()      where each narration line plays (film seconds), for the final mix, and the lines no scene placed
  *   __notes()          notes recorded while the film registered (e.g. a recorded click an edit cuts), for validate
  *   __prefetch(ts)     start loading the media of the given times (export look-ahead)
+ *   __perf(on?)        stage timings of __frame (engine/perf.ts), for scripts/profile-export.ts
  * A film's main.ts imports its film.ts and scenes, then calls boot().
  */
 import { cv, recordText, setCoverage, type TextBox } from './draw';
@@ -24,6 +25,7 @@ import { contrastAt, type ContrastBox } from './inspect';
 import { frame, needsAt, prepare } from './frame';
 import { prefetch, setStrict } from './media';
 import { allNotes, type Note } from './notes';
+import { lap, perfOn, perfReport } from './perf';
 import { narrationReport, type LinePlacement } from './narration';
 import { gpuName } from './gl';
 import { SC, sceneAt } from './scene';
@@ -34,7 +36,10 @@ import { film, FPS, FRAMES, TOTAL } from './film';
 declare global {
   interface Window {
     __ready: () => boolean;
-    __frame: (t: number, fps?: number) => Promise<string>;
+    __frame: (t: number, fps?: number, samples?: number) => Promise<string>;
+    __perf: (on?: boolean) => Record<string, number>;
+    __frameTo: (url: string, t: number, fps?: number, samples?: number) => Promise<void>;
+    __drain: () => Promise<void>;
     __prefetch: (ts: number[]) => void;
     __notes: () => Note[];
     __narration: () => { placements: LinePlacement[]; unplaced: string[] };
@@ -113,11 +118,36 @@ export function boot(o: BootOptions): void {
   };
   window.__fonts = () => fonts;
   // every hook that renders first loads the media the frame needs (engine/media.ts), then draws synchronously
-  window.__frame = async (t, fps = 30) => {
+  window.__frame = async (t, fps = 30, samples = 3) => {
+    let t0 = performance.now();
     await prepare(t);
-    frame(t, fps, 3);
-    return cv.toDataURL('image/jpeg', 0.95);
+    t0 = lap('prepare (media)', t0);
+    frame(t, fps, samples);
+    t0 = performance.now();
+    const url = cv.toDataURL('image/jpeg', 0.95);
+    lap('JPEG encode (toDataURL)', t0);
+    return url;
   };
+  window.__perf = (v?: boolean) => { if (v !== undefined) perfOn(v); return perfReport(); };
+  // __frameTo: render, then JPEG-encode a snapshot off the main thread (toBlob) and POST it to `url`, without waiting:
+  // the next frame draws while this one encodes and uploads. At most two in flight; __drain waits for them (and throws
+  // the first upload error).
+  const inflight = new Set<Promise<void>>();
+  window.__frameTo = async (url, t, fps = 30, samples = 3) => {
+    while (inflight.size >= 2) await Promise.race(inflight);
+    let t0 = performance.now();
+    await prepare(t);
+    t0 = lap('prepare (media)', t0);
+    frame(t, fps, samples);
+    t0 = performance.now();
+    const p = new Promise<Blob>((res, rej) => cv.toBlob((b) => (b ? res(b) : rej(new Error('toBlob gave no image'))), 'image/jpeg', 0.95))
+      .then((b) => fetch(url, { method: 'POST', body: b }))
+      .then((r) => { if (!r.ok) throw new Error(`frame upload: ${r.status}`); });
+    lap('snapshot (toBlob call)', t0);
+    inflight.add(p);
+    p.then(() => inflight.delete(p), () => {});
+  };
+  window.__drain = async () => { await Promise.all(inflight); };
   /** Start loading the media of frames a worker will render next (look-ahead; never waits). */
   window.__prefetch = (ts) => { for (const t of ts) prefetch(needsAt(t)); };
   window.__duration = TOTAL;

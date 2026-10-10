@@ -67,7 +67,9 @@ Every film command takes the film id first (default `infotheory`); outputs go to
   (the footage is never cut short); the lines become the captions; `vo(id)` is a line's start on its scene's clock,
   the only anchor for animations that land on a sentence (timing is per sentence, not per word). Synthesis samples:
   a line's audio cannot be made again identically, so it is committed and a re-synthesis (`--resynth`) changes the
-  timeline. Run `just fonts <film>` after changing captions.
+  timeline. Run `just fonts <film>` after changing captions. With narration, `demoScene`'s `dur` is a minimum (footage
+  is never cut). A film with narration exports only with a current final mix (`just mix`; `just all` runs music → mix →
+  export); write numbers, versions and amounts out in `read` (the voice has no text normaliser).
 - Done means: `just check`, `just check-imports`, `just validate <film>` (0 errors in every style) and `just regress
   <film>` (every style with a baseline) pass, and the sheet has been looked at. The layout checks sample five frames
   per scene and judge axis-aligned boxes: a strong heuristic, not a proof. Report what was verified, what was not, and

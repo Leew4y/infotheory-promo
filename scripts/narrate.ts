@@ -47,7 +47,7 @@ export const narrationPaths = (film: string) => ({
 });
 
 /** The adapter's version (audio/tts.py ADAPTER_VERSION) and the models: id, pinned revision, files, where they go. */
-const ADAPTER_VERSION = 1;
+const ADAPTER_VERSION = 2;
 const MODELS: Record<string, { model: string; dir?: string }> = {
   fake: { model: 'fake-v1' },
   cosyvoice3: {
@@ -62,6 +62,8 @@ const readJson = <T>(f: string, what: string): T => {
   if (!existsSync(f)) fail(`${what}: ${path.relative(ROOT, f)} not found`);
   try { return JSON.parse(readFileSync(f, 'utf8')); } catch (e) { return fail(`${path.relative(ROOT, f)}: not JSON (${e instanceof Error ? e.message : e})`); }
 };
+/** Remove a leftover; a failure is only a warning. */
+const tidy = (p: string) => { try { rmSync(p, { recursive: true, force: true }); } catch (e) { console.warn(`warning: could not remove ${p}: ${e instanceof Error ? e.message : e}`); } };
 const writeAtomic = (f: string, data: string | Uint8Array) => {
   mkdirSync(path.dirname(f), { recursive: true });
   const tmp = `${f}.${process.pid}.tmp`;
@@ -132,40 +134,71 @@ try {
     } else todo.push({ id: l.id, read, seed, key });
   }
 
-  if (todo.length) {
-    const work = path.join(ROOT, '.cache', 'tts', 'work', FILM);
-    mkdirSync(work, { recursive: true });
-    const job = path.join(work, 'job.json');
-    writeFileSync(job, JSON.stringify({
-      backend, model_dir: M.dir ?? '', src_dir: COSYVOICE_SRC, voice: { wav: voiceWav, text: voice.text },
-      lines: todo.map((t) => ({ id: t.id, read: t.read, seed: t.seed, out: path.join(work, `${t.id}.wav`) })),
-    }, null, 1));
-    console.log(`synthesizing ${todo.length} line(s) with ${backend}...`);
-    const p = Bun.spawnSync([...python(backend), path.join(ROOT, 'audio', 'tts.py'), job], { cwd: ROOT, stdout: 'pipe', stderr: 'inherit' });
-    if (p.exitCode !== 0) fail(`audio/tts.py failed (${p.exitCode})`);
-    const done = new Map(p.stdout.toString().split('\n').filter((s) => s.trim().startsWith('{')).map((s) => { const r = JSON.parse(s); return [r.id as string, r]; }));
-    for (const t of todo) {
-      if (!done.has(t.id)) fail(`audio/tts.py did not report line "${t.id}"`);
-      const wav = path.join(work, `${t.id}.wav`);
-      const { samples, rate } = wavInfo(wav);
-      const flacTmp = `${P.audio(t.id)}.${process.pid}.tmp.flac`;
-      mkdirSync(path.dirname(flacTmp), { recursive: true });
-      const ff = Bun.spawnSync(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-i', wav, '-map_metadata', '-1', '-fflags', '+bitexact', '-flags:a', '+bitexact', '-c:a', 'flac', '-compression_level', '8', flacTmp], { stderr: 'pipe' });
-      if (ff.exitCode !== 0) { rmSync(flacTmp, { force: true }); fail(`ffmpeg (flac, ${t.id}): ${ff.stderr.toString().trim()}`); }
-      renameSync(flacTmp, P.audio(t.id));
-      const l = script.lines.find((x) => x.id === t.id)!;
-      const duration = samples / rate;
-      const was = old?.lines[t.id]?.duration;
-      lines[t.id] = { text: l.text, read: t.read, duration, sha256: sha256(readFileSync(P.audio(t.id))), key: t.key };
-      console.log(`  ${t.id}: ${duration.toFixed(3)}s${was !== undefined ? ` (was ${was.toFixed(3)}s)` : ''}`);
+  // one narrate per film at a time; a private work directory
+  const workRoot = path.join(ROOT, '.cache', 'tts', 'work');
+  mkdirSync(workRoot, { recursive: true });
+  const filmLock = path.join(workRoot, `.${FILM}.lock`);
+  try { mkdirSync(filmLock); } catch { fail(`another narrate of ${FILM} is running (or one crashed: remove ${filmLock})`); }
+  const work = path.join(workRoot, `${FILM}-${process.pid}`);
+  // new audio is staged beside the committed files; the lock is the commit point
+  const staged: { id: string; tmp: string }[] = [];
+  try {
+    if (todo.length) {
+      mkdirSync(work, { recursive: true });
+      const job = path.join(work, 'job.json');
+      writeFileSync(job, JSON.stringify({
+        backend, model_dir: M.dir ?? '', src_dir: COSYVOICE_SRC, voice: { wav: voiceWav, text: voice.text },
+        lines: todo.map((t) => ({ id: t.id, read: t.read, seed: t.seed, out: path.join(work, `${t.id}.wav`) })),
+      }, null, 1));
+      console.log(`synthesizing ${todo.length} line(s) with ${backend}...`);
+      const p = Bun.spawnSync([...python(backend), path.join(ROOT, 'audio', 'tts.py'), job], { cwd: ROOT, stdout: 'pipe', stderr: 'inherit' });
+      if (p.exitCode !== 0) fail(`audio/tts.py failed (${p.exitCode})`);
+      const done = new Map(p.stdout.toString().split('\n').filter((x) => x.trim().startsWith('{')).map((x) => { const r = JSON.parse(x); return [r.id as string, r]; }));
+      for (const t of todo) {
+        if (!done.has(t.id)) fail(`audio/tts.py did not report line "${t.id}"`);
+        if (process.env.NARRATE_TEST_FAIL_AT === t.id) fail(`test hook: failing at line "${t.id}"`);
+        const wav = path.join(work, `${t.id}.wav`);
+        const { samples, rate } = wavInfo(wav);
+        const tmp = path.join(path.dirname(P.audio(t.id)), `.${t.id}.${process.pid}.new.flac`);
+        mkdirSync(path.dirname(tmp), { recursive: true });
+        staged.push({ id: t.id, tmp });
+        const ff = Bun.spawnSync(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-i', wav, '-map_metadata', '-1', '-fflags', '+bitexact', '-flags:a', '+bitexact', '-c:a', 'flac', '-compression_level', '8', tmp], { stderr: 'pipe' });
+        if (ff.exitCode !== 0) fail(`ffmpeg (flac, ${t.id}): ${ff.stderr.toString().trim()}`);
+        const l = script.lines.find((x) => x.id === t.id)!;
+        const duration = samples / rate;
+        const was = old?.lines[t.id]?.duration;
+        lines[t.id] = { text: l.text, read: t.read, duration, sha256: sha256(readFileSync(tmp)), key: t.key };
+        console.log(`  ${t.id}: ${duration.toFixed(3)}s${was !== undefined ? ` (was ${was.toFixed(3)}s)` : ''}`);
+      }
     }
+    // commit: the old files aside, the new ones in, the lock written; a failure before the lock puts everything back
+    const aside: { file: string; old: string | null }[] = [];
+    try {
+      for (const st of staged) {
+        const file = P.audio(st.id);
+        const keep = existsSync(file) ? path.join(path.dirname(file), `.${st.id}.${process.pid}.old.flac`) : null;
+        if (keep) renameSync(file, keep);
+        aside.push({ file, old: keep });
+        renameSync(st.tmp, file);
+      }
+      const lock: NarrationLock = { film: FILM, backend, model: M.model, voice: script.voice, lines: Object.fromEntries(script.lines.map((l) => [l.id, lines[l.id]])) };
+      writeAtomic(P.lock, JSON.stringify(lock, null, 1) + '\n');
+      const total = Object.values(lock.lines).reduce((x, l) => x + l.duration, 0);
+      console.log(`${script.lines.length} line(s), ${total.toFixed(2)}s of speech, ${todo.length} synthesized -> ${path.relative(ROOT, P.lock)}`);
+    } catch (e) {
+      for (const a of aside.reverse()) {
+        try { rmSync(a.file, { force: true }); if (a.old) renameSync(a.old, a.file); } catch (r) { console.error(`could not restore ${a.file}: ${r instanceof Error ? r.message : r}`); }
+      }
+      throw e;
+    }
+    // committed: cleanup only (warnings)
+    for (const a of aside) if (a.old) tidy(a.old);
+    for (const id of Object.keys(old?.lines ?? {})) if (!seen.has(id)) { tidy(P.audio(id)); console.log(`  ${id}: no longer in the script, removed`); }
+  } finally {
+    for (const st of staged) tidy(st.tmp);
+    tidy(work);
+    tidy(filmLock);
   }
-  for (const id of Object.keys(old?.lines ?? {})) if (!seen.has(id)) { rmSync(P.audio(id), { force: true }); console.log(`  ${id}: no longer in the script, removed`); }
-
-  const lock: NarrationLock = { film: FILM, backend, model: M.model, voice: script.voice, lines: Object.fromEntries(script.lines.map((l) => [l.id, lines[l.id]])) };
-  writeAtomic(P.lock, JSON.stringify(lock, null, 1) + '\n');
-  const total = Object.values(lock.lines).reduce((s, l) => s + l.duration, 0);
-  console.log(`${script.lines.length} line(s), ${total.toFixed(2)}s of speech, ${todo.length} synthesized -> ${path.relative(ROOT, P.lock)}`);
 } catch (e) {
   console.error(e instanceof Error ? e.message : String(e));
   process.exit(1);

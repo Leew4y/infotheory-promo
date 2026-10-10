@@ -1,6 +1,6 @@
 // Unit tests of narration timing (engine/narration.ts): bun test. Expected values are worked out by hand.
 import { expect, test } from 'bun:test';
-import { defineFilm } from '../engine/film';
+import { defineFilm, FRAMES } from '../engine/film';
 import { narratedScene, narrationReport, useNarration, vo, type NarrationLock, type NarrationScript } from '../engine/narration';
 
 defineFilm({ id: 'narration-test', fps: 30, bpm: 80, chapters: 1 });
@@ -46,7 +46,9 @@ test('2 s of narration over 5 s of footage: the scene keeps the 5 s', () => {
   expect(c.dur).toBe(2);
 });
 
-test('a line placed twice is an error; unplaced lines are reported', () => {
+test('a line placed twice is an error, before the scene registers; unplaced lines are reported', () => {
+  const before = FRAMES;
   expect(() => narratedScene({ name: 'again', kind: 'page', lines: ['a'], draw: () => {} })).toThrow(/already placed/);
+  expect(FRAMES).toBe(before);
   expect(narrationReport().unplaced).toEqual(['d']);
 });

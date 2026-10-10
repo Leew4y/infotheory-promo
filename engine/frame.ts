@@ -10,6 +10,7 @@ import { film, FPS, frameOf, TOTAL } from './film';
 import { style, type SubLine } from './style';
 import { clamp, sstep, W, H } from './util';
 import { ensure, type MediaRef } from './media';
+import { lap } from './perf';
 
 export type { SubLine };
 export const SUBS = (): SubLine[] => SC.flatMap((s) => s.subs.map(([a, b, zh, en]) => ({ a: s.t0 + a, b: s.t0 + b, zh, en, plate: s.kind === 'plate' })));
@@ -80,19 +81,25 @@ export function frame(T: number, fps = 30, samples = 1): void {
   outF = frameOf(T);
   const sc = sceneAt(T);
   const K = samples > 1 ? Math.max(1, sc.mb ?? 3) : 1;
+  let t0 = performance.now();
   for (let k = 0; k < K; k++) {
     let tk = K > 1 ? Math.max(0, T + ((k + 0.5) / K - 0.5) * (SHUTTER / fps)) : T;
     if (sceneAt(tk) !== sc) tk = T;
     drawLayer(tk, K > 1 ? JIT[k][0] - 0.5 : 0, K > 1 ? JIT[k][1] - 0.5 : 0);
+    t0 = lap('draw (2D, per sub-frame summed)', t0);
     accumulate(k, K);
+    t0 = lap('upload + accumulate', t0);
   }
   const S = style();
   const g: Grade = { ...S.grade, ...(sc.kind === 'plate' ? S.plateGrade : {}), ...(sc.grade ?? {}) };
   post(T, g, fps);
+  t0 = lap('post (GL calls)', t0);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = 'copy';
   ctx.drawImage(glc, 0, 0);
   ctx.globalCompositeOperation = 'source-over';
+  t0 = lap('GL -> 2D readback', t0);
   overlays(T);
+  lap('overlays', t0);
 }

@@ -86,6 +86,11 @@ export function narrationTiming(name: string, o: NarrationTiming): { dur: number
   if (!script || !lock) throw new Error(`scene "${name}": no narration installed (useNarration in film.ts)`);
   const ids = o.lines ?? script.lines.filter((l) => l.scene === name).map((l) => l.id);
   if (!ids.length) throw new Error(`scene "${name}": no narration lines (none in the script has scene "${name}")`);
+  // every check before the scene registers: a refused scene must not change the timeline
+  for (const [i, id] of ids.entries()) {
+    if (ids.indexOf(id) !== i) throw new Error(`scene "${name}": narration line "${id}" is listed twice`);
+    if (starts.has(id)) throw new Error(`scene "${name}": narration line "${id}" is already placed in another scene`);
+  }
   const lead = o.lead ?? 0.6, gap = o.gap ?? 0.35, tail = o.tail ?? 0.8;
   for (const [k, v] of Object.entries({ lead, gap, tail, minDur: o.minDur ?? 0 })) if (!(Number.isFinite(v) && v >= 0)) throw new Error(`scene "${name}": ${k} must be >= 0 (got ${v})`);
   let t = lead;
@@ -102,7 +107,6 @@ export function narrationTiming(name: string, o: NarrationTiming): { dur: number
   const dur = Math.ceil(Math.max(o.minDur ?? 0, t + tail) * FPS - 1e-9) / FPS;
   const bind = (s: SceneDef): SceneDef => {
     for (const p of local) {
-      if (starts.has(p.id)) throw new Error(`scene "${name}": narration line "${p.id}" is already placed in another scene`);
       starts.set(p.id, p.t);
       placements.push({ id: p.id, t: s.t0 + p.t, dur: p.dur });
     }

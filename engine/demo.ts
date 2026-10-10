@@ -42,7 +42,7 @@ export interface DemoOpts {
   dur?: number;
   /**
    * Narration over the capture (engine/narration.ts): the scene lasts max(narration with its lead and tail, the edit),
-   * so the footage is never cut short; with `dur` given, at least `dur`. The lines become captions.
+   * so the footage is never cut short (a given `dur` is then a minimum, not a cut). The lines become captions.
    */
   narration?: NarrationTiming;
   /** The window title (e.g. the product or page). */
@@ -125,7 +125,7 @@ export function demoScene(o: DemoOpts): SceneDef {
   // each click from the frame its time falls in: floor(t x fps + 1e-9), the frame contract for event times
   const hits = clicks.map((c) => ({ ...c, f: Math.floor(c.t * FPS + 1e-9) }));
   const footage = Math.ceil(editDuration(edit) * FPS - 1e-9) / FPS;
-  const said = o.narration ? narrationTiming(o.name, { ...o.narration, minDur: Math.max(o.narration.minDur ?? 0, o.dur ?? footage) }) : null;
+  const said = o.narration ? narrationTiming(o.name, { ...o.narration, minDur: Math.max(footage, o.dur ?? 0, o.narration.minDur ?? 0) }) : null;
   // draw() runs after registration and reads the scene's start frame from self
   const self: SceneDef = scene({
     name: o.name, kind: 'page', dur: said ? said.dur : o.dur ?? footage, fi: o.fi, fo: o.fo, mb: o.mb, grade: o.grade, chapter: o.chapter, ch: o.ch,

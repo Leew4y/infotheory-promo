@@ -7,21 +7,24 @@
  * A throwaway film (films/narration-fixture-<pid>/, style nebula, 30 fps) with three scenes:
  *   intro  narratedScene: "ver" (a version, read "v二点一": 8 chars, 1.6 s) and "price" (an amount, read in words: 10
  *          chars, 2.0 s): .6 + 1.6 + .35 + 2.0 + .8 = 5.35 s -> 161 frames;
- *   demo   demoScene over a 5 s capture with 2.0 s of narration ("short"): the footage wins, 150 frames;
+ *   demo   demoScene over a 5 s capture with 2.0 s of narration ("short") and dur: 1: the footage wins, 150 frames;
  *   outro  narratedScene: "term-a" and "term-b", the same text twice (0.8 s each), told apart by id; the scene's drawing
  *          lands on vo("term-b"): .6 + .8 + .35 + .8 + .8 = 3.35 s -> 101 frames.
  * Checks:
  *   1. narrate: the lock holds every line with the expected duration and the sha256 of its committed FLAC; a second
  *      run synthesizes nothing; a caption-only change updates the lock without synthesis; a changed reading
- *      synthesizes that line only; a lost audio file is an error until --resynth names it;
+ *      synthesizes that line only; a lost audio file is an error until --resynth names it; a synthesis that fails
+ *      half-way (test hook) leaves the lock and every committed FLAC as they were;
  *   2. the page: scene lengths, placements (film seconds) and captions as worked out above; validate has no errors,
  *      and a script line placed in no scene is a narration-unplaced error;
- *   3. mix over a pink-noise bed: integrated loudness -16 ± 0.5 LUFS, true peak <= -1.5 dBTP, and in every line's
- *      window the master is >= 6 dB louder than the bed alone (outside every window);
+ *   3. the export refuses a film with narration but no final mix; mix over pink-noise beds (quiet, loud, a 4 s bed that
+ *      must loop, a 30 s bed that must be cut): integrated loudness -16 ± 0.5 LUFS, true peak <= -1.5 dBTP, the master
+ *      as long as the film, in every line's window the master >= 6 dB louder than the bed alone (outside every
+ *      window), and no hole in the bed (every 0.5 s block away from the narration within 12 dB of the bed's level);
  *   4. export uses the final mix, and refuses it once the narration has moved (a lead changed, the mix not redone).
  * Every fixture path is created exclusively first; only those are removed afterwards. Needs ffmpeg, uv.
  */
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import type { NarrationLock, NarrationScript } from '../engine/narration';
@@ -119,6 +122,12 @@ try {
   check(lost.code !== 0 && /price/.test(lost.err) && back.code === 0 && existsSync(path.join(FILM, 'narration', 'price.flac')),
     'a lost audio file is an error until --resynth names it', `lost audio: ${lost.code} ${lost.err.trim()} / resynth ${back.code}`);
   lock = readLock();
+  const lockBytes = readFileSync(lockFile, 'utf8');
+  const half = run(['bun', 'scripts/narrate.ts', '--film', ID, '--backend', 'fake', '--resynth', 'all'], { NARRATE_TEST_FAIL_AT: 'price' });
+  const intactAfter = SCRIPT.lines.every((l) => sha(path.join(FILM, 'narration', `${l.id}.flac`)) === lock.lines[l.id].sha256);
+  const leftovers = readdirSync(path.join(FILM, 'narration')).filter((n) => n.startsWith('.'));
+  check(half.code !== 0 && readFileSync(lockFile, 'utf8') === lockBytes && intactAfter && !leftovers.length,
+    'a synthesis failing half-way leaves the lock and every committed FLAC untouched', `half-way failure: ${half.code}, lock ${readFileSync(lockFile, 'utf8') === lockBytes ? 'kept' : 'changed'}, files intact ${intactAfter}, leftovers ${leftovers.join(', ')}`);
 
   // the film: capture, film.ts with the narration, three scenes
   await makeNumberedVideo(path.join(WORK, 'app.mp4'), 5, 30);
@@ -132,7 +141,7 @@ try {
 import app from '../captures/app.json';
 
 narratedScene({ name: 'intro', kind: 'page', lead: ${introLead}, draw: () => background() });
-demoScene({ name: 'demo', asset: app as never, narration: {} });
+demoScene({ name: 'demo', asset: app as never, dur: 1, narration: {} });
 narratedScene({ name: 'outro', kind: 'page', draw(lt) {
   background();
   if (lt >= vo('term-b')) text('熵', 960, 540, { size: 120, color: C.fg, align: 'center' });
@@ -149,7 +158,7 @@ narratedScene({ name: 'outro', kind: 'page', draw(lt) {
   const tl: { scenes: { name: string; f0: number; f1: number }[] } = JSON.parse(readFileSync(tlFile, 'utf8'));
   const lens = Object.fromEntries(tl.scenes.map((s) => [s.name, s.f1 - s.f0]));
   check(lens.intro === F.intro && lens.demo === F.demo && lens.outro === F.outro,
-    'scene lengths: intro 161, demo 150 (the 5 s footage outlasts 2 s of narration), outro 101 frames', `scene lengths ${JSON.stringify(lens)}`);
+    'scene lengths: intro 161, demo 150 (the 5 s footage outlasts 2 s of narration and dur: 1), outro 101 frames', `scene lengths ${JSON.stringify(lens)}`);
   const pl: { film: string; duration: number; placements: { id: string; t: number; dur: number }[] } = JSON.parse(readFileSync(cues, 'utf8'));
   const bad = SCRIPT.lines.filter((l) => { const p = pl.placements.find((q) => q.id === l.id); return !p || !near(p.t, AT[l.id]) || !near(p.dur, lock.lines[l.id].duration); });
   check(!bad.length && pl.placements.length === 5 && near(pl.duration, 412 / 30), 'placements: every line where worked out by hand, the repeated text twice by id',
@@ -169,25 +178,43 @@ narratedScene({ name: 'outro', kind: 'page', draw(lt) {
   step('narrate without stray', narrate());
   step('build again', run(['bunx', 'vite', 'build'], { FILM: ID }));
 
-  // 3. mix over a pink-noise bed
-  const bed = path.join(WORK, 'bed.wav');
-  step('bed', run(['ffmpeg', '-v', 'error', '-y', '-f', 'lavfi', '-i', `anoisesrc=color=pink:amplitude=0.25:sample_rate=44100:seed=7:duration=${(412 / 30 + 1).toFixed(3)}`, '-ac', '2', '-c:a', 'pcm_s16le', bed]));
-  step('mix', run(['uv', 'run', '--project', 'audio', 'python', 'audio/mix.py', '--film', ID, '--music', bed, '--placements', cues]));
-  const master = path.join(WORK, 'master.wav');
-  const meas = run(['ffmpeg', '-hide_banner', '-nostats', '-i', master, '-af', 'ebur128=peak=true', '-f', 'null', '-']).err;
-  const sum = meas.slice(meas.lastIndexOf('Summary:'));
-  const I = +sum.split('I:')[1].split('LUFS')[0], TP = +sum.split('Peak:')[1].split('dBFS')[0];
-  check(Math.abs(I + 16) <= 0.5 && TP <= -1.5, `master: ${I.toFixed(2)} LUFS, true peak ${TP.toFixed(2)} dBTP`, `master loudness ${I} LUFS, true peak ${TP} dBTP`);
-  const SR = 44100;
-  const raw = Bun.spawnSync(['ffmpeg', '-v', 'error', '-i', master, '-f', 'f32le', '-ac', '1', '-ar', String(SR), '-'], { stdout: 'pipe' }).stdout;
-  const x = new Float32Array(raw.buffer, raw.byteOffset, Math.floor(raw.byteLength / 4));
-  const inAny = (i: number, m: number) => pl.placements.some((p) => i / SR >= p.t - m && i / SR < p.t + p.dur + m);
-  const bedDb = rmsDb(x, SR, (i) => !inAny(i, 0.6));
-  const lift = pl.placements.map((p) => [p.id, rmsDb(x, SR, () => true, p.t, p.t + p.dur) - bedDb] as const);
-  check(lift.every(([, d]) => d >= 6), `every line >= 6 dB over the bed (${lift.map(([id, d]) => `${id} ${d.toFixed(1)}`).join(', ')})`, `lines over the bed: ${JSON.stringify(lift)}`);
+  // 3. no final mix: refused; then mixes over several beds
+  const mp4 = path.join(WORK, 'film.mp4');
+  const nomix = run(['bun', 'scripts/export.ts', '--film', ID, '--workers', '1', '--to', '1', '--out', mp4]);
+  check(nomix.code !== 0 && /no final mix/.test(nomix.err), 'export refuses a film with narration but no final mix', `no mix: ${nomix.code} ${nomix.err.trim()}`);
+  const SR = 44100, FILM_S = 412 / 30;
+  const mixCase = (name: string, seconds: number, amplitude: number) => {
+    const bed = path.join(WORK, `bed-${name}.wav`);
+    step(`bed ${name}`, run(['ffmpeg', '-v', 'error', '-y', '-f', 'lavfi', '-i', `anoisesrc=color=pink:amplitude=${amplitude}:sample_rate=44100:seed=7:duration=${seconds}`, '-ac', '2', '-c:a', 'pcm_s16le', bed]));
+    const mx = run(['uv', 'run', '--project', 'audio', 'python', 'audio/mix.py', '--film', ID, '--music', bed, '--placements', cues]);
+    if (mx.code !== 0) return failures.push(`mix ${name}: ${mx.err.trim().split('\n').slice(-2).join(' ')}`);
+    const master = path.join(WORK, 'master.wav');
+    const meas = run(['ffmpeg', '-hide_banner', '-nostats', '-i', master, '-af', 'ebur128=peak=true', '-f', 'null', '-']).err;
+    const sum = meas.slice(meas.lastIndexOf('Summary:'));
+    const I = +sum.split('I:')[1].split('LUFS')[0], TP = +sum.split('Peak:')[1].split('dBFS')[0];
+    const raw = Bun.spawnSync(['ffmpeg', '-v', 'error', '-i', master, '-f', 'f32le', '-ac', '1', '-ar', String(SR), '-'], { stdout: 'pipe' }).stdout;
+    const x = new Float32Array(raw.buffer, raw.byteOffset, Math.floor(raw.byteLength / 4));
+    const inAny = (i: number, m: number) => pl.placements.some((p) => i / SR >= p.t - m && i / SR < p.t + p.dur + m);
+    const bedDb = rmsDb(x, SR, (i) => !inAny(i, 0.6));
+    const lift = pl.placements.map((p) => [p.id, rmsDb(x, SR, () => true, p.t, p.t + p.dur) - bedDb] as const);
+    // holes: 0.5 s blocks wholly away from the narration (and before the final 2 s fade)
+    const holes: string[] = [];
+    for (let s = 0; s + 0.5 <= FILM_S - 2; s += 0.5) {
+      if (inAny(Math.floor(s * SR), 0.6) || inAny(Math.floor((s + 0.5) * SR) - 1, 0.6)) continue;
+      const d = rmsDb(x, SR, () => true, s, s + 0.5);
+      if (d < bedDb - 12) holes.push(`${s.toFixed(1)}s ${d.toFixed(1)} dB`);
+    }
+    const len = x.length / SR;
+    const good = Math.abs(I + 16) <= 0.5 && TP <= -1.5 && lift.every(([, d]) => d >= 6) && !holes.length && len >= FILM_S && len - FILM_S < 1 / SR + 1e-9;
+    check(good, `mix ${name}: ${I.toFixed(2)} LUFS, TP ${TP.toFixed(2)} dBTP, ${len.toFixed(4)} s, lines over the bed ${lift.map(([, d]) => d.toFixed(1)).join('/')} dB, no holes`,
+      `mix ${name}: ${I} LUFS, TP ${TP}, ${len}s (film ${FILM_S}), lift ${JSON.stringify(lift)}, holes ${holes.join(', ')}`);
+  };
+  mixCase('loud', FILM_S + 1, 0.9);
+  mixCase('short-loop', 4, 0.25);
+  mixCase('long-cut', 30, 0.25);
+  mixCase('quiet', FILM_S + 1, 0.25);
 
   // 4. export with the final mix; refused once the narration moved
-  const mp4 = path.join(WORK, 'film.mp4');
   const ex = run(['bun', 'scripts/export.ts', '--film', ID, '--workers', '2', '--to', '2', '--out', mp4]);
   check(ex.code === 0 && /audio \S*master\.wav/.test(ex.out), 'export muxes the final mix', `export with the mix: ${ex.code} ${ex.err.trim()}`);
   writeFileSync(path.join(FILM, 'scenes', 'all.ts'), scenes(0.9));
@@ -199,6 +226,9 @@ narratedScene({ name: 'outro', kind: 'page', draw(lt) {
 } finally {
   if (process.env.KEEP_FIXTURE && failures.length) console.log(`kept for debugging: ${owned.join(', ')}`);
   else for (const p of owned) rmSync(p, { recursive: true, force: true });
+  // the narrate work directories and lock of this fixture
+  const workRoot = path.join(ROOT, '.cache', 'tts', 'work');
+  if (existsSync(workRoot)) for (const n of readdirSync(workRoot)) if (n.startsWith(`${ID}-`) || n === `.${ID}.lock`) rmSync(path.join(workRoot, n), { recursive: true, force: true });
 }
 for (const m of failures) console.log(`FAIL  ${m}`);
 console.log(`${failures.length ? 'FAIL' : 'PASS'} test-narration${owned.some((p) => existsSync(p)) ? ' (fixture left behind)' : ''}`);

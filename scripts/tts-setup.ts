@@ -12,7 +12,9 @@
  *    against the Hugging Face revision pinned below (sha256 of LFS files, git blob hash of small ones). Downloaded from
  *    ModelScope (the publisher's own hub, fast from China; TTS_MODEL_SOURCE=hf for Hugging Face), file by file;
  *    a verified file is kept, so an interrupted download resumes with the next file.
- * Needs git and uv. Tried on Windows 11 with CUDA (RTX 3060 Laptop); not yet on macOS.
+ * Platforms: Windows x64 installs exactly audio/tts-lock-win.txt (the environment verified by a real synthesis);
+ * Linux and Apple-silicon macOS resolve audio/tts-requirements.txt (not yet verified: a warning says so); Intel macOS
+ * is refused (PyTorch 2.3.1 has no wheels for it). Needs git and uv.
  */
 import { existsSync, mkdirSync, rmSync, statSync } from 'node:fs';
 import path from 'node:path';
@@ -53,6 +55,9 @@ function sh(what: string, cmd: string[], cwd = ROOT): string {
 const pyOk = (code: string) => existsSync(PY) && Bun.spawnSync([PY, '-c', code], { stdout: 'ignore', stderr: 'ignore' }).exitCode === 0;
 const pip = (what: string, args: string[]) => sh(what, ['uv', 'pip', 'install', '--python', PY, ...args]);
 
+if (process.platform === 'darwin' && process.arch !== 'arm64') { console.error('tts-setup: Intel macOS is not supported (no PyTorch 2.3.1 wheels); use Apple silicon, Windows or Linux'); process.exit(1); }
+const LOCKED = process.platform === 'win32' && process.arch === 'x64';
+if (!LOCKED) console.warn(`tts-setup: ${process.platform}-${process.arch} is not verified yet: packages are resolved from audio/tts-requirements.txt, not a lock`);
 mkdirSync(TTS, { recursive: true });
 // 1. source
 if (!existsSync(path.join(SRC, '.git'))) sh('clone CosyVoice', ['git', 'clone', '--quiet', COSYVOICE.repo, SRC]);
@@ -70,7 +75,9 @@ if (!pyOk('import whisper')) {
   pip('build tools for openai-whisper', ['setuptools<81', 'wheel']);
   pip('openai-whisper', ['--no-build-isolation', 'openai-whisper==20231117']);
 }
-pip('inference packages', ['-r', path.join(ROOT, 'audio', 'tts-requirements.txt'), ...TORCH, ...TORCH_INDEX.map((a) => (a === '--index-url' ? '--extra-index-url' : a)), '--index-strategy', 'unsafe-best-match']);
+const extraIndex = TORCH_INDEX.map((a) => (a === '--index-url' ? '--extra-index-url' : a));
+if (LOCKED) pip('inference packages (locked)', ['-r', path.join(ROOT, 'audio', 'tts-lock-win.txt'), ...extraIndex, '--index-strategy', 'unsafe-best-match']);
+else pip('inference packages', ['-r', path.join(ROOT, 'audio', 'tts-requirements.txt'), ...TORCH, ...extraIndex, '--index-strategy', 'unsafe-best-match']);
 // 4. model, file by file, each verified
 /** Whether a file matches its pinned hash (sha256, or git's blob sha1 for small files). */
 async function verified(f: string, size: number, hash: string): Promise<boolean> {

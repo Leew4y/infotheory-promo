@@ -16,6 +16,10 @@ Backends:
               the reading (whitespace excluded) at 24 kHz, -18 dBFS RMS, seeded by the line's seed. For tests.
   cosyvoice3  Fun-CosyVoice3-0.5B (zero-shot from the voice prompt), imported only here; needs the TTS environment
               (just tts-setup). Seeded per line (set_all_random_seed); the yielded segments of one line are joined.
+              No text normaliser: CosyVoice would otherwise use ttsfrd or wetext, whose resources wetext downloads at
+              run time without a pinned revision (and silently falls back to none when that fails). Both are blocked,
+              so only the pinned CosyVoice code shapes the text; numbers, versions and amounts are written out in each
+              line's reading (narration.json "read").
 
 The top level imports only the standard library, so the fake backend runs anywhere.
 """
@@ -27,7 +31,7 @@ import struct
 import sys
 import wave
 
-ADAPTER_VERSION = 1
+ADAPTER_VERSION = 2
 FAKE_RATE = 24000
 FAKE_SECONDS_PER_CHAR = 0.2
 TRIM_DB = -45.0
@@ -80,10 +84,23 @@ def fake_backend(job):
 def cosyvoice3_backend(job):
     src = job['src_dir']
     sys.path[:0] = [src, os.path.join(src, 'third_party', 'Matcha-TTS')]
+    # block the text normalisers (see the docstring): an import of either fails, and CosyVoice runs without one
+    sys.modules['ttsfrd'] = None
+    sys.modules['wetext'] = None
     import torch  # noqa: E402  (the TTS environment)
     from cosyvoice.cli.cosyvoice import AutoModel
     from cosyvoice.utils.common import set_all_random_seed
-    model = AutoModel(model_dir=job['model_dir'])
+    # GPU memory on a 6 GB laptop GPU (beside the desktop): every checkpoint is read into CPU memory and copied into
+    # the parameters (CosyVoice maps them straight to the GPU, holding a second copy while loading, which ran out of
+    # memory). fp32: fp16 also fits but was ~4x slower here (RTF 5-9 against 1.2-2.0, RTX 3060 Laptop, 2026-10-10).
+    load = torch.load
+    torch.load = lambda *a, **k: load(*a, **{**k, 'map_location': 'cpu'})
+    try:
+        model = AutoModel(model_dir=job['model_dir'], fp16=False)
+    finally:
+        torch.load = load
+    if model.frontend.text_frontend != '':
+        raise SystemExit(f'tts: expected no text normaliser, CosyVoice loaded {model.frontend.text_frontend!r}')
     prompt = 'You are a helpful assistant.<|endofprompt|>' + job['voice']['text']
 
     def synth(read, seed):

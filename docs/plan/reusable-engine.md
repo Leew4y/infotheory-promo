@@ -457,7 +457,27 @@ A1 / A1b 评审修正（Codex，gpt-6-astra max：1 BLOCKER / 8 SHOULD_FIX / 2 N
   依赖在上游清单基础上按实际导入链补齐（rich、gdown、matplotlib、wget、pyworld），safetensors 固定为 0.5.3（0.8.0 让 transformers 4.51.3 加载时段错误）。
   3 句试听样例合成成功（RTF 1.5–2.2；onnxruntime 只有 CPU provider），音色由 Develata 试听后决定。
   合成进程峰值内存高：系统可提交内存只剩 3–4 GB 时加载模型会段错误，剩约 6 GB 时成功；之前 test-capture、bench 的 Chrome 崩溃也发生在同样的内存压力下（推断）。
-- 未覆盖：音色选定与正式旁白的听感；macOS 上的 TTS 环境；词级锚点（按决定不做）。
+- 音色：Develata 试听后决定先用 `cosyvoice-zero-shot`（2026-10-09）。
+- Codex 评审（max，未通过：4 个 BLOCKER、9 个 SHOULD_FIX）后的修复，逐条核实后采纳：
+  - narrate 事务化：新音频先写成临时 FLAC，lock 为提交点；提交前任何失败都放回旧文件，同片互斥，工作目录按进程隔离；
+  - 混音电平：配乐先按"离开旁白处比人声低 10 dB"重新定标，旁白处再压低 10 dB；母版后逐句复测，任何一句窗内比窗外垫乐高不到 6 dB 就失败、不发布；
+  - 有旁白的片子默认导出必须有有效母版（`just all` 现为 music → mix → export）；未放置的句子导出前即报错；
+  - 有旁白的 demo 场景，显式 `dur` 只作下限，素材永不截短；narratedScene 的重复放置等检查都在注册场景之前；
+  - 母版事务发布（临时文件 → 复测 → WAV、MP3、清单依次改名，清单最后），清单记录母版自身 sha256、帧数与帧率、
+    音乐的仓库相对路径；放置指纹只由导出端（JS）以整数微秒计算，混音只抄写；
+  - 音频长度向上取整到整样本，重采样造成的尾部 ≤10 ms 越界会被裁掉；
+  - `synth.master` 的 limiter 加 `latency=1`：脉冲实验证明此前所有母版晚 220 样本（5 ms）且末尾样本丢失，现为 0 偏移
+    （这也改变参考片的音频母版，画面不变）；
+  - 音乐长度适配：短音乐按小节切点循环（1 秒等功率交叉淡化），长音乐在片尾 2 秒淡出截断；
+  - 预览按请求选择音轨（母版与当前 lock 匹配才用母版）；
+  - TTS 适配层禁用文本规范器（wetext 运行时下载未固定版本的资源，且此前下载不完整时静默退化为无规范器）：只有固定的
+    CosyVoice 代码处理文本，数字等一律写在 `read` 里；加载了其他前端即失败；适配层版本升到 2（合成键随之变化）；
+  - Windows 安装完全锁定为验证过的环境（`audio/tts-lock-win.txt`，116 个包）；Intel Mac 直接拒绝，Apple Silicon 与 Linux
+    按 requirements 解析并警告未验证；
+  - 测试清理自己的 TTS 工作目录。
+- 修复后验收：test-narration 全过（新增：半途失败不动 lock 与已提交 FLAC；无母版拒绝导出；响垫乐、4 秒循环、30 秒截断、
+  安静垫乐四种混音都 −16.1 LUFS、真峰值 −6.1 dBTP、长度等于影片、每句高出垫乐 10.1–10.2 dB 且无空洞；显式 `dur: 1` 时 demo 仍 150 帧）。
+- 未覆盖：正式旁白的听感；macOS 上的 TTS 环境；词级锚点（按决定不做）；GPT 关于 macOS PyTorch 的提示（Intel 无 2.3.1 wheel）已据此拒绝。
 
 **2c · 计划驱动与 agent 命令。**
 - 契约：`Brief`、`FilmPlan`（Zod，可导出 JSON Schema）。`films/<id>/film-plan.json` 是场景顺序、ID、时长、文案、字幕、素材引用的唯一来源；

@@ -1,4 +1,5 @@
-import { createReadStream, existsSync, readdirSync, statSync } from 'node:fs';
+import { createReadStream, existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
@@ -8,13 +9,24 @@ const root = fileURLToPath(new URL('.', import.meta.url));
 
 // One page shell (index.html, a single 1920x1080 canvas) for every film: FILM picks the entry films/<FILM>/main.ts.
 // `just dev <film>` / `just build <film>` set it. The build goes to dist/<film>/. The dev server serves exactly one
-// file from the film's outputs, its preview music out/<film>/music.mp3 (from `just music <film>`), at /music.mp3;
+// file from the film's outputs, its preview audio (see previewAudio below), at /music.mp3;
 // nothing else under out/ is exposed. Its media frames (screen captures) are served from .cache/captures/<film>/ at /media/.
 const FILM = process.env.FILM ?? '';
 const films = readdirSync(path.join(root, 'films')).filter((n) => /^[a-z0-9][a-z0-9-]*$/.test(n) && existsSync(path.join(root, 'films', n, 'main.ts')));
 if (!films.includes(FILM)) throw new Error(`FILM=${JSON.stringify(FILM)} is not a film (films/<id>/main.ts): one of ${films.join(', ')}`);
-// the preview plays the final mix (music + narration, just mix) when there is one, else the score
-const MUSIC = [path.join(root, 'out', FILM, 'master.mp3'), path.join(root, 'out', FILM, 'music.mp3')].find((f) => existsSync(f)) ?? path.join(root, 'out', FILM, 'music.mp3');
+// The preview's audio, chosen per request: the final mix (music + narration, just mix) while it was made from the
+// current narration lock, else the score. (The export also checks the placements and the frame count; the preview cannot
+// without the page, so a mix made before a timing change still plays here.)
+const OUT = path.join(root, 'out', FILM);
+const LOCK = path.join(root, 'films', FILM, 'narration.lock.json');
+function previewAudio(): string {
+  try {
+    const meta = JSON.parse(readFileSync(path.join(OUT, 'master.json'), 'utf8'));
+    const lock = existsSync(LOCK) ? createHash('sha256').update(readFileSync(LOCK)).digest('hex') : 'none';
+    if (meta.lock === lock && existsSync(path.join(OUT, 'master.mp3'))) return path.join(OUT, 'master.mp3');
+  } catch { /* no mix yet */ }
+  return path.join(OUT, 'music.mp3');
+}
 
 export default defineConfig({
   root,
@@ -36,6 +48,7 @@ export default defineConfig({
         createReadStream(file).on('error', () => { if (!res.headersSent) res.statusCode = 404; res.end(); }).pipe(res);
       });
       server.middlewares.use('/music.mp3', (req, res) => {
+        const MUSIC = previewAudio();
         if (!existsSync(MUSIC)) { res.statusCode = 404; res.end(`no ${path.relative(root, MUSIC)}: run just music ${FILM}`); return; }
         // byte ranges, so the player can seek
         const size = statSync(MUSIC).size;

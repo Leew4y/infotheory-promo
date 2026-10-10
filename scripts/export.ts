@@ -1,7 +1,9 @@
 /**
  * Offline export (the design follows abstract-algebra-promo's export.mjs, driven here through puppeteer-core):
  *
- *   bun scripts/export.ts --film <id> [--workers 4] [--from 0] [--to <end>] [--crf 18] [--out out/<id>/<id>.mp4]
+ *   bun scripts/export.ts --film <id> [--workers 4] [--from 0] [--to <end>] [--crf 18] [--out out/<id>/<id>.mp4] [--draft]
+ *     --draft: a quick look while editing, not the film: no motion blur (one sample per frame), x264 veryfast, written
+ *     to out/<id>/<id>[-<style>]-draft.mp4 unless --out; with --from/--to it renders just the part being worked on.
  *                         [--audio out/<id>/music.wav | --noaudio] [--deadline <seconds>]
  *   bun scripts/export.ts --film <id> --shots 5,20.5,60 [--dir out/<id>/shots]  write single frames (JPEG) for checking
  *   bun scripts/export.ts --film <id> --cues [films/<id>/cues.json]          dump the sound-effect cue sheet for the score
@@ -57,10 +59,11 @@ const flag = (k: string): boolean => argv.includes(`--${k}`);
 const fail = (exit: number, message: string): never => { throw Object.assign(new Error(message), { exit }); };
 
 const CRF = opt('crf', '18')!;
+const DRAFT = flag('draft');
 const SINGLE = flag('shots') || flag('cues') || flag('timeline') || flag('scenes') || flag('narration');
 const WORKERS = SINGLE ? 1 : Math.max(1, +(opt('workers', '4') ?? 4));
 const STYLE = opt('style');
-const OUT = path.resolve(ROOT, opt('out', `out/${FILM}/${FILM}${STYLE ? `-${STYLE}` : ''}.mp4`)!);
+const OUT = path.resolve(ROOT, opt('out', `out/${FILM}/${FILM}${STYLE ? `-${STYLE}` : ''}${DRAFT ? '-draft' : ''}.mp4`)!);
 // the audio: --audio, else the final mix out/<film>/master.wav (music + narration, audio/mix.py) when there is one, else
 // the score's loudness-normalized master out/<film>/music.wav (the MP3s are only for the preview player). A final mix
 // must still match what it was made from (master.json: the music, the narration lock, the placements), checked below.
@@ -212,15 +215,25 @@ const audioSeconds = async (file: string) => finite((await runProbe(['-show_entr
 
 const sha256 = (b: Uint8Array | string) => createHash('sha256').update(b).digest('hex');
 /** The placements' identity, computed the same way by audio/mix.py (id, start, duration to 1 µs). */
-const placementsDigest = (ps: { id: string; t: number; dur: number }[]) => sha256(ps.map((p) => `${p.id}:${p.t.toFixed(6)}:${p.dur.toFixed(6)}`).join('\n'));
-/** Why the final mix no longer matches its inputs (master.json), or null. */
-function masterStale(placements: { id: string; t: number; dur: number }[]): string | null {
+/**
+ * The placements' identity: ids with start and duration in whole microseconds (floor(x * 1e6 + 0.5)). Computed here only:
+ * export --narration writes it into the placements file, audio/mix.py copies it into master.json.
+ */
+const placementsDigest = (ps: { id: string; t: number; dur: number }[]) =>
+  sha256(ps.map((p) => `${p.id}:${Math.floor(p.t * 1e6 + 0.5)}:${Math.floor(p.dur * 1e6 + 0.5)}`).join('\n'));
+/** Why the final mix no longer matches the film (out/<film>/master.json, written by audio/mix.py), or null. */
+function masterStale(tl: { frames: number; fps: number }, placements: { id: string; t: number; dur: number }[]): string | null {
   const meta = path.join(ROOT, 'out', FILM, 'master.json');
   if (!existsSync(meta)) return 'no master.json';
-  const m: { music: { path: string; sha256: string } | 'none'; lock: string; placements: string } = JSON.parse(readFileSync(meta, 'utf8'));
-  if (m.music !== 'none' && (!existsSync(m.music.path) || sha256(readFileSync(m.music.path)) !== m.music.sha256)) return 'the music changed';
+  const m: { frames: number; fps: number; music: { path: string; external: boolean; sha256: string } | 'none'; lock: string; placements: string; master: string } = JSON.parse(readFileSync(meta, 'utf8'));
+  if (m.frames !== tl.frames || m.fps !== tl.fps) return `it was mixed for ${m.frames} frames at ${m.fps} fps, the film has ${tl.frames} at ${tl.fps}`;
+  if (!existsSync(MASTER) || sha256(readFileSync(MASTER)) !== m.master) return 'master.wav is not the one master.json describes';
+  if (m.music !== 'none') {
+    const music = m.music.external ? m.music.path : path.join(ROOT, m.music.path);
+    if (!existsSync(music) || sha256(readFileSync(music)) !== m.music.sha256) return 'the music changed';
+  }
   const lock = path.join(ROOT, 'films', FILM, 'narration.lock.json');
-  if (!existsSync(lock) || sha256(readFileSync(lock)) !== m.lock) return 'the narration changed';
+  if ((existsSync(lock) ? sha256(readFileSync(lock)) : 'none') !== m.lock) return 'the narration changed';
   if (placementsDigest(placements) !== m.placements) return 'the narration moved in the timeline';
   return null;
 }
@@ -239,7 +252,7 @@ async function launch(id: number, chrome: string, url: string, fps: () => number
   page.on('console', (m) => { if (m.type() === 'error') console.error(`worker ${id} console.error:`, m.text()); });
   await loadFilm(page, url, FILM, STYLE ?? '');
   const frame = async (t: number): Promise<Buffer> => {
-    const durl: string = await page.evaluate((t, f) => window.__frame(t, f), t, fps());
+    const durl: string = await page.evaluate((t, f, k) => window.__frame(t, f, k), t, fps(), DRAFT ? 1 : 3);
     return Buffer.from(durl.slice(durl.indexOf(',') + 1), 'base64');
   };
   const prefetch = (ts: number[]) => page.evaluate((ts) => window.__prefetch(ts), ts);
@@ -256,7 +269,8 @@ try {
   const video = !SINGLE;
   const deadline = opt('deadline') !== undefined ? +opt('deadline')! : 0; // 0: set once the frame count is known
   if (video) {
-    if (!NOAUDIO && !existsSync(AUDIO)) fail(2, `audio ${AUDIO} not found: run \`just music ${FILM}\`, or pass --noaudio for a silent export`);
+    // an explicit --audio is checked now; the default once the page says whether the film has narration (below)
+    if (!NOAUDIO && opt('audio') !== undefined && !existsSync(AUDIO)) fail(2, `audio ${AUDIO} not found`);
     mkdirSync(path.dirname(OUT), { recursive: true });
     lockPath = takeLock(OUT);
     if (deadline > 0) deadlineTimer = setTimeout(() => cancel(`deadline of ${deadline}s exceeded`), deadline * 1000);
@@ -271,9 +285,16 @@ try {
   const gpu = await workers[0].evaluate(() => window.__gpu());
   console.log(`${WORKERS} worker${WORKERS > 1 ? 's' : ''} ready in ${((performance.now() - tLoad) / 1000).toFixed(1)}s   renderer: ${gpu}`);
   if (/swiftshader|llvmpipe|software/i.test(gpu)) console.error('!!! WebGL is on a software renderer');
-  if (!SINGLE && !NOAUDIO && AUDIO === MASTER) {
-    const stale = masterStale(await workers[0].evaluate(() => window.__narration().placements));
-    if (stale) fail(2, `the final mix ${path.relative(ROOT, MASTER)} is stale (${stale}): run just mix ${FILM}`);
+  if (!SINGLE && !NOAUDIO) {
+    // a film with narration exports its final mix (or --audio, explicitly); the mix must match the film as it is now
+    const { placements, unplaced } = await workers[0].evaluate(() => window.__narration());
+    if (unplaced.length) fail(2, `narration lines placed in no scene: ${unplaced.join(', ')}`);
+    if (placements.length && opt('audio') === undefined && AUDIO !== MASTER) fail(2, `the film has narration but no final mix (${path.relative(ROOT, MASTER)}): run just mix ${FILM}`);
+    if (!existsSync(AUDIO)) fail(2, `audio ${AUDIO} not found: run \`just music ${FILM}\` (and \`just mix ${FILM}\`), or pass --noaudio for a silent export`);
+    if (AUDIO === MASTER) {
+      const stale = masterStale(tl, placements);
+      if (stale) fail(2, `the final mix ${path.relative(ROOT, MASTER)} is stale (${stale}): run just mix ${FILM}`);
+    }
   }
 
   if (flag('scenes')) {
@@ -292,7 +313,7 @@ try {
       const { placements, unplaced } = await workers[0].evaluate(() => window.__narration());
       if (unplaced.length) fail(1, `narration lines placed in no scene: ${unplaced.join(', ')}`);
       mkdirSync(path.dirname(file), { recursive: true });
-      writeFileSync(file, JSON.stringify({ film: FILM, duration: tl.duration, placements }, null, 1));
+      writeFileSync(file, JSON.stringify({ film: FILM, frames: tl.frames, fps: tl.fps, bar: (4 * 60) / tl.bpm, duration: tl.duration, digest: placementsDigest(placements), placements }, null, 1));
       console.log(`wrote ${placements.length} narration placements to ${file}`);
     }
     if (flag('cues')) {
@@ -328,7 +349,7 @@ try {
     if (!NOAUDIO) ffArgs.push('-ss', (F0 / FPS).toFixed(6), '-t', span.toFixed(6), '-i', AUDIO, '-map', '0:v:0', '-map', '1:a:0');
     ffArgs.push('-vf', // accurate_rnd / full_chroma_int: swscale's default rounding shifts colours by 2-6 levels here (measured, see the plan's 1c record)
       'scale=in_color_matrix=bt601:in_range=pc:out_color_matrix=bt709:out_range=tv:flags=accurate_rnd+full_chroma_int+full_chroma_inp,format=yuv420p,setparams=colorspace=bt709:color_primaries=bt709:color_trc=bt709:range=tv',
-      '-c:v', 'libx264', '-preset', 'medium', '-crf', CRF, '-profile:v', 'high', '-r', String(FPS),
+      '-c:v', 'libx264', '-preset', DRAFT ? 'veryfast' : 'medium', '-crf', CRF, '-profile:v', 'high', '-r', String(FPS),
       '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-color_range', 'tv');
     if (!NOAUDIO) ffArgs.push('-c:a', 'aac', '-b:a', '256k');
     ffArgs.push('-movflags', '+faststart', '-f', 'mp4', tmpOut);

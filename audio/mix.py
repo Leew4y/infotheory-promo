@@ -1,19 +1,32 @@
-"""Final mix of a film: its music with the narration over it, ducked, then mastered (synth.master: two-pass loudnorm to
+"""Final mix of a film: its music with the narration over it, then mastered (synth.master: two-pass loudnorm to
 -16 LUFS, true peak <= -1.5 dBTP, checked).
 
-    uv run --project audio python audio/mix.py --film <film> [--music out/<film>/music.wav | none]
+    uv run --project audio python audio/mix.py --film <film> [--music out/<film>/music.wav | <file> | none]
                                                [--placements out/<film>/narration.cues.json]
 
-Inputs: the placements the page reports (bun scripts/export.ts --film <film> --narration: the film's duration and
-where every line plays), the lock films/<film>/narration.lock.json, and each line's audio films/<film>/narration/<id>.flac,
-whose sha256 must be the lock's. Each line is levelled to VOICE_RMS over its speech; the music is lowered by DUCK_DB
-from PRE seconds before a line to POST seconds after it, with smooth edges (RAMP).
-Outputs: out/<film>/master.wav (the export muxes it), master.mp3 (preview), master.json (sha256 of the music, the lock
-and the placements it was made from: the export refuses a master that no longer matches them).
+Inputs: the placements the page reports (bun scripts/export.ts --film <film> --narration: the film's frame count and
+rate, its bar length, where every line plays, and the placements' digest), the lock films/<film>/narration.lock.json and
+each line's audio films/<film>/narration/<id>.flac, whose sha256 must be the lock's. A film without narration (no lock,
+no placements) is mixed from its music alone.
+
+Levels: every line is levelled to VOICE_RMS_DB over its speech; the music is set so that, away from the narration, it
+sits BED_BELOW_DB under the voice, and it is lowered a further DUCK_DB from PRE seconds before a line to POST seconds
+after it (smooth edges). After mastering, every line's window must be at least MIN_LIFT_DB louder (RMS) than the music
+alone away from the narration; otherwise the mix fails and nothing is published.
+
+Length: the film lasts ceil(frames / fps x SR) samples. Music longer than the film is cut with a FADE_OUT fade; shorter
+music is looped, each repeat cut on a bar line (when the film has a bar grid) and joined with an equal-power crossfade
+of XFADE seconds.
+
+Outputs, published together only when everything passed (temporary files, then renamed): out/<film>/master.wav (the
+export muxes it), master.mp3 (the preview plays it) and master.json (what the master was made from: frames, fps, the
+placements' digest, the lock's sha256, the music's path and sha256, the master's own sha256), so the export can refuse a
+master that no longer matches the film.
 """
 import argparse
 import hashlib
 import json
+import math
 import os
 import subprocess
 import sys
@@ -29,8 +42,12 @@ import synth  # noqa: E402
 
 SR = synth.SR
 VOICE_RMS_DB = -20.0
-DUCK_DB = -12.0
+BED_BELOW_DB = 10.0
+DUCK_DB = -10.0
+MIN_LIFT_DB = 6.0
 PRE, POST, RAMP = 0.15, 0.30, 0.12
+XFADE, FADE_OUT = 1.0, 2.0
+MIX_VERSION = 2
 
 
 def sha256_file(path):
@@ -39,12 +56,6 @@ def sha256_file(path):
         for chunk in iter(lambda: f.read(1 << 20), b''):
             h.update(chunk)
     return h.hexdigest()
-
-
-def placements_digest(placements):
-    """The placements' identity, computed the same way by scripts/export.ts (id, start, duration to 1 µs)."""
-    text = '\n'.join(f"{p['id']}:{p['t']:.6f}:{p['dur']:.6f}" for p in placements)
-    return hashlib.sha256(text.encode('utf-8')).hexdigest()
 
 
 def decode(path, channels):
@@ -61,6 +72,49 @@ def smooth(mask, seconds):
     return lfilter([1 - a], [1, -a], y[::-1])[::-1]
 
 
+def rms_db(x):
+    x = np.asarray(x, np.float64)
+    return 10 * math.log10(float(np.mean(x * x)) + 1e-20) if x.size else -math.inf
+
+
+def fit_music(music, n, bar):
+    """Music of exactly n samples: cut with a fade-out, or looped (cuts on bar lines, equal-power crossfades)."""
+    m = music.shape[1]
+    fade = int(FADE_OUT * SR)
+    if m >= n:
+        out = music[:, :n].copy()
+        if m > n:
+            k = min(fade, n)
+            out[:, n - k:] *= np.cos(np.linspace(0, np.pi / 2, k, dtype=np.float32)) ** 2
+        return out
+    xf = int(XFADE * SR)
+    loop = m
+    if bar > 0:
+        bars = int((m - xf) // (bar * SR))
+        if bars >= 1:
+            loop = int(round(bars * bar * SR)) + xf
+    if loop <= 2 * xf:
+        raise SystemExit(f'the music ({m / SR:.2f}s) is too short to loop with a {XFADE}s crossfade')
+    out = np.zeros((2, n), np.float32)
+    fin = np.sin(np.linspace(0, np.pi / 2, xf, dtype=np.float32))
+    fout = np.cos(np.linspace(0, np.pi / 2, xf, dtype=np.float32))
+    seg = music[:, :loop].copy()
+    pos = 0
+    first = True
+    while pos < n:
+        s = seg.copy()
+        if not first:
+            s[:, :xf] *= fin
+        s[:, loop - xf:] *= fout
+        k = min(loop, n - pos)
+        out[:, pos:pos + k] += s[:, :k]
+        pos += loop - xf
+        first = False
+    k = min(fade, n)
+    out[:, n - k:] *= np.cos(np.linspace(0, np.pi / 2, k, dtype=np.float32)) ** 2
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--film', required=True)
@@ -74,29 +128,26 @@ def main():
     music_path = a.music or os.path.join(out_dir, 'music.wav')
     cues_path = a.placements or os.path.join(out_dir, 'narration.cues.json')
     lock_path = os.path.join(ROOT, 'films', film, 'narration.lock.json')
-    for p, how in [(cues_path, f'bun scripts/export.ts --film {film} --narration'), (lock_path, f'just narrate {film}')]:
-        if not os.path.exists(p):
-            raise SystemExit(f'{os.path.relpath(p, ROOT)} not found: run {how}')
+    if not os.path.exists(cues_path):
+        raise SystemExit(f'{os.path.relpath(cues_path, ROOT)} not found: run bun scripts/export.ts --film {film} --narration')
     cues = synth.load_json(cues_path)
-    lock = synth.load_json(lock_path)
-    if cues.get('film') != film or lock.get('film') != film:
-        raise SystemExit('the placements or the lock belong to another film')
-    duration, placements = float(cues['duration']), cues['placements']
-    synth.init({'bpm': 60, 'duration': duration, 'scenes': []})
-    n = int(round(duration * SR))
-
-    # music bed (or silence)
-    if music_path == 'none':
-        music, music_sha = np.zeros((2, n), np.float32), 'none'
-    else:
-        if not os.path.exists(music_path):
-            raise SystemExit(f'{os.path.relpath(music_path, ROOT)} not found: run just music {film}, or pass --music none')
-        music, music_sha = decode(music_path, 2), sha256_file(music_path)
-        music = music[:, :n] if music.shape[1] >= n else np.pad(music, ((0, 0), (0, n - music.shape[1])))
+    if cues.get('film') != film:
+        raise SystemExit('the placements belong to another film')
+    placements = cues['placements']
+    lock = synth.load_json(lock_path) if os.path.exists(lock_path) else None
+    if placements and lock is None:
+        raise SystemExit(f'{os.path.relpath(lock_path, ROOT)} not found: run just narrate {film}')
+    if lock is not None and lock.get('film') != film:
+        raise SystemExit('the narration lock belongs to another film')
+    frames, fps = int(cues['frames']), int(cues['fps'])
+    duration = frames / fps
+    n = -(-frames * SR // fps)  # ceil: the audio never ends before the last frame
+    synth.init({'bpm': cues.get('bpm') or 60, 'duration': n / SR, 'scenes': []})
 
     # narration, checked against the lock and levelled
     voice = np.zeros(n, np.float32)
     duck = np.zeros(n, np.float32)
+    windows = []
     for p in placements:
         e = lock['lines'].get(p['id'])
         if e is None:
@@ -105,35 +156,72 @@ def main():
         if not os.path.exists(f) or sha256_file(f) != e['sha256']:
             raise SystemExit(f"{os.path.relpath(f, ROOT)} is missing or not the audio in the lock (sha256)")
         x = decode(f, 1)[0]
-        rms = float(np.sqrt(np.mean(x.astype(np.float64) ** 2))) or 1.0
-        x = x * (10 ** (VOICE_RMS_DB / 20) / rms)
+        x = x * (10 ** (VOICE_RMS_DB / 20) / max(10 ** (rms_db(x) / 20), 1e-9))
         i = int(round(p['t'] * SR))
-        if i < 0 or i + len(x) > n:
-            raise SystemExit(f"line {p['id']} ({p['t']:.3f}s + {len(x) / SR:.3f}s) does not fit in the film ({duration:.3f}s)")
+        over = i + len(x) - n
+        if over > 0:
+            if over > int(0.01 * SR):
+                raise SystemExit(f"line {p['id']} ({p['t']:.3f}s + {len(x) / SR:.3f}s) does not fit in the film ({duration:.3f}s)")
+            x = x[:len(x) - over]  # resampling rounding at the very end of the film
         voice[i:i + len(x)] += x
         duck[max(0, i - int(PRE * SR)):min(n, i + len(x) + int(POST * SR))] = 1
+        windows.append((p['id'], i, i + len(x)))
+    away = duck == 0  # the music alone, away from the narration
+
+    # music bed (or silence): fitted to the film, set under the voice, ducked under each line
+    if music_path == 'none':
+        music, music_meta = np.zeros((2, n), np.float32), 'none'
+    else:
+        if not os.path.exists(music_path):
+            raise SystemExit(f'{os.path.relpath(music_path, ROOT)} not found: run just music {film}, or pass --music none')
+        music = fit_music(decode(music_path, 2), n, float(cues.get('bar') or 0))
+        rel = os.path.relpath(os.path.abspath(music_path), ROOT)
+        inside = not rel.startswith('..') and not os.path.isabs(rel)
+        music_meta = {'path': rel.replace(os.sep, '/') if inside else os.path.abspath(music_path), 'external': not inside, 'sha256': sha256_file(music_path)}
+    if placements and music_meta != 'none':
+        bed = rms_db(music[:, away]) if away.any() else rms_db(music)
+        if bed > -math.inf:
+            music *= np.float32(10 ** ((VOICE_RMS_DB - BED_BELOW_DB - bed) / 20))
     gain = 1 - (1 - 10 ** (DUCK_DB / 20)) * np.clip(smooth(duck, RAMP), 0, 1)
     mix = (music * gain.astype(np.float32) + voice[None, :]).astype(np.float32)
     peak = float(np.max(np.abs(mix))) or 1.0
     mix /= max(1.0, peak / 0.89)  # headroom before loudnorm; the master stage sets the level
 
+    # master into temporary files; check; publish together
     os.makedirs(out_dir, exist_ok=True)
-    mix_path, wav_path = os.path.join(out_dir, 'master.mix.wav'), os.path.join(out_dir, 'master.wav')
-    with wave.open(mix_path, 'wb') as w:
-        w.setnchannels(2)
-        w.setsampwidth(2)
-        w.setframerate(SR)
-        w.writeframes((np.clip(mix, -1, 1).T * 32767).astype(np.int16).tobytes())
+    tag = f'{os.getpid()}.tmp'
+    mix_path = os.path.join(out_dir, f'master.mix.{tag}.wav')
+    tmp = {k: os.path.join(out_dir, f'master.{tag}.{k}') for k in ('wav', 'mp3', 'json')}
     try:
-        synth.master(mix_path, wav_path)
+        with wave.open(mix_path, 'wb') as w:
+            w.setnchannels(2)
+            w.setsampwidth(2)
+            w.setframerate(SR)
+            w.writeframes((np.clip(mix, -1, 1).T * 32767).astype(np.int16).tobytes())
+        synth.master(mix_path, tmp['wav'])
+        if windows and music_meta != 'none' and away.any():
+            y = decode(tmp['wav'], 1)[0]
+            bed_db = rms_db(y[:n][away])
+            lifts = [(lid, rms_db(y[s:e]) - bed_db) for lid, s, e in windows]
+            low = [f'{lid} {d:.1f} dB' for lid, d in lifts if d < MIN_LIFT_DB]
+            if low:
+                raise SystemExit(f'narration not clear of the music by {MIN_LIFT_DB} dB in: {", ".join(low)}')
+            print('lines over the music: ' + ', '.join(f'{lid} {d:.1f} dB' for lid, d in lifts))
+        subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', tmp['wav'], '-b:a', '192k', '-f', 'mp3', tmp['mp3']], check=True)
+        meta = {
+            'version': MIX_VERSION, 'film': film, 'frames': frames, 'fps': fps, 'placements': cues['digest'],
+            'lock': sha256_file(lock_path) if lock is not None else 'none', 'music': music_meta, 'master': sha256_file(tmp['wav']),
+        }
+        with open(tmp['json'], 'w', encoding='utf-8') as f:
+            json.dump(meta, f, indent=1)
+        # the manifest last: until it is replaced, a new WAV fails the old manifest's sha256 (the export calls that stale)
+        for k in ('wav', 'mp3', 'json'):
+            os.replace(tmp[k], os.path.join(out_dir, f'master.{k}'))
     finally:
-        os.remove(mix_path)
-    subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', wav_path, '-b:a', '192k', os.path.join(out_dir, 'master.mp3')], check=True)
-    music_meta = 'none' if music_sha == 'none' else {'path': os.path.abspath(music_path), 'sha256': music_sha}
-    meta = {'film': film, 'music': music_meta, 'lock': sha256_file(lock_path), 'placements': placements_digest(placements)}
-    with open(os.path.join(out_dir, 'master.json'), 'w', encoding='utf-8') as f:
-        json.dump(meta, f, indent=1)
-    print(f'mix: {len(placements)} lines over {"silence" if music_sha == "none" else os.path.relpath(music_path, ROOT)} -> {os.path.relpath(wav_path, ROOT)}')
+        for p in [mix_path, *tmp.values()]:
+            if os.path.exists(p):
+                os.remove(p)
+    print(f'mix: {len(placements)} lines over {"silence" if music_meta == "none" else os.path.relpath(music_path, ROOT)} -> {os.path.relpath(os.path.join(out_dir, "master.wav"), ROOT)}')
 
 
 if __name__ == '__main__':
