@@ -1,4 +1,4 @@
-// Chapter 1: Hardy went further and refused to defend mathematics by its use at all (F-H11); he claimed only that he
+// Chapter 1: Hardy refused to defend a mathematician's life by its use (F-H11); he claimed only that he
 // may be judged to have created something worth creating (F-H14). The first of the four refrains follows his defence,
 // not the timeline. No "可……不" opposition to the other defenders (revisions.md R2).
 import { text, background, M, W, C, F, scene, sstep } from '../../../engine';
@@ -8,7 +8,7 @@ scene({
   name: 'hardy', kind: 'page', dur: 18.0, chapter: 1, ch: ['无用', ''],
   // lines shown verbatim as display text on this page have no caption (the display text is their caption)
   subs: [
-    [0.5, 2.45, 'Hardy 说得更彻底：', '5'],
+    [0.5, 2.45, 'Hardy 也写道：', '5'],
     [2.45, 7.4, '不能以用途，为一位真正的数学家的一生辩护。', ''],
     [7.85, 10.55, '他只说：人们也许会认为，', '6'],
     [10.55, 13.5, '我创造了值得创造的东西。', ''],

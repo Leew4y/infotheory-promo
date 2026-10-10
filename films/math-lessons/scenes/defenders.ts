@@ -5,7 +5,7 @@ import { text, background, M, C, F, scene, sstep } from '../../../engine';
 import { bell, verse } from '../lib';
 
 const ROWS: [string, string, string, string, number][] = [
-  ['1699', 'Fontenelle', '看似无用的，日后会显出用处', '心智有它的需要：它想要知道', 0.6],
+  ['1699', 'Fontenelle', '有些看似无用的研究，日后会显出用处', '心智有它的需要：它想要知道', 0.6],
   ['1907', 'Russell', '数学家间接地，常常更造福人类', '用途只能是安慰，不能是向导', 1.4],
   ['1939', 'Flexner', '最终造福人类的伟大发现，多出自好奇心', '绝不以用途为研究院辩护', 2.2],
 ];

@@ -34,7 +34,7 @@ scene({
     const at = sstep(T0, T0 + 0.8, lt);
     text('s̈ = −(g / 4r) · s', M, 590, { font: F.math, style: 'italic', size: 40, color: C.fg2, alpha: at });
     voiceLine('1673 年，Huygens 证明——', M, 670, at, 'film', { size: 30, mk: '3' });
-    voiceLine('从任何高度放开，同时到达最低点。', M, 720, sstep(T0 + 0.5, T0 + 1.3, lt), 'film', { size: 30 });
+    voiceLine('从最低点以上的任何高度静止放开，同时到达最低点。', M, 720, sstep(T0 + 0.5, T0 + 1.3, lt), 'film', { size: 30 });
     label('Huygens《摆钟论》第二部分 · 命题 XXV', M, 772, at, C.muted, 18);
     label('理想模型：同一条倒置摆线 · 静止释放 · 匀强重力 · 无摩擦', M, 804, sstep(T0 + 1.0, T0 + 1.8, lt), C.muted, 18);
   },
