@@ -15,7 +15,9 @@
  *   gpu-mixed  GPU 2D, shuffled with repeated seeks;
  *   gpu-4w     GPU 2D, four workers round-robin.
  * For each run and frame against ref: pixels that differ, the largest channel difference, pixels off by more than 2
- * levels. Raw frames go to .cache/spike-0c/ (deleted at the end).
+ * levels. And, for order dependence, the GPU renders of each frame compared with each other directly (in-order,
+ * shuffled with repeats, four workers): `gpuSelf` lists the frames whose GPU renders are not all identical.
+ * Raw frames go to .cache/spike-0c/ (deleted at the end).
  */
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -58,6 +60,13 @@ async function render(page: Page, f: number, fps: number): Promise<Uint8Array> {
   if (d.stdout.length !== FB) throw new Error(`frame ${f}: decoded ${d.stdout.length} bytes`);
   return new Uint8Array(d.stdout);
 }
+/** sha256 of every GPU render, by frame: order dependence shows as more than one hash for a frame. */
+const gpuHashes = new Map<number, Set<string>>();
+const noteGpu = (f: number, px: Uint8Array) => {
+  const h = new Bun.CryptoHasher('sha256').update(px).digest('hex');
+  gpuHashes.set(f, (gpuHashes.get(f) ?? new Set()).add(h));
+  return px;
+};
 function compare(a: Uint8Array, b: Uint8Array) {
   let differ = 0, over2 = 0, max = 0;
   for (let i = 0; i < FB; i += 4) {
@@ -97,7 +106,7 @@ try {
     const w = await open(gpu2d);
     const rows = [];
     const a = performance.now();
-    for (const f of order) rows.push({ frame: f, ...compare(ref(f), await render(w.page, f, tl.fps)) });
+    for (const f of order) { const px = await render(w.page, f, tl.fps); if (gpu2d) noteGpu(f, px); rows.push({ frame: f, ...compare(ref(f), px) }); }
     record(name, (performance.now() - a) / 1000, rows);
     await w.browser.close();
   };
@@ -112,16 +121,19 @@ try {
   const ws = await Promise.all([0, 1, 2, 3].map(() => open(true)));
   const rows: { frame: number; differ: number; over2: number; max: number }[] = [];
   const a = performance.now();
-  await Promise.all(ws.map(async (w, k) => { for (let i = k; i < frames.length; i += 4) rows.push({ frame: frames[i], ...compare(ref(frames[i]), await render(w.page, frames[i], tl.fps)) }); }));
+  await Promise.all(ws.map(async (w, k) => { for (let i = k; i < frames.length; i += 4) { const px = noteGpu(frames[i], await render(w.page, frames[i], tl.fps)); rows.push({ frame: frames[i], ...compare(ref(frames[i]), px) }); } }));
   record('gpu-4w', (performance.now() - a) / 1000, rows);
   for (const w of ws) await w.browser.close();
   Object.assign(result, {
     film: FILM, chrome: await (async () => { const b = await puppeteer.launch({ executablePath: findChrome(), headless: true }); const v = await b.version(); await b.close(); return v; })(),
     platform: `${process.platform} ${process.arch}`, commit: Bun.spawnSync(['git', 'rev-parse', 'HEAD'], { cwd: ROOT, stdout: 'pipe' }).stdout.toString().trim(),
     frames, refSeconds: +refSeconds.toFixed(1), runs,
+    gpuSelf: [...gpuHashes].filter(([, hs]) => hs.size > 1).map(([f, hs]) => ({ frame: f, distinct: hs.size })),
   });
   mkdirSync(path.dirname(OUT), { recursive: true });
   writeFileSync(OUT, JSON.stringify(result, null, 1));
+  const self = (result.gpuSelf as unknown[]).length;
+  console.log(`GPU renders of the same frame differ in ${self} of ${frames.length} frames (in-order, shuffled with repeats, four workers)`);
   console.log(`-> ${path.relative(ROOT, OUT)}`);
 } finally {
   server.stop();

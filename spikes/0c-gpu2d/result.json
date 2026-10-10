@@ -2,7 +2,7 @@
  "film": "infotheory",
  "chrome": "Chrome/154.0.8037.93",
  "platform": "win32 x64",
- "commit": "93744e419c2379045a2641640ff1d6ecf29e8c17",
+ "commit": "749ddbf088265b813b2ad59dd2b4d7714933c825",
  "frames": [
   0,
   150,
@@ -70,11 +70,11 @@
   6000,
   6059
  ],
- "refSeconds": 45.9,
+ "refSeconds": 38.6,
  "runs": {
   "cpu-again": {
    "frames": 65,
-   "seconds": 46,
+   "seconds": 38.7,
    "framesDiffering": 0,
    "pixelsDiffering": 0,
    "pixelsOver2": 0,
@@ -83,7 +83,7 @@
   },
   "gpu": {
    "frames": 65,
-   "seconds": 39.4,
+   "seconds": 29.6,
    "framesDiffering": 50,
    "pixelsDiffering": 61287737,
    "pixelsOver2": 420019,
@@ -118,7 +118,7 @@
   },
   "gpu-mixed": {
    "frames": 85,
-   "seconds": 43.8,
+   "seconds": 42.2,
    "framesDiffering": 50,
    "pixelsDiffering": 78319401,
    "pixelsOver2": 520657,
@@ -153,7 +153,7 @@
   },
   "gpu-4w": {
    "frames": 65,
-   "seconds": 25.9,
+   "seconds": 19.4,
    "framesDiffering": 50,
    "pixelsDiffering": 61287737,
    "pixelsOver2": 420019,
@@ -186,5 +186,11 @@
     }
    ]
   }
- }
+ },
+ "gpuSelf": [
+  {
+   "frame": 4050,
+   "distinct": 2
+  }
+ ]
 }

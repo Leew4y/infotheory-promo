@@ -484,7 +484,7 @@ A1 / A1b 评审修正（Codex，gpt-6-astra max：1 BLOCKER / 8 SHOULD_FIX / 2 N
   参考片 1080p、K=3、CPU 2D、单 worker：每帧约 216 ms，其中"上传 + 累积"约 110 ms（CPU 光栅化在此兑现）、JPEG 编码约 65 ms、
   CDP 传 base64 约 33 ms。x264 medium 单独约 20 fps，veryfast 约 40 fps；NVENC 因驱动的 API 版本过旧（需 13.1，现 13.0）不可用。
 - GPU 加速 2D canvas（单 worker 123 ms/帧）被否决：`spikes/0c-gpu2d`（65 帧，与 CPU 2D 逐像素比较）中 50 帧不同，最大差 57 级，
-  42 万像素差 > 2 级；乱序渲染与顺序渲染的结果也不同（历史依赖仍在）。CPU 2D 的第二次冷启动与参考逐像素相同。导出保持 CPU 2D。
+  42 万像素差 > 2 级；同一帧的各次 GPU 渲染（顺序、乱序带重复、4 worker）直接互比，65 帧中 1 帧不同（历史依赖仍在，但少见；Codex 复核指出原先的汇总比较不能证明这一点，已改为逐帧互比）。CPU 2D 的第二次冷启动与参考逐像素相同。导出保持 CPU 2D。
 - 采用：帧传输改为页面 `toBlob` 在主线程外编码 JPEG 并 POST 到本地服务器（任务令牌 + 帧号，越界、重复、非 JPEG 即失败），
   与画下一帧重叠；解码后的帧与旧路径逐帧 md5 相同。`--draft`：每帧 1 个子帧（无运动模糊）、x264 veryfast，配合 `--from/--to` 只渲染正在改的段落。
 - 结果（空闲机器、300 帧、含启动）：终版 4 worker 9.3 fps（原 ≈7）；草稿 2–4 worker 14.5 fps；6 worker 反而更慢（CPU 争用）。
