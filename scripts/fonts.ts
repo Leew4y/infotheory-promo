@@ -4,7 +4,7 @@
  *
  *   bun scripts/fonts.ts --film <id> [--style <id>]     (one bundle per film and style)
  *
- * Without --style: every style the film imports (styles/<id> in any .ts under films/<film>/), one after another.
+ * Without --style: film-plan.json's styles, or every style the hand-written film imports, one after another.
  *
  * 1. The style lists font ids (styles/<style>/fonts.json); each id is an entry of the shared library fonts/catalog.json
  *    (URL pinned to an upstream commit, licence, sha256). Missing files are downloaded to .cache/fonts/ through a
@@ -13,7 +13,7 @@
  *    scripts/font-catalog.ts --lock); a mismatch is an error.
  * 2. The film's character set: every character in the string and template literals of films/<film>/**\/*.ts and of
  *    the style package (comments removed by a string-aware scanner, escapes decoded), plus printable ASCII, plus the
- *    captions of the film's narration (text and en of every line of films/<film>/narration.json), plus
+ *    displayed text in film-plan.json, or captions from narration.json (text and en), plus
  *    films/<film>/fonts.extra.txt if present (for text generated at run time, e.g. String.fromCodePoint(...)).
  * 3. Each source is subset to that set with a pinned fontTools (pyftsubset via `uv tool run`, WOFF2, all name records
  *    kept so the copyright and licence notices stay in the fonts) into a temporary directory; only when every face
@@ -27,6 +27,7 @@ import path from 'node:path';
 import { requireFilm } from './film-arg';
 import { CACHE, CATALOG, die, download, famKey, licence, readCatalog, ROOT, sha256 as sha, type Entry } from './font-lib';
 import { literals } from './literals';
+import { FilmPlanSpec, planTexts } from '../engine/plan';
 
 const argv = Bun.argv.slice(2);
 const opt = (k: string, d: string) => (argv.includes(`--${k}`) ? argv[argv.indexOf(`--${k}`) + 1] : d);
@@ -35,6 +36,8 @@ const FILM = requireFilm(argv);
 /** The styles a film imports: films may import a style only as styles/<id>/index.ts (scripts/check-imports.ts). */
 function filmStyles(): string[] {
   const dir = path.join(ROOT, 'films', FILM), ids: string[] = [];
+  const plan = path.join(dir, 'film-plan.json');
+  if (existsSync(plan)) return FilmPlanSpec.parse(JSON.parse(readFileSync(plan, 'utf8'))).styles;
   const tr = new Bun.Transpiler({ loader: 'ts' });
   const walk = (d: string): string[] => readdirSync(d).flatMap((n) => {
     const p = path.join(d, n);
@@ -104,7 +107,10 @@ for (let c = 0x20; c < 0x7f; c++) chars.add(String.fromCharCode(c));
 for (const f of [...walk(path.join(ROOT, 'films', FILM)), ...walk(path.join(ROOT, 'styles', STYLE))])
   for (const s of literals(readFileSync(f, 'utf8'))) for (const ch of s) chars.add(ch);
 const NARRATION = path.join(ROOT, 'films', FILM, 'narration.json');
-if (existsSync(NARRATION))
+const PLAN = path.join(ROOT, 'films', FILM, 'film-plan.json');
+if (existsSync(PLAN))
+  for (const text of planTexts(FilmPlanSpec.parse(JSON.parse(readFileSync(PLAN, 'utf8'))))) for (const ch of text) chars.add(ch);
+else if (existsSync(NARRATION))
   for (const l of (JSON.parse(readFileSync(NARRATION, 'utf8')).lines ?? []) as { text?: string; en?: string }[])
     for (const ch of `${l.text ?? ''}${l.en ?? ''}`) chars.add(ch);
 if (existsSync(EXTRA)) for (const ch of readFileSync(EXTRA, 'utf8')) chars.add(ch);

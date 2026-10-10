@@ -502,7 +502,34 @@ A1 / A1b 评审修正（Codex，gpt-6-astra max：1 BLOCKER / 8 SHOULD_FIX / 2 N
 - 素材清单：每个非代码素材记录来源、许可证、sha256、生成模型与种子。
 
 退出条件：每条校验规则至少有一个会触发它的失败用例；非法计划在生成场景之前就被 `plan-check` 拒绝；
-agent 只用这些命令就能完成"改计划 → 生成或修改场景 → 看拼板 → 修正"的一轮。
+  agent 只用这些命令就能完成"改计划 → 生成或修改场景 → 看拼板 → 修正"的一轮。
+
+2c 实施记录（分支 `engine/2c-plan`，2026-10-10）：
+- `engine/plan.ts` 提供 Brief / FilmPlan 的 Zod 契约、计划文案和旁白转换；`usePlan` 检查影片身份与帧率，复用现有旁白 lock。
+  `planScene` 的绘制适配放在 `engine/plan-scene.ts`，使 CLI 读取契约时不初始化 Canvas / WebGL；页面 boot 检查实际注册的场景及风格与计划逐项同序。
+  普通场景、旁白场景、录屏场景继续调用 `scene`、`narratedScene`、`demoScene`，没有另一套时间轴。
+- `plan-check` 检查 schema（含交叉字段约束）、风格、capture 清单路径、模块对应及注册、index 顺序、文案、旁白 lock、可选 brief、素材清单与哈希、生成 schema 是否过期。
+  `validate` 先运行这些检查；失败时仍给出相同形状的 JSON diagnostics。模块要求直接调用 `planScene`，页面启动检查实际注册结果。
+  文案规则明确为启发式：解码后的字符串或模板文本片段含 CJK，或含至少四个英文词，必须等于计划中的显示文本；注释忽略，动态拼接不作证明。
+- `scaffold` 在任何写入前验证整个计划，只新建缺失模块，保留现有模块，并原子替换有序 index；新增模块先写临时文件再独占发布。
+  `new-film --plan` 从新模板生成标题 plate、旁白 page、带字幕 page。计划删场景时旧模块不自动删除，检查会报多余模块。
+- `render-scene` / `render-range` 读取现有 export 的页面 timeline，再调用同一 export 完成无声导出与 ffprobe 验证；stdout 只有一行 JSON，日志走 stderr。
+  范围为影片秒数的左闭右开区间，沿用 export 的帧网格取整和末尾裁限；范围文件名使用帧号，timeline 增加实际选中风格以便摘要准确报告默认风格。
+- `narrate` 优先读取计划的 voice / lines，保留 `narration.json` 路径、FLAC、lock、合成键和事务处理。字体子集也读取计划文案及风格，避免新文本漏字。
+  `assets.json` 对 `assets/` 中所有文件检查清单、来源、许可和 sha256；capture、旁白、字体继续各自的清单，不另建通用素材加载层。
+- 必要的接口细节：`usePlan` 的可选第三参数接收影片通过 eager glob 打包的 capture 清单，保持 engine 不导入 films；capture 路径相对影片目录。
+  模板按计划的风格列表选择公共入口，导入检查只为精确的 `styles/*/index.ts` glob 放行。
+  bpm / chapters 默认 80 / 0；旁白计划必须指定 voice；章节须有双语 title；`index` 是场景文件保留名。
+  JSON Schema 提供编辑器结构检查，Zod 的跨字段 refinement 仍由 plan-check / usePlan 执行。
+- 实测：`bunx tsc --noEmit`、`check-imports`（72 文件、0 错误）、`bun test tests/`（39 pass、0 fail、1427 断言）通过。
+  `test-plan` 通过：new-film → scaffold → fake narrate → build → plan-check → render；48 帧旁白场景、9 帧范围、15 帧 demo 均由 ffprobe 独立确认；
+  新片 validate 无错误、拼板已看；缺失或乱序实际注册在页面启动时拒绝，各检查的故意失败用例均得到对应 code，非法计划 scaffold 不写文件。
+  `just plan-schema` 再运行报告 0 文件更新。参考片两种风格各 231/231 帧逐像素回归通过（0 差异、缺帧或未比较帧）；
+  `validate infotheory` 为 28 场景、140 抽样帧、1718 文本框、0 错误、6 条半透明文字对比度 warning。
+- 未完成的验收：离线运行 `test-narration` 在字体准备步骤失败，当前 worktree 没有 `.cache/fonts` 原始字体，且此次禁止下载或触碰其他 worktree。
+  失败前 `narration.json` 路径的合成、音频哈希/时长、二次复用、只改字幕、改读法、丢失音频、半途失败回滚均通过；其后的旧旁白页面、混音/响度、导出回归未跑到。
+  因此不能将整套旁白回归或 2c 的全量验收标为通过。Python 依赖只从本机已有缓存复制到本 worktree，计划测试复用已入库字体子集，不作网络下载。
+  未测真实 TTS 或新计划的全量字体重新裁剪。`films/infotheory`、`films/math-lessons`、styles、audio 的受版本控制文件未改，未重录基线。
 
 ### 阶段 3 · agent 接口与实战
 

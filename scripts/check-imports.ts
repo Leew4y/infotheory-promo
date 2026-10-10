@@ -148,6 +148,8 @@ for (const top of ['engine', 'styles', 'films', 'templates']) {
       for (const p of pats) {
         if (p === '\0') { diags.push({ level: 'error', code: 'import-glob', path: file, message: 'import.meta.glob() with a non-literal pattern cannot be checked' }); continue; }
         if (p.startsWith('!')) continue; // a negative pattern only removes files
+        // A plan film selects styles by id. This glob reaches only public style entrypoints.
+        if (/^(\.\.\/)+styles\/\*\/index\.ts$/.test(p)) { specs.add(p); continue; }
         const stat = p.slice(0, p.search(/[*?{[]/) < 0 ? p.length : p.search(/[*?{[]/));
         const dir = stat.slice(0, stat.lastIndexOf('/') + 1) || './';
         specs.add(`${dir}${dir.endsWith('/') ? '' : '/'}*`);

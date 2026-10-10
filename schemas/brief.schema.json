@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "product": {
+      "type": "string"
+    },
+    "audience": {
+      "type": "string"
+    },
+    "durationSeconds": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "tone": {
+      "type": "string"
+    },
+    "mustShow": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "language": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "product",
+    "audience",
+    "durationSeconds",
+    "tone",
+    "mustShow",
+    "language"
+  ],
+  "additionalProperties": false
+}

@@ -27,6 +27,12 @@ Every film command takes the film id first (default `infotheory`); outputs go to
 | Command | What |
 |---|---|
 | `just new-film <id> <style>` / `just new-style <id>` | start from a template |
+| `just new-film <id> <style> --plan` | start a plan film (plate, narrated page, captioned page), then narrate and make fonts |
+| `just plan-schema` / `just plan-check <film> [--json]` | generate the committed editor schemas; check the plan, modules, copy, references, assets and narration lock |
+| `just scaffold <film>` | create missing plan scene modules and rewrite the ordered index; keep every existing module |
+| `just render-scene <film> <scene-id> [--draft] [--style id]` | silent scene MP4 in `out/<film>/render/`; one JSON summary on stdout |
+| `just render-range <film> <from> <to> [--draft] [--style id]` | silent half-open range in film seconds, snapped to frames; filenames use the start/end frame numbers |
+| `just test-plan` | plan workflow, real short exports and deliberate failures of the plan checks |
 | `just fonts <film>` | font subsets for the film's text, per style (run after changing any text) |
 | `just validate <film> [--style id]` | schema, timeline, rendering, text inside the 5 % safe area, no overlapping text, WCAG AA contrast (as exported, glyph by glyph, on sampled frames); `--json` gives the diagnostics list |
 | `just sheet <film> [--style a,b]` | contact sheet of representative moments in every style: `out/<film>/sheet/sheet.jpg` + `sheet.json` |
@@ -40,12 +46,27 @@ Every film command takes the film id first (default `infotheory`); outputs go to
 | `just capture <film> <id> <scenario.ts>` | record a web demo with Playwright (`scripts/lib/scenario.ts`), with click and pointer events; the source video goes to `out/<film>/sources/` |
 | `just captures <film> <dir>` | re-derive every capture's frames from its source videos (by name in `<dir>`, checked by sha256) |
 | `just test`, `just test-capture`, `just bench-capture` | unit tests; capture end-to-end cases; capture throughput and memory |
-| `just narrate <film> [--resynth ids\|all]` | synthesize `films/<film>/narration.json` into `films/<film>/narration/<id>.flac` and the lock (`narration.lock.json`); both committed |
+| `just narrate <film> [--resynth ids\|all]` | synthesize plan lines (otherwise `narration.json`) into `films/<film>/narration/<id>.flac` and the lock (`narration.lock.json`); both committed |
 | `just mix <film> [--music file\|none]` | final mix: music ducked under the narration, mastered to −16 LUFS → `out/<film>/master.wav` (the export uses it and refuses a stale one) |
 | `just tts-setup`, `just test-narration` | local TTS (Fun-CosyVoice3-0.5B, pinned, into `.cache/tts/`); narration end-to-end cases on the fake voice |
 
 ## Rules
 
+- A plan film's copy and timing live in `film-plan.json`; scenes draw. `usePlan(plan, lock?, captures?)` follows
+  `defineFilm`, and each `scenes/<id>.ts` makes one direct `planScene('<id>', { draw, ... })` call. `copy(id, key)`
+  rejects unknown keys. The template bundles capture manifests with an eager glob (third argument to `usePlan`);
+  `capture.asset` is a film-relative `captures/<id>.json` path. Boot requires exactly the planned registrations and
+  styles in order. The ID `index` is reserved. Omitted bpm/chapters mean 80/0; narrated plans require `voice`.
+  `title` also supplies the chapter label when `chapter` is present. Narrated scenes omit `dur` and `captions`;
+  their lines supply captions and sentence timing. Non-narrated demos may omit `dur` and use the footage length.
+- `plan-check`'s copy rule is deliberately a heuristic: a decoded string/template text part containing CJK or at
+  least four English words separated by whitespace must equal displayed text in the plan (title, copy, captions, lines, capture title).
+  Comments are ignored; computed strings and shorter English literals are not proof-checked. JSON Schema covers
+  editor structure; Zod also enforces cross-field refinements. After changing the contract, run `just plan-schema`.
+  Scaffold never removes old modules: after deleting a plan scene, remove its module explicitly.
+- Every file shipped in a film's `assets/` is listed in its `assets.json` with film-relative `path`, `kind`, non-empty
+  `source` and `license`, and matching lowercase `sha256`; optional `generator`, `seed`, `notes` record provenance.
+  Captures, narration FLACs and fonts retain their own manifests/locks. No general asset loader is needed for this phase.
 - `frame(t)` is a pure function of `t`: no `Math.random`, no wall clock, no state carried between frames; use
   `mulberry`, `hash1`, `noise1` with fixed seeds.
 - Text only through `text()` / `label()` / the style's blocks, in the style's font roles (`F.body`, `F.latin`, `F.math`,
@@ -61,7 +82,7 @@ Every film command takes the film id first (default `infotheory`); outputs go to
   recorded events, or keyframes for a recording without events; a click shows from the frame its time falls in. Invalid
   edits, camera or cursor keys fail at registration. Capture sources (videos) stay outside the repository; only
   manifests are committed. A failed import or recording leaves the previous asset and source as they were.
-- Narration: lines in `films/<film>/narration.json` (`id`, `scene`, `text` for the captions, `en`, `read` for how the
+- Narration: lines in `film-plan.json` for a plan film, otherwise `films/<film>/narration.json` (`id`, `scene`, `text` for the captions, `en`, `read` for how the
   voice says numbers, versions, amounts, `pause`); `useNarration(script, lock)` in film.ts after `defineFilm`. Time a
   scene by its lines with `narratedScene({ name, kind, draw, lead, gap, tail, minDur })` or `demoScene({ ..., narration: {} })`
   (the footage is never cut short); the lines become the captions; `vo(id)` is a line's start on its scene's clock,

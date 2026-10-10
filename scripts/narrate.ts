@@ -3,7 +3,7 @@
  *
  *   bun scripts/narrate.ts --film <film> [--backend cosyvoice3|fake] [--resynth <id,id,...>|all]     (just narrate)
  *
- * Reads films/<film>/narration.json (engine/narration.ts NarrationScript) and the voice voices/<voice>/voice.json
+ * Reads film-plan.json's lines/voice when present, otherwise films/<film>/narration.json (NarrationScript), and voices/<voice>/voice.json
  * (prompt transcript, prompt file, source, licence). Each line is identified by a key: the hash of the adapter version,
  * backend, model (with its pinned revision), the voice prompt's sha256 and transcript, the reading, speed and seed
  * (from the line id). The caption text is not in the key: changing only the text updates the lock, not the audio.
@@ -28,6 +28,8 @@ import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { LINE_ID, type LockLine, type NarrationLock, type NarrationScript } from '../engine/narration';
 import { FILM_ID, requireFilm } from './film-arg';
+import { readPlan } from './plan-check';
+import { planNarration } from '../engine/plan';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const argv = Bun.argv.slice(2);
@@ -95,7 +97,10 @@ function python(backend: string): string[] {
 
 try {
   const P = narrationPaths(FILM);
-  const script = readJson<NarrationScript>(P.script, 'narration script');
+  const planDir = path.join(ROOT, 'films', FILM);
+  const fromPlan = existsSync(path.join(planDir, 'film-plan.json')) ? readPlan(planDir, FILM) : null;
+  if (fromPlan && !fromPlan.plan) fail(fromPlan.diagnostics.map((d) => `${d.path}: ${d.message}`).join('\n'));
+  const script = fromPlan ? planNarration(fromPlan.plan!) : readJson<NarrationScript>(P.script, 'narration script');
   if (!script || typeof script.voice !== 'string' || !FILM_ID.test(script.voice) || !Array.isArray(script.lines)) fail(`${path.relative(ROOT, P.script)}: needs { voice: <voice id>, lines: [...] }`);
   const seen = new Set<string>();
   for (const l of script.lines) {

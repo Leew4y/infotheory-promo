@@ -2,6 +2,7 @@
  * Start a new film from templates/film/:
  *
  *   bun scripts/new-film.ts <id> --style <style-id>        (just new-film <id> <style>)
+ *   Add --plan for templates/film-plan/: set the plan's id/style and scaffold its modules before publication.
  *
  * Copies the template to films/<id>/ and points it at the style and the id. Refuses an id that is not a valid film id
  * (FilmSpec: lowercase letters, digits, hyphens), an existing films/<id>/, and a style that is not a style package
@@ -14,6 +15,7 @@
 import { cpSync, existsSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { FILM_ID } from './film-arg';
+import { scaffold } from './scaffold';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const argv = Bun.argv.slice(2);
@@ -28,18 +30,27 @@ const dst = path.join(ROOT, 'films', id);
 if (existsSync(dst)) die(`films/${id} already exists`);
 
 // the two template lines that name the style and the id, each exactly once
-const TPL = path.join(ROOT, 'templates', 'film');
+const planned = argv.includes('--plan');
+const TPL = path.join(ROOT, 'templates', planned ? 'film-plan' : 'film');
 const IMPORT = `import style from '../../styles/paper-dawn';`;
 const ID = `export default defineFilm({ id: 'template',`;
 const filmTs = readFileSync(path.join(TPL, 'film.ts'), 'utf8');
 const count = (s: string, sub: string) => s.split(sub).length - 1;
-if (count(filmTs, IMPORT) !== 1 || count(filmTs, ID) !== 1) die(`templates/film/film.ts must contain each of these lines exactly once; update scripts/new-film.ts with the template:\n  ${IMPORT}\n  ${ID} ...`);
+if (!planned && (count(filmTs, IMPORT) !== 1 || count(filmTs, ID) !== 1)) die(`templates/film/film.ts must contain each of these lines exactly once; update scripts/new-film.ts with the template:\n  ${IMPORT}\n  ${ID} ...`);
 const out = filmTs.replace(IMPORT, `import style from '../../styles/${style}';`).replace(ID, `export default defineFilm({ id: '${id}',`);
 
 const tmp = path.join(ROOT, 'films', `.${id}.${process.pid}.tmp`);
 try {
   cpSync(TPL, tmp, { recursive: true, errorOnExist: true });
   writeFileSync(path.join(tmp, 'film.ts'), out);
+  if (planned) {
+    const planFile = path.join(tmp, 'film-plan.json');
+    const plan = JSON.parse(readFileSync(planFile, 'utf8'));
+    plan.film = id;
+    plan.styles = [style];
+    writeFileSync(planFile, JSON.stringify(plan, null, 2) + '\n');
+    scaffold(tmp, id);
+  }
   renameSync(tmp, dst);
 } catch (e) {
   rmSync(tmp, { recursive: true, force: true });
@@ -47,6 +58,7 @@ try {
 }
 
 console.log(`films/${id}/ created (style ${style}). Next:
+${planned ? `  just narrate ${id}          synthesize the plan's lines (tests: --backend fake)\n  just scaffold ${id}         after adding or reordering plan scenes\n` : ''}\
   just fonts ${id}            font subsets for the film's text
   just validate ${id}         checks
   just dev ${id}              preview at http://127.0.0.1:5174

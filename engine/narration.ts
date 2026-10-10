@@ -47,8 +47,8 @@ const starts = new Map<string, number>();
  * script's voice, and hold every line, made from the same text and reading, with a positive duration; otherwise the
  * film refuses to load (run just narrate <film>).
  */
-export function useNarration(s: NarrationScript, l: NarrationLock): void {
-  const f = film().id;
+export function checkNarrationLock(s: NarrationScript, l: NarrationLock, f: string): void {
+  if (!l || !l.lines || typeof l.lines !== 'object') throw new Error('narration: malformed lock (run just narrate)');
   if (l.film !== f) throw new Error(`narration: the lock is film "${l.film}"'s, not "${f}"'s`);
   if (l.voice !== s.voice) throw new Error(`narration: the lock was made with voice "${l.voice}", the script asks for "${s.voice}" (run just narrate)`);
   const ids = new Set<string>();
@@ -62,6 +62,10 @@ export function useNarration(s: NarrationScript, l: NarrationLock): void {
     if (!(Number.isFinite(e.duration) && e.duration > 0)) throw new Error(`narration: line "${line.id}" has duration ${e.duration} in the lock`);
     if (line.pause !== undefined && !(Number.isFinite(line.pause) && line.pause >= 0)) throw new Error(`narration: line "${line.id}": pause must be >= 0`);
   }
+}
+
+export function useNarration(s: NarrationScript, l: NarrationLock): void {
+  checkNarrationLock(s, l, film().id);
   script = s;
   lock = l;
 }
