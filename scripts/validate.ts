@@ -26,6 +26,7 @@ import path from 'node:path';
 import puppeteer, { type Browser } from 'puppeteer-core';
 import { chromeArgs, findChrome, loadFilm, serveDist } from './chrome';
 import { filmArg, mediaDir } from './film-arg';
+import { checkPlan } from './plan-check';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const argv = Bun.argv.slice(2);
@@ -60,6 +61,18 @@ const diags: Diag[] = [];
 let cur = STYLE || 'default';
 const err = (code: string, p: string, message: string) => diags.push({ level: 'error', style: cur, code, path: p, message });
 const warn = (code: string, p: string, message: string) => diags.push({ level: 'warning', style: cur, code, path: p, message });
+
+if (existsSync(path.join(ROOT, 'films', FILM, 'film-plan.json'))) {
+  diags.push(...checkPlan(FILM).map((d) => ({ ...d, style: 'plan' })));
+  if (diags.some((d) => d.level === 'error')) {
+    mkdirSync(path.dirname(OUT), { recursive: true });
+    writeFileSync(OUT, JSON.stringify({ film: FILM, styles: [], diagnostics: diags }, null, 1));
+    if (JSON_OUT) console.log(JSON.stringify(diags, null, 1));
+    else for (const d of diags) console.log(`${d.level}: ${d.code} ${d.path}: ${d.message}`);
+    (JSON_OUT ? console.error : console.log)(`FAIL validate ${FILM}: ${diags.length} plan error(s) -> ${OUT}`);
+    process.exit(1);
+  }
+}
 
 let CHROME = '';
 try { CHROME = findChrome(); } catch (e) { console.error((e as Error).message); process.exit(2); }

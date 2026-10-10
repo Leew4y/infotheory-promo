@@ -15,8 +15,34 @@ setup:
     uv sync --project audio
 
 # Start a new film from templates/film/, e.g. `just new-film demo nebula` (then `just fonts demo`).
-new-film id style:
-    bun scripts/new-film.ts {{id}} --style {{style}}
+new-film id style *args:
+    bun scripts/new-film.ts {{id}} --style {{style}} {{args}}
+
+# Generate the committed JSON schemas (Zod refinements are enforced by plan-check).
+plan-schema:
+    bun scripts/plan-schema.ts
+
+# Check a plan before rendering: contracts, references, copy, assets and narration lock.
+plan-check film=film *args:
+    bun scripts/plan-check.ts --film {{film}} {{args}}
+
+# Add missing plan scene modules and rewrite the index; keep existing scene modules.
+scaffold film=film:
+    bun scripts/scaffold.ts --film {{film}}
+
+# Silent scene preview; stdout is one JSON summary, export logs go to stderr.
+render-scene film scene *args:
+    @just build {{film}} 1>&2
+    @bun scripts/render.ts --film {{film}} --scene {{scene}} {{args}}
+
+# Silent half-open time range in seconds (snapped to the frame grid).
+render-range film from to *args:
+    @just build {{film}} 1>&2
+    @bun scripts/render.ts --film {{film}} --from {{from}} --to {{to}} {{args}}
+
+# Plan end-to-end cases, including deliberate failures of every plan-check rule.
+test-plan:
+    bun scripts/test-plan.ts
 
 # Start a new style package from templates/style/ (index.ts, shader.ts, fonts.json, STYLE.md), e.g. `just new-style ink-wash`.
 new-style id:

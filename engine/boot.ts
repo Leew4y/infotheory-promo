@@ -32,6 +32,7 @@ import { SC, sceneAt } from './scene';
 import { style, styleIds } from './style';
 import { clamp, fmtTime } from './util';
 import { film, FPS, FRAMES, TOTAL } from './film';
+import { assertPlanScenes } from './plan';
 
 declare global {
   interface Window {
@@ -47,7 +48,7 @@ declare global {
     __film: string;
     __style: string;
     __styles: string[];
-    __timeline: () => { film: string; fps: number; bpm: number; frames: number; duration: number; scenes: { name: string; kind: string; f0: number; f1: number; start: number; end: number }[] };
+    __timeline: () => { film: string; style: string; fps: number; bpm: number; frames: number; duration: number; scenes: { name: string; kind: string; f0: number; f1: number; start: number; end: number }[] };
     __gpu: () => string;
     __cues: () => { t: number; name: string; [k: string]: number | string }[];
     __scenes: () => { name: string; kind: string; start: number; end: number; fadeIn: number; fadeOut: number; subs: [number, number][] }[];
@@ -72,6 +73,7 @@ export interface BootOptions {
 }
 
 export function boot(o: BootOptions): void {
+  assertPlanScenes(styleIds());
   const EXPORT = /[?&]export=1/.test(location.search);
   document.title = o.title.page ?? (o.title.tagline ? `${o.title.name} · ${o.title.tagline}` : o.title.name);
   const h1 = document.getElementById('title'), tag = document.getElementById('tagline');
@@ -155,7 +157,7 @@ export function boot(o: BootOptions): void {
   window.__style = sid;
   window.__styles = styleIds();
   window.__timeline = () => ({
-    film: film().id, fps: FPS, bpm: film().bpm, frames: FRAMES, duration: TOTAL,
+    film: film().id, style: sid, fps: FPS, bpm: film().bpm, frames: FRAMES, duration: TOTAL,
     scenes: SC.map((s) => ({ name: s.name, kind: s.kind, f0: s.f0, f1: s.f1, start: s.t0, end: s.t0 + s.d })),
   });
   // text boxes of the frame at t (no motion blur), for scripts/validate.ts

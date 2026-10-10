@@ -92,6 +92,13 @@ justfile              一键命令
 
 ## 运行
 
+计划驱动的新片用 `just new-film demo nebula --plan`。文案、场景顺序、字幕、录屏引用和时长写在
+`films/demo/film-plan.json`，可另写 `brief.json`；JSON Schema 在 `schemas/`，`just plan-check demo --json` 给出带路径的错误。
+改计划后运行 `just scaffold demo`（只补缺少的场景，已有绘制代码保留），有旁白时 `just narrate demo`，再 `just fonts demo`。
+用 `just render-scene demo idea --draft` 或 `just render-range demo 1 3 --draft` 看无声局部成片，命令只在 stdout 输出一行 JSON 摘要；
+接着 `just sheet demo`、`just validate demo` 检查并修正。范围为影片秒数的左闭右开区间，按帧取整。
+`assets/` 内的文件需在 `assets.json` 登记来源、许可证和 sha256；计划的旁白继续使用现有 FLAC、lock 和最终混音流程。
+
 需要 bun、uv、just、Chrome 或 Edge、PATH 上的 ffmpeg。所有片子相关的命令第一个参数是片名（省略时为 `infotheory`）；生成的东西都在 `out/<film>/`。字体来自字体库 `fonts/catalog.json`（OFL），按片子用到的字、每个风格各裁剪一套子集放在 `films/<film>/fonts/<style>/` 并入库；改了文案之后运行 `just fonts <film>`（第一次会下载完整字体到 `.cache/fonts`，需要联网）。渲染时任何一个字没有随仓库字体覆盖都会直接报错。
 
 ```
