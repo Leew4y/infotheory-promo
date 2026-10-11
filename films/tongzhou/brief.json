@@ -1,0 +1,9 @@
+{
+ "product": "同舟：城市配送的统仓共配调度智能体（Leew4y/1010-ai-hackathon，AI 架构师大赛初赛，AI + 物流赛道）",
+ "audience": "初赛评委：大多数人不做运筹优化，也不在物流现场",
+ "durationSeconds": 120,
+ "tone": "清楚、克制、讲事实",
+ "mustShow": ["开场先讲比题目和现有做法多做了什么（主办方中场通知）", "两种基线并列", "每个数字标「模拟数据」", "前端方案页、演示页、装车页、单据页的真实录屏"],
+ "language": "zh-CN",
+ "notes": "分镜和旁白逐字取自 1010-ai-hackathon 的 docs/demo-script.md（#81，main c65cc00），数字取自 README「比题目和现有做法多做了什么」表与主表（冻结提交 aa1d696 的统一重跑，#149）。旁白为本地 TTS（zh-male-professor）。录屏场景 10-11 晚上先用占位画面，10-12 09:00 前端冻结后在 main 上用 Playwright 录制并替换为 demo 场景。"
+}
