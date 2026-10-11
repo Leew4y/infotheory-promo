@@ -6,5 +6,6 @@ import './check';
 import './guide';
 import './replan';
 import './cost';
+import './bills';
 import './result';
 import './end';

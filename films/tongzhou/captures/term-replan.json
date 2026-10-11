@@ -1,0 +1,29 @@
+{
+ "id": "term-replan",
+ "fps": 30,
+ "frames": 436,
+ "width": 1600,
+ "height": 672,
+ "viewport": {
+  "width": 1600,
+  "height": 672
+ },
+ "dpr": 1,
+ "crop": null,
+ "source": {
+  "file": "term-replan.mp4",
+  "sha256": "69aa10f105d76129969e44a1ef04e0073c97bcf0030a76397cfac07d81ece9dc",
+  "bytes": 644134,
+  "duration": 14.533008,
+  "width": 1600,
+  "height": 672,
+  "fps": 30
+ },
+ "events": [],
+ "made": {
+  "tool": "import-capture",
+  "fps": 30,
+  "quality": 2,
+  "ffmpeg": "ffmpeg version 9.0.2-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers"
+ }
+}
