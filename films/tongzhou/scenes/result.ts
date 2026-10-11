@@ -19,5 +19,6 @@ planScene('result', {
     }
     rule(150, 760, 1770, 760, C.rule, a0, 1.5);
     text(copy('result', 'source'), 150, 806, { font: F.mono, size: 18, color: C.muted, alpha: a0 });
+    text(copy('result', 'ontime'), 150, 840, { size: 20, color: C.muted, alpha: a0 }); // #243：「准时」的口径
   },
 });
