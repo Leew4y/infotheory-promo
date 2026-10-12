@@ -50,7 +50,7 @@ export default {
     await d.wait(1100);
     d.mark('ours');
     await d.over(cell(0), { ms: 700 }); // 我们的方案
-    await d.wait(4200);
+    await d.wait(5600);
     d.mark('end');
     const first = (await p.locator('tbody tr.ant-table-row').first().innerText()).replace(/\s+/g, ' ');
     if (!/我们的方案/.test(first) || !/模型内合格/.test(first)) throw new Error(`the first table row is not our plan, qualified in the model: ${first}`);

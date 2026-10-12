@@ -34,16 +34,16 @@ export default {
     await p.waitForTimeout(3000); // the 3D truck draws
     d.mark('start');
     await d.glide(900, 330, 400);
-    await d.wait(300);
+    await d.wait(700);
     // the timeline: stops 1, 2, 3
     for (const k of [1, 2, 3]) {
       await d.click(mark(k), { ms: 600 });
-      await d.wait(800);
+      await d.wait(1200);
       d.mark(`stop${k}`);
     }
     // 加固点 and 透视 on
     await d.click('button.ant-btn:has-text("加固点")', { ms: 800 });
-    await d.wait(1000);
+    await d.wait(1400);
     d.mark('brace');
     await d.click('button.ant-btn:has-text("透视")', { ms: 600 });
     await d.glide(1100, 330, 400); // off the button: its tooltip closes

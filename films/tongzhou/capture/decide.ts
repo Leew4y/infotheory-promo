@@ -42,7 +42,7 @@ export default {
     // the schedule is a panel with its own scroll: R01 … R06 (the page itself does not scroll at this height)
     await d.glide(900, 660, 600);
     await d.scrollEl('.sched', 400, 1800);
-    await d.wait(6000);
+    await d.wait(7500);
     d.mark('end');
     if (!(await p.locator(chip('R03')).getAttribute('class'))?.includes('active')) throw new Error('R03 is not the selected vehicle');
     if (!(await p.getByText('R06').last().isVisible())) throw new Error('the schedule does not show all six vehicles');
