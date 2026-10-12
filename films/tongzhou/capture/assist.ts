@@ -5,12 +5,12 @@
 // solving kernel re-planned and re-checked. The pointer visits the cards in order; on the first the raw request JSON is opened.
 //   cd <product>/web && bun run dev --port 5190 --host 127.0.0.1      (any free port; set it in PORT below)
 //   bun scripts/capture.ts --film tongzhou --id assist films/tongzhou/capture/assist.ts
-// If it is wired in (not yet): edit [{ from: 2.3, to: 17.6 }] (15.3 s); camera in frame px on the scene clock, zoom 2.1 on one card
-// at a time: (0,924,388,1) (0.9,924,388,1) (1.8,440,330,2.1) (3.2,440,330,2.1) (3.9,440,450,1.6) (5.2,440,450,1.6) (5.8,440,330,2.1)
-// (6.6,561,330,2.1) (8.6,561,330,2.1) (9.2,924,330,2.1) (11.2,924,330,2.1) (11.8,1286,330,2.1) (13.4,1286,330,2.1) (13.9,1650,330,2.1)
-// (15.0,1650,330,2.1); the cards are 350 px wide, 359 px high, at x = 24, 386, 749, 1111, 1474, y = 127 after the scroll.
-// Viewport 1848x776 = 2.38 : 1, the aspect of the keynote demo area (1620x680); 776 px is the height the front end's one-screen
-// layouts need (below it the plan and loading pages scroll).
+// If it is wired in (not yet): edit [{ from: 2.55, to: 17.95 }] (15.4 s); camera in frame px on the scene clock, zoom 2.1 on one card
+// at a time: (0,876,368,1) (0.9,876,368,1) (1.8,420,330,2.1) (3.2,420,330,2.1) (3.9,420,450,1.6) (5.2,420,450,1.6) (5.8,420,330,2.1)
+// (6.6,533,330,2.1) (8.6,533,330,2.1) (9.2,876,330,2.1) (11.2,876,330,2.1) (11.8,1219,330,2.1) (13.4,1219,330,2.1) (13.9,1562,330,2.1)
+// (15.0,1562,330,2.1); the cards are 331 px wide, 359 px high, at x = 24, 367, 710, 1054, 1397, y = 127 after the scroll.
+// Viewport 1752x736 = 2.38 : 1, the aspect of the keynote demo area (1620x680); 736 px is the least height at which the front end's one-screen
+// plan page still shows its 3D truck (below it the plan and loading pages hide or shrink it).
 // (a Scenario, scripts/lib/scenario.ts; films may not import scripts, so the type is not named here)
 import { driver } from './lib';
 
@@ -20,7 +20,7 @@ const card = (i: number) => `.ae-card >> nth=${i}`;
 
 export default {
   url: `http://127.0.0.1:${PORT}/#/showcase`,
-  viewport: { width: 1848, height: 776 },
+  viewport: { width: 1752, height: 736 },
   async run(act: any) { // act: scripts/lib/scenario.ts Act
     const d = driver(act);
     const p = d.page;

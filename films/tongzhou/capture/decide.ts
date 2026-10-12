@@ -4,8 +4,8 @@
 // by stop, then the schedule rows (one row per vehicle; the panel scrolls inside itself).
 //   cd <product>/web && bun run dev --port 5190 --host 127.0.0.1      (any free port; set it in PORT below)
 //   bun scripts/capture.ts --film tongzhou --id decide films/tongzhou/capture/decide.ts
-// Viewport 1848x776 = 2.38 : 1, the aspect of the keynote demo area (1620x680); 776 px is the height the front end's one-screen
-// layouts need (below it the plan and loading pages scroll).
+// Viewport 1752x736 = 2.38 : 1, the aspect of the keynote demo area (1620x680); 736 px is the least height at which the front end's one-screen
+// plan page still shows its 3D truck (below it the plan and loading pages hide or shrink it).
 // (a Scenario, scripts/lib/scenario.ts; films may not import scripts, so the type is not named here)
 import { driver } from './lib';
 
@@ -15,7 +15,7 @@ const chip = (r: string) => `button.route-chip:has-text("${r}")`;
 
 export default {
   url: `http://127.0.0.1:${PORT}/#/plan?scenario=kernel-seed1&route=R01`,
-  viewport: { width: 1848, height: 776 },
+  viewport: { width: 1752, height: 736 },
   async run(act: any) { // act: scripts/lib/scenario.ts Act
     const d = driver(act);
     const p = d.page;
