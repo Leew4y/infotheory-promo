@@ -10,7 +10,8 @@
 //   cd <product>/web && bun run dev --port 5190 --host 127.0.0.1      (any free port; set it in PORT below)
 //   bun scripts/capture.ts --film tongzhou --id guide films/tongzhou/capture/guide.ts
 // PRODUCT (env) is the product checkout that holds examples/; the default is the worktree this was recorded from.
-// Viewport 1752x736 = 2.38 : 1, the aspect of the keynote demo area (1620x680).
+// Viewport 1848x776 = 2.38 : 1, the aspect of the keynote demo area (1620x680); 776 px is the height the front end's one-screen
+// layouts need (below it the plan and loading pages scroll).
 // (a Scenario, scripts/lib/scenario.ts; films may not import scripts, so the type is not named here)
 import { driver } from './lib';
 
@@ -19,11 +20,11 @@ const PRODUCT = process.env.PRODUCT ?? 'E:/gitclone/1010-ai-hackathon/.claude/wo
 const SCENARIO = '演示批次 1 · 30 家门店（模拟数据）';
 const SHEET = `file:///${PRODUCT}/examples/scenarios/kernel-seed1/sheets/装车单_R01.html`;
 const OFFLINE = `file:///${PRODUCT}/examples/offline-seed1/guide_kernel-seed1.html`;
-const mark = (k: number) => `.lr-slider [title^="${'①②③④⑤⑥'[k - 1]}"]`; // timeline label of stop k (title is 「① 门店 21」)
+const mark = (k: number) => `.lr-slider [title^="第 ${k} 站"]`; // timeline label of stop k (title is 「第 1 站 · 门店 21 · 07:14 到」)
 
 export default {
   url: `http://127.0.0.1:${PORT}/#/loading?scenario=kernel-seed1&route=R01`,
-  viewport: { width: 1752, height: 736 },
+  viewport: { width: 1848, height: 776 },
   async run(act: any) { // act: scripts/lib/scenario.ts Act
     const d = driver(act);
     const p = d.page;
@@ -37,19 +38,19 @@ export default {
     // the timeline: stops 1, 2, 3
     for (const k of [1, 2, 3]) {
       await d.click(mark(k), { ms: 600 });
-      await d.wait(1200);
+      await d.wait(800);
       d.mark(`stop${k}`);
     }
     // 加固点 and 透视 on
-    await d.click('button:has-text("加固点")', { ms: 800 });
-    await d.wait(1500);
+    await d.click('button.ant-btn:has-text("加固点")', { ms: 800 });
+    await d.wait(1000);
     d.mark('brace');
-    await d.click('button:has-text("透视")', { ms: 600 });
-    await d.glide(1100, 330, 500); // off the button: its tooltip closes
-    await d.wait(700);
+    await d.click('button.ant-btn:has-text("透视")', { ms: 600 });
+    await d.glide(1100, 330, 400); // off the button: its tooltip closes
+    await d.wait(300);
     d.mark('xray');
-    if (!(await p.locator('button:has-text("加固点")').first().getAttribute('class'))?.includes('ant-btn-primary')) throw new Error('加固点 is not on');
-    if (!(await p.locator('button:has-text("透视")').first().getAttribute('class'))?.includes('ant-btn-primary')) throw new Error('透视 is not on');
+    if (!(await p.locator('button.ant-btn:has-text("加固点")').first().getAttribute('class'))?.includes('ant-btn-primary')) throw new Error('加固点 is not on');
+    if (!(await p.locator('button.ant-btn:has-text("透视")').first().getAttribute('class'))?.includes('ant-btn-primary')) throw new Error('透视 is not on');
 
     // the on-site loading sheet
     d.mark('nav-sheet');

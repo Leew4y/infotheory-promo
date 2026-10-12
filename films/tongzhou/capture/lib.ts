@@ -35,5 +35,15 @@ export function driver(act: any) {
       if (u >= 1) break;
     }
   };
-  return { page, scrollTo, glide, over, click, press, drag, point, wait: act.wait as (ms: number) => Promise<void>, mark: act.mark as (l: string) => void, pos: () => ({ x: mx, y: my }) };
+  /** Scroll an inner scroll area (a panel with its own overflow) to `y` over `ms`. */
+  const scrollEl = async (sel: string, y: number, ms = 800) => {
+    const loc = page.locator(sel).first();
+    const y0 = (await loc.evaluate((e: Element) => e.scrollTop)) as number, t0 = performance.now();
+    for (;;) {
+      const u = Math.min(1, (performance.now() - t0) / ms), e = u * u * (3 - 2 * u);
+      await loc.evaluate((el: Element, v: number) => { el.scrollTop = v; }, y0 + (y - y0) * e);
+      if (u >= 1) break;
+    }
+  };
+  return { page, scrollTo, scrollEl, glide, over, click, press, drag, point, wait: act.wait as (ms: number) => Promise<void>, mark: act.mark as (l: string) => void, pos: () => ({ x: mx, y: my }) };
 }
