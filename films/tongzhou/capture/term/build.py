@@ -93,7 +93,9 @@ def replan():
 def bills():
     out = read('bills.txt')
     head = pick(out, r'^## 连锁药店', 6)
-    note = pick(out, r'^说明（大模型）：本账单对应连锁药店')[0]
+    # the model's wording changes between runs: take the first model note after the pharmacy block's header
+    start = out.index(head[0])
+    note = pick(out[start:], r'^说明（大模型）：')[0]
     return [
         (300, 'cmd', 'make owner-bills LLM=1'),
         (1000, 'out', pick(out, r'^实例 1（30 家门店')[0]),
@@ -111,10 +113,10 @@ PAGE = """<!doctype html>
          padding: 26px 40px; box-sizing: border-box; overflow: hidden; }}
   #log {{ white-space: pre-wrap; word-break: break-all; }}
   .line {{ min-height: 1.55em; }}
-  .cmd::before {{ content: "$ "; color: #4F3BD6; font-weight: 700; }}
+  .cmd::before {{ content: "$ "; color: #1F5BE0; font-weight: 700; }}
   .cmd {{ font-weight: 600; }}
   .head {{ font-weight: 700; margin-top: .35em; }}
-  .hl {{ color: #4F3BD6; font-weight: 600; }}
+  .hl {{ color: #1F5BE0; font-weight: 600; }}
   .ok {{ color: #1F7A35; font-weight: 700; }}
   .bad {{ color: #C4281C; font-weight: 700; }}
   .dim {{ color: #6E6E73; }}
@@ -123,7 +125,7 @@ PAGE = """<!doctype html>
   @keyframes b {{ 50% {{ opacity: 0; }} }}
   #tag {{ position: fixed; right: 0; top: 0; padding: 12px 24px 8px 16px; background: #FFFFFF; font-size: 17px; color: #6E6E73; }}
 </style></head>
-<body><div id="tag">已加速 · 模拟数据</div><div id="log"></div>
+<body><div id="tag">{tag}</div><div id="log"></div>
 <script>
 const STEPS = {steps};
 const log = document.getElementById('log');
@@ -166,10 +168,17 @@ export default {{
 }};
 """
 
+# Wall-clock seconds of the real runs (10-12, frozen main 4cbad82, this machine): the replay is a speed-up of these.
+TAG = {
+    'understand': '已加速 · 实际约 30 秒 · 模拟数据',
+    'replan': '已加速 · 实际约 51 秒 · 模拟数据',
+    'bills': '已加速 · 实际约 65 秒 · 模拟数据',
+}
+
 for name, fn in (('understand', understand), ('replan', replan), ('bills', bills)):
     steps, total = fn()
     with open(os.path.join(HERE, f'{name}.html'), 'w', encoding='utf-8', newline='\n') as f:
-        f.write(PAGE.format(title=html.escape(name), steps=json.dumps(steps, ensure_ascii=False)))
+        f.write(PAGE.format(title=html.escape(name), tag=html.escape(TAG[name]), steps=json.dumps(steps, ensure_ascii=False)))
     with open(os.path.join(os.path.dirname(HERE), f'term-{name}.ts'), 'w', encoding='utf-8', newline='\n') as f:
         f.write(SCENARIO.format(id=name, total=total))
     print(f'{name}: {len(steps)} steps, {total / 1000:.1f} s')

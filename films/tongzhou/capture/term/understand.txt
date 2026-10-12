@@ -40,5 +40,5 @@ E:\gitclone\1010-ai-hackathon\.claude\worktrees\studytempest-207-loading-reinfor
 说明：改动后是从头重新求解（不以原路线为起点），所以没直接改到的门店也可能换车；前后两次都是限时求解，差异里含求解器自身的波动，结果不可逐次复现。以上数字均为模拟数据。
 
 ## 消息：有辆车今天不能用
-模型输出：{"kind": "needs_clarification", "question": "请问是哪一种车型今天不能用？需要停用几辆？"}
-需要补充信息：请问是哪一种车型今天不能用？需要停用几辆？
+模型输出：{"kind": "needs_clarification", "question": "请问不能用的车是哪种车型？数量是几辆？"}
+需要补充信息：请问不能用的车是哪种车型？数量是几辆？

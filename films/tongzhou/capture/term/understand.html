@@ -6,10 +6,10 @@
          padding: 26px 40px; box-sizing: border-box; overflow: hidden; }
   #log { white-space: pre-wrap; word-break: break-all; }
   .line { min-height: 1.55em; }
-  .cmd::before { content: "$ "; color: #4F3BD6; font-weight: 700; }
+  .cmd::before { content: "$ "; color: #1F5BE0; font-weight: 700; }
   .cmd { font-weight: 600; }
   .head { font-weight: 700; margin-top: .35em; }
-  .hl { color: #4F3BD6; font-weight: 600; }
+  .hl { color: #1F5BE0; font-weight: 600; }
   .ok { color: #1F7A35; font-weight: 700; }
   .bad { color: #C4281C; font-weight: 700; }
   .dim { color: #6E6E73; }
@@ -18,9 +18,9 @@
   @keyframes b { 50% { opacity: 0; } }
   #tag { position: fixed; right: 0; top: 0; padding: 12px 24px 8px 16px; background: #FFFFFF; font-size: 17px; color: #6E6E73; }
 </style></head>
-<body><div id="tag">已加速 · 模拟数据</div><div id="log"></div>
+<body><div id="tag">已加速 · 实际约 30 秒 · 模拟数据</div><div id="log"></div>
 <script>
-const STEPS = [[300, "cmd", "uv run --env-file .env python -m citydelivery.assistant ask --tl 10 \"19号店今天关门；另外26号店改成8点到10点收货\" \"有辆车今天不能用\""], [2300, "out", "种子 1：改动前方案 6 辆车（求解 10 秒，PyVRP 退回 OR-Tools 0 次）"], [2900, "head", "## 消息：19号店今天关门；另外26号店改成8点到10点收货"], [3500, "hl", "模型输出：{\"kind\": \"requests\", \"requests\": [{\"type\": \"CloseStore\", \"store_id\": 19}, {\"type\": \"ChangeTimeWindow\", \"store_id\": 26, \"start\": \"08:00\", \"end\": \"10:00\"}]}"], [4300, "out", "应用的改动："], [4400, "out", "- 19 号店今天不送"], [4500, "out", "- 26 号店时间窗 07:00–09:00 → 08:00–10:00"], [5100, "tbl", "| 指标（模拟数据） | 改动前 | 改动后 |"], [5190, "tbl", "|---|---|---|"], [5280, "tbl", "| 总成本(元) | 4125 | 3961 |"], [5370, "tbl", "| 车辆数 | 6 | 7 |"], [5460, "tbl", "| 总里程(km) | 548 | 579 |"], [5550, "tbl", "| 晚到站数 | 0 | 0 |"], [5640, "tbl", "| 装不下的路线 | 0 | 0 |"], [5730, "tbl", "| 未送门店 | 0 | 0 |"], [5820, "tbl", "| 装载校验违规 | 0 | 0 |"], [6200, "dim", "…"], [6600, "ok", "结论：新方案可执行，装载校验通过。"], [9600, "head", "## 消息：有辆车今天不能用"], [10300, "hl", "模型输出：{\"kind\": \"needs_clarification\", \"question\": \"请问是哪一种车型今天不能用？需要停用几辆？\"}"], [11000, "ok", "需要补充信息：请问是哪一种车型今天不能用？需要停用几辆？"]];
+const STEPS = [[300, "cmd", "uv run --env-file .env python -m citydelivery.assistant ask --tl 10 \"19号店今天关门；另外26号店改成8点到10点收货\" \"有辆车今天不能用\""], [2300, "out", "种子 1：改动前方案 6 辆车（求解 10 秒，PyVRP 退回 OR-Tools 0 次）"], [2900, "head", "## 消息：19号店今天关门；另外26号店改成8点到10点收货"], [3500, "hl", "模型输出：{\"kind\": \"requests\", \"requests\": [{\"type\": \"CloseStore\", \"store_id\": 19}, {\"type\": \"ChangeTimeWindow\", \"store_id\": 26, \"start\": \"08:00\", \"end\": \"10:00\"}]}"], [4300, "out", "应用的改动："], [4400, "out", "- 19 号店今天不送"], [4500, "out", "- 26 号店时间窗 07:00–09:00 → 08:00–10:00"], [5100, "tbl", "| 指标（模拟数据） | 改动前 | 改动后 |"], [5190, "tbl", "|---|---|---|"], [5280, "tbl", "| 总成本(元) | 4125 | 3961 |"], [5370, "tbl", "| 车辆数 | 6 | 7 |"], [5460, "tbl", "| 总里程(km) | 548 | 579 |"], [5550, "tbl", "| 晚到站数 | 0 | 0 |"], [5640, "tbl", "| 装不下的路线 | 0 | 0 |"], [5730, "tbl", "| 未送门店 | 0 | 0 |"], [5820, "tbl", "| 装载校验违规 | 0 | 0 |"], [6200, "dim", "…"], [6600, "ok", "结论：新方案可执行，装载校验通过。"], [9600, "head", "## 消息：有辆车今天不能用"], [10300, "hl", "模型输出：{\"kind\": \"needs_clarification\", \"question\": \"请问不能用的车是哪种车型？数量是几辆？\"}"], [11000, "ok", "需要补充信息：请问不能用的车是哪种车型？数量是几辆？"]];
 const log = document.getElementById('log');
 const t0 = performance.now();
 let i = 0, typing = null;

@@ -6,10 +6,10 @@
          padding: 26px 40px; box-sizing: border-box; overflow: hidden; }
   #log { white-space: pre-wrap; word-break: break-all; }
   .line { min-height: 1.55em; }
-  .cmd::before { content: "$ "; color: #4F3BD6; font-weight: 700; }
+  .cmd::before { content: "$ "; color: #1F5BE0; font-weight: 700; }
   .cmd { font-weight: 600; }
   .head { font-weight: 700; margin-top: .35em; }
-  .hl { color: #4F3BD6; font-weight: 600; }
+  .hl { color: #1F5BE0; font-weight: 600; }
   .ok { color: #1F7A35; font-weight: 700; }
   .bad { color: #C4281C; font-weight: 700; }
   .dim { color: #6E6E73; }
@@ -18,7 +18,7 @@
   @keyframes b { 50% { opacity: 0; } }
   #tag { position: fixed; right: 0; top: 0; padding: 12px 24px 8px 16px; background: #FFFFFF; font-size: 17px; color: #6E6E73; }
 </style></head>
-<body><div id="tag">已加速 · 模拟数据</div><div id="log"></div>
+<body><div id="tag">已加速 · 实际约 51 秒 · 模拟数据</div><div id="log"></div>
 <script>
 const STEPS = [[300, "cmd", "make replan-demo"], [1200, "dim", "# 合法改单：同一辆车里调换两家相邻门店的先后（replan-output/legal-changes.json）"], [1500, "cmd", "cat replan-output/legal/report.md"], [2000, "head", "# 人工改单检查（模拟数据）"], [2300, "ok", "可执行（按当前模型校验）"], [2700, "tbl", "| 指标 | 原方案 | 新方案 | 新 − 原 |"], [2750, "tbl", "|---|---:|---:|---:|"], [2850, "tbl", "| 成本（元） | 4125.07 | 4188.51 | +63.44 |"], [2950, "tbl", "| 用车数 | 6 | 6 | 0 |"], [3050, "tbl", "| 里程（km） | 548.10 | 572.50 | +24.40 |"], [3150, "tbl", "| 晚到门店数 | 0 | 0 | 0 |"], [3250, "tbl", "| 未服务门店数 | 0 | 0 | 0 |"], [6400, "dim", "# 非法改单：删掉 1 号路线这辆车（replan-output/invalid-changes.json）"], [6700, "cmd", "cat replan-output/invalid/report.md"], [7200, "head", "# 人工改单检查（模拟数据）"], [7500, "bad", "不可执行：未服务门店：[2, 7, 12, 14, 16, 25]"], [7900, "tbl", "| 指标 | 原方案 | 新方案 | 新 − 原 |"], [7950, "tbl", "|---|---:|---:|---:|"], [8050, "tbl", "| 成本（元） | 4125.07 | 3370.35 | -754.72 |"], [8150, "tbl", "| 用车数 | 6 | 5 | -1 |"], [8250, "tbl", "| 里程（km） | 548.10 | 430.90 | -117.20 |"], [8350, "tbl", "| 晚到门店数 | 0 | 0 | 0 |"], [8450, "tbl", "| 未服务门店数 | 0 | 6 | +6 |"], [9000, "out", "新方案不合格：表中新方案的成本、里程等只是对这次尝试的计算，不代表能这样执行，也不代表能省下这些钱。"]];
 const log = document.getElementById('log');

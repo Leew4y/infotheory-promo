@@ -1,7 +1,7 @@
 {
  "id": "term-understand",
  "fps": 30,
- "frames": 493,
+ "frames": 515,
  "width": 1600,
  "height": 672,
  "viewport": {
@@ -12,9 +12,9 @@
  "crop": null,
  "source": {
   "file": "term-understand.mp4",
-  "sha256": "13c2b2a1b24ccbe47cc2da39833d5f02f3337f796bcb910d153fbc3ec468228d",
-  "bytes": 890490,
-  "duration": 16.433333,
+  "sha256": "f47f609b1be9c09a40616c2ae54b6d3fdd2c9fc5b124d6e03cb0af789e9c3946",
+  "bytes": 951037,
+  "duration": 17.166667,
   "width": 1600,
   "height": 672,
   "fps": 30

@@ -1,7 +1,7 @@
 /**
  * "Keynote": a light product launch film. Everything sits on the product UI's own page grey (#F5F5F7); full-frame
- * plates are the same grey lit from above by a pale lavender glow (the product logo's indigo, softened). Near-black
- * bold sans type, one accent (the logo indigo), no paper, no grain, no serif. Captures sit in white rounded windows
+ * plates are the same grey lit from above by a pale cyan-to-blue glow (the product logo's gradient, softened). Near-black
+ * bold sans type, one accent (the logo's blue), no paper, no grain, no serif. Captures sit in white rounded windows
  * with a soft shadow, like a product shot. One type scale for the whole film (STYLE.md).
  */
 import { ctx, text, rgba } from '../../engine/draw';
@@ -17,8 +17,8 @@ const PAL = {
   fg2: '#3A3A3C',
   muted: '#5E5E63',
   rule: '#D2D2D7',
-  accent: '#4F3BD6',
-  accent2: '#8B7CF6',
+  accent: '#1F5BE0',
+  accent2: '#20C9B5',
   alt: '#248A3D',
   alt2: '#B25000',
   // plates are light in this style: "on dark" text is the same ink as on pages

@@ -51,3 +51,33 @@ export function placeholder(slot: string, what: string, lt: number): void {
   text(slot, x + 48, y + 80, { size: T.body, weight: 700, color: C.accent, alpha: a, ls: 2 });
   block(what, x + 48, y + 136, w - 96, { size: T.body, color: C.muted, alpha: a, lh: 44 });
 }
+
+// The product mark 「动势货车」, the same paths as the product's web/src/components/BrandMark.tsx (#288, viewBox 48):
+// a hollow truck outline, cyan to blue left to right, the left end faint.
+const MARK_PATHS = ['M9 11.5 H28.5 V29', 'M15.5 20 H23.5', 'M28.5 16 H35 a2 2 0 0 1 1.5 .68 l5 5.8 a2 2 0 0 1 .5 1.3 V29 H3.5'];
+const MARK_FROM = '#20C9B5', MARK_TO = '#2D6BFF';
+
+/** The mark centred at (cx, cy), `size` px wide (the 48-unit viewBox scaled). */
+export function brandMark(cx: number, cy: number, size: number, a: number): void {
+  if (a <= 0.002) return;
+  const k = size / 48;
+  ctx.save();
+  ctx.globalAlpha = a;
+  ctx.translate(cx - size / 2, cy - size / 2);
+  ctx.scale(k, k);
+  const g = ctx.createLinearGradient(2, 0, 44, 0);
+  g.addColorStop(0, 'rgba(32,201,181,0.2)');
+  g.addColorStop(0.42, MARK_FROM);
+  g.addColorStop(1, MARK_TO);
+  ctx.strokeStyle = g;
+  ctx.lineWidth = 3.4;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  for (const d of MARK_PATHS) ctx.stroke(new Path2D(d));
+  for (const [x, y] of [[13.5, 34], [36, 34]]) {
+    ctx.beginPath();
+    ctx.arc(x, y, 3.3, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
