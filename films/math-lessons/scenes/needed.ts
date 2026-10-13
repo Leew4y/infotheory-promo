@@ -12,7 +12,7 @@ narratedScene({
   draw(lt) {
     background();
     const ta = vo('aaronson'), tr = vo('n13'), tv = vo('avigad'), tc = vo('n15'), tf = vo('n16');
-    quote(['他不再指望，自己还会因为', '“真正被需要”而证明一个定理。'], ['如果还证明，只会是为了自己或别人的乐趣与启迪。'],
+    quote(['他不再指望，自己还会因为', '“真正被需要”而证明一个定理。'], ['如果还证明，只会是为了自己或别人的乐趣与启迪。', '部分出于对 AI 失配的担忧，他仍想让“洞见与理解”留在数学的中心，能留多久就留多久。'],
       '理论计算机科学家 Scott Aaronson · Shtetl-Optimized · 2026-09-15', M, 330, win(lt, ta, tv - 0.3, 0.8, 0.6), '10', 46, 'film', false);
     voiceLine('不再被需要，不等于没有意义。', W / 2, 780, win(lt, tr, tv + 6.0, 0.7, 0.6), 'film', { size: 50, align: 'center', mk: '◇' });
     quote(['无论 AI 能不能思考，', '它都不能替我们思考。'], [], 'Jeremy Avigad · 卡内基梅隆大学 ICARM 主任 · The Future of Mathematics · 2026-10-05', M, 330,
