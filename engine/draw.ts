@@ -23,15 +23,6 @@ export function textRole(r: TextRole): void {
   role = r;
 }
 /**
- * Display punctuation (Develata, 2026-10-13; AGENTS.md): on screen a line break is the pause, so a large display line
- * drops a trailing comma, enumeration comma, semicolon, colon or full stop; a question or exclamation mark, a dash and
- * an ellipsis stay. `stop` keeps a full stop, for a block that also ends a line in ？ or ！ (parallel sentences). Small
- * print keeps its punctuation.
- */
-export function displayText(s: string, stop = false): string {
-  return s.replace(stop ? /[，、；：]+$/u : /[，、；：。]+$/u, '');
-}
-/**
  * How text() paints (for the contrast check, engine/inspect.ts): 'draw' the glyphs (normal); 'hide' nothing (the
  * background); 'box' a solid rectangle over the text's ink extent, in the same fill, alpha, compositing and transform,
  * so that after the grade, the overlays and motion blur it shows the colour the text really ends up with.

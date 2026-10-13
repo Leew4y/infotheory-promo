@@ -55,3 +55,13 @@ export function parseFamilies(font: string): string[] {
   out.push(cur.trim().replace(/\s+/g, ' '));
   return out.filter(Boolean);
 }
+
+/**
+ * Display punctuation (Develata, 2026-10-13; AGENTS.md): on screen a line break is the pause, so a large display line
+ * drops a trailing comma, enumeration comma, semicolon, colon or full stop; a question or exclamation mark, a dash and
+ * an ellipsis stay. `stop` keeps a full stop, for a block that also ends a line in ？ or ！ (parallel sentences). Small
+ * print keeps its punctuation.
+ */
+export function displayText(s: string, stop = false): string {
+  return s.replace(stop ? /[，、；：]+$/u : /[，、；：。]+$/u, '');
+}
