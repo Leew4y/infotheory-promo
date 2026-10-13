@@ -2,7 +2,7 @@
 // (F-N07; only "announced"), each problem carries a million-dollar prize (F-H22, S24) which OpenAI says it will not
 // claim (F-N10), and Clay said the problem appears to be solved (F-N11; "apparently" is never "clearly" or
 // "confirmed"). The page shows the equation itself, the prize as a number, and the two statements as short tags.
-import { text, label, rule, measure, background, M, COL, C, F, narratedScene, sstep, vo } from '../../../engine';
+import { text, label, rule, measure, background, M, COL, C, F, narratedScene, sstep, vo, voParts } from '../../../engine';
 import { bell, count, verse } from '../lib';
 
 narratedScene({
@@ -30,8 +30,11 @@ narratedScene({
     const b = sstep(t1 + 1.0, t1 + 1.8, lt), c = sstep(t2, t2 + 0.8, lt);
     text('OpenAI 宣布：给出了一个解', M, 640, { size: 34, color: C.fg, alpha: b });
     label('2026-09-08 · 附 Lean 形式化', M, 684, b, C.muted, 18);
+    // "评审，刻意不急" as large as the claim it qualifies (PR #9 review: small print tilted the opening toward "solved")
+    const [, tc] = voParts('claim2', ['出题的 Clay 研究所说：问题看来已经解决；', '评审，刻意不急。']);
     text('Clay 研究所：问题看来已经解决', M, 770, { size: 34, color: C.accent, alpha: c });
-    label('2026-09-11 · 评审“刻意不急”', M, 814, c, C.muted, 18);
+    text('评审，刻意不急', M, 822, { size: 34, color: C.fg, alpha: sstep(tc - 0.1, tc + 0.6, lt) });
+    label('2026-09-11', M, 862, c, C.muted, 18);
     verse('2', M - 40, 770, c, 32);
   },
 });

@@ -53,7 +53,8 @@ const widthOf = (s: string, who: Voice, size: number) => measure(s, sizeOf(who, 
  */
 export function voiceLine(raw: string, x: number, y: number, a: number, who: Voice, o: { size?: number; onDark?: boolean; align?: CanvasTextAlign; mk?: string; tag?: boolean; stop?: boolean } = {}): void {
   if (a <= 0.002) return;
-  const s = display(raw, o.stop), size = sizeOf(who, o.size ?? 48), ls = lsOf(who, size);
+  // the display punctuation rule is for large lines; small print (under 32 px) keeps its marks
+  const s = (o.size ?? 48) * (who === 'counter' ? 0.78 : 1) >= 32 ? display(raw, o.stop) : raw, size = sizeOf(who, o.size ?? 48), ls = lsOf(who, size);
   const w = measure(s, size, F.body, 400, ls);
   const x0 = o.align === 'center' ? x - w / 2 : x;
   text(s, x0, y, { size, color: tone(who, !!o.onDark), alpha: a, ls });
