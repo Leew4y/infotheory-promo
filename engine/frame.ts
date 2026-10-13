@@ -3,7 +3,7 @@
  * accumulated on the GPU -> grain and grade -> back onto the canvas -> sharp overlays from the style: chapter label,
  * page number, captions. frame(T) is a pure function of T.
  */
-import { ctx, scaleText, textMark } from './draw';
+import { ctx, scaleText, textMark, textRole } from './draw';
 import { accumulate, glc, post, type Grade } from './gl';
 import { SC, sceneAt, camDrift } from './scene';
 import { film, FPS, frameOf, TOTAL } from './film';
@@ -67,9 +67,11 @@ let subsCache: SubLine[] | null = null;
 function overlays(T: number): void {
   const sc = sceneAt(T);
   const S = style();
-  if (sc.kind === 'page' && sc.chapter && sc.ch) S.chapterLabel(T - sc.t0, sc.d, sc.chapter, sc.ch, film().chapters);
+  textRole('overlay');
+  try { if (sc.kind === 'page' && sc.chapter && sc.ch) S.chapterLabel(T - sc.t0, sc.d, sc.chapter, sc.ch, film().chapters); } finally { textRole('scene'); }
   subsCache ??= SUBS();
-  S.captions(T, subsCache);
+  textRole('overlay');
+  try { S.captions(T, subsCache); } finally { textRole('scene'); }
 }
 
 const SHUTTER = 0.5;
