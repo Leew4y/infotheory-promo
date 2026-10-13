@@ -21,10 +21,10 @@ scene({
     plate({ time: lt + 140, progress: 0.9, highlight: 0.32 });
     const a1 = win(lt, 1.4, 5.2, 0.9, 0.7);
     backdrop(W / 2, 410, 1500, 300, Math.max(a1, win(lt, 5.6, 9.6, 0.9, 0.6)));
-    text('它把不确定，变成可以计算的量。', W / 2, 390, { size: 52, weight: 500, color: C.fgOnDark, alpha: a1, align: 'center', ls: 5 });
+    text('它把不确定，变成可以计算的量', W / 2, 390, { size: 52, weight: 500, color: C.fgOnDark, alpha: a1, align: 'center', ls: 5 });
     text('It turns uncertainty into a quantity.', W / 2, 448, { font: F.latin, style: 'italic', size: 26, color: C.mutedOnDark, alpha: a1, align: 'center' });
     const a2 = win(lt, 5.6, 9.6, 0.9, 0.6);
-    text('1948 年，一篇论文，一门学科。', W / 2, 390, { size: 52, weight: 500, color: C.fgOnDark, alpha: a2, align: 'center', ls: 5 });
+    text('1948 年，一篇论文，一门学科', W / 2, 390, { size: 52, weight: 500, color: C.fgOnDark, alpha: a2, align: 'center', ls: 5 });
     text('One paper in 1948, and a new science.', W / 2, 448, { font: F.latin, style: 'italic', size: 26, color: C.mutedOnDark, alpha: a2, align: 'center' });
   },
 });

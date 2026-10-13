@@ -8,12 +8,13 @@ import { accumulate, glc, post, type Grade } from './gl';
 import { SC, sceneAt, camDrift } from './scene';
 import { film, FPS, frameOf, TOTAL } from './film';
 import { style, type SubLine } from './style';
-import { clamp, sstep, W, H } from './util';
+import { clamp, displayText, sstep, W, H } from './util';
 import { ensure, type MediaRef } from './media';
 import { lap } from './perf';
 
 export type { SubLine };
-export const SUBS = (): SubLine[] => SC.flatMap((s) => s.subs.map(([a, b, zh, en]) => ({ a: s.t0 + a, b: s.t0 + b, zh, en, plate: s.kind === 'plate' })));
+/** Every caption on the film clock; the Chinese line follows the display punctuation rule (displayText; English keeps its own). */
+export const SUBS = (): SubLine[] => SC.flatMap((s) => s.subs.map(([a, b, zh, en]) => ({ a: s.t0 + a, b: s.t0 + b, zh: displayText(zh), en, plate: s.kind === 'plate' })));
 
 export function drawLayer(t: number, jx: number, jy: number): void {
   t = clamp(t, 0, TOTAL - 1e-3);

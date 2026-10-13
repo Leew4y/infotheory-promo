@@ -11,7 +11,7 @@ scene({
     const a = win(lt, 0.8, 5.6, 0.8, 0.7);
     backdrop(W / 2, 410, 1500, 300, a);
     dot(W / 2, 300, 5, C.accent2, a);
-    text('只要肯多花几个比特，噪声就不是终点。', W / 2, 390, { size: 50, weight: 500, color: C.fgOnDark, alpha: a, align: 'center', ls: 5 });
+    text('只要肯多花几个比特，噪声就不是终点', W / 2, 390, { size: 50, weight: 500, color: C.fgOnDark, alpha: a, align: 'center', ls: 5 });
     text('Spend a few more bits, and noise is not the end.', W / 2, 448, { font: F.latin, style: 'italic', size: 26, color: C.mutedOnDark, alpha: a, align: 'center' });
   },
 });

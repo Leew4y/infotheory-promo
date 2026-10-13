@@ -11,10 +11,10 @@ scene({
     const cx = W / 2;
     const a1 = win(lt, 2, 6.6, 0.9, 0.7);
     backdrop(cx, 520, 1400, 280, Math.max(a1, win(lt, 7, 10.8, 0.9, 0.7)));
-    text('有些东西看不见，摸不着，', cx, 500, { size: 54, weight: 500, color: C.fgOnDark, alpha: a1, align: 'center', ls: 5 });
+    text('有些东西看不见，摸不着', cx, 500, { size: 54, weight: 500, color: C.fgOnDark, alpha: a1, align: 'center', ls: 5 });
     text('Some things cannot be seen or held,', cx, 556, { font: F.latin, style: 'italic', size: 26, color: C.mutedOnDark, alpha: a1, align: 'center' });
     const a2 = win(lt, 7, 10.8, 0.9, 0.7);
-    text('却可以被精确地计量。', cx, 500, { size: 54, weight: 500, color: C.fgOnDark, alpha: a2, align: 'center', ls: 5 });
+    text('却可以被精确地计量', cx, 500, { size: 54, weight: 500, color: C.fgOnDark, alpha: a2, align: 'center', ls: 5 });
     text('yet they can be measured exactly.', cx, 556, { font: F.latin, style: 'italic', size: 26, color: C.mutedOnDark, alpha: a2, align: 'center' });
     const a3 = sstep(11, 12.3, lt);
     backdrop(cx, 580, 1300, 420, a3);

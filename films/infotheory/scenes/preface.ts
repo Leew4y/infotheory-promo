@@ -24,7 +24,7 @@ scene({
     background();
     label('Preface · 序', M, 132, sstep(0.2, 0.9, lt));
     const k = clamp((lt - 0.4) / 2.4);
-    ['一枚硬币，一封信，', '一张照片，一段基因——'].forEach((l, i) => {
+    ['一枚硬币，一封信', '一张照片，一段基因——'].forEach((l, i) => {
       const a = eout(clamp((k - i * 0.35) / 0.5));
       text(l, M, 420 + i * 96 + (1 - a) * 12, { size: 60, weight: 500, color: C.fg, alpha: a, ls: 4 });
     });

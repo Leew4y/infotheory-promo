@@ -78,7 +78,8 @@ Every film command takes the film id first (default `infotheory`); outputs go to
 - Display punctuation (Chinese, Develata 2026-10-13): on screen a line break is the pause. A large display line (>= 32
   px) does not end in ，、；：。; ？！, a dash and an ellipsis stay; a block that also ends a line in ？ or ！ keeps its 。
   so the sentences read in parallel. Pass display lines through `displayText(s, stop)`; small print (sources, notes)
-  keeps its punctuation; phrase captions (`split`) drop the same marks. `just validate` warns (`display-punctuation`).
+  keeps its punctuation; captions drop the same marks from their Chinese line (the engine does it), and so does
+  `statement()`. `just validate` warns (`display-punctuation`).
 - Product demos: `demoScene({ name, asset, edit, camera, cursor, clicks, title, ... })` (engine/demo.ts) with an asset
   imported from `films/<film>/captures/<id>.json`. The edit lists source segments `{ from, to, speed }` in recording order,
   without overlap (cuts between them; no reordering or repeats);

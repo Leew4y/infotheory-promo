@@ -11,7 +11,7 @@ scene({
     const a = win(lt, 0.8, 5.6, 0.8, 0.7);
     backdrop(W / 2, 540, 1500, 300, a);
     dot(W / 2, 430, 5, C.accent2, a);
-    text('信息，是被消除的不确定。', W / 2, 520, { size: 52, weight: 500, color: C.fgOnDark, alpha: a, align: 'center', ls: 6 });
+    text('信息，是被消除的不确定', W / 2, 520, { size: 52, weight: 500, color: C.fgOnDark, alpha: a, align: 'center', ls: 6 });
     text('Information is the resolution of uncertainty.', W / 2, 578, { font: F.latin, style: 'italic', size: 26, color: C.mutedOnDark, alpha: a, align: 'center' });
   },
 });
