@@ -40,6 +40,7 @@ scene({
       text(String(i + 1), x + 24, y, { font: F.mono, size: 22, color: C.accent, alpha: ai, align: 'right' });
       text(e, x + 48, y, { size: 22, color: C.fg2, alpha: ai });
     });
-    label('页边数字是出处编号；没有编号的句子，是本片的判断与思辨；开头两句与“随笔设想”一段，出自一篇随笔。', M, 790, sstep(2.0, 2.6, lt), C.fg2, 20);
+    label('页边数字是出处编号；没有编号的句子，是本片的判断与思辨。', M, 776, sstep(2.0, 2.6, lt), C.fg2, 20);
+    label('出自一篇随笔的：开头两句；“什么值得我去做？”与“随笔设想”一段；“然后有一天，我们把火递了出去”。', M, 812, sstep(2.2, 2.8, lt), C.fg2, 20);
   },
 });

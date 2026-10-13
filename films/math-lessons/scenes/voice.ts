@@ -1,4 +1,5 @@
-// The essay's voice inside its hypothesis ("随笔设想，有一天"; E05), the counter-argument it must face in its strongest
+// The essay's question (E09) and its voice inside its hypothesis ("随笔设想，有一天"; E05, E06: restored after the PR #9
+// review, the counter-argument answers E06), the counter-argument it must face in its strongest
 // form (autonomy is not acceptability; a system can correctly achieve a harmful goal), and the film's answer: what must
 // be checked is not only the answer but goals, conduct and consequences (revisions.md R1, R3, R4). On a plate the
 // display text is the caption; each display line appears where it is spoken.
@@ -19,11 +20,13 @@ narratedScene({
     backdrop(W / 2, 520, 1650, 540, win(lt, 0.3, d, 0.8, 0.8));
     const a = voParts('n30', N30), c = voParts('n32', N32), f = voParts('n33', N33);
     recite([
-      { t1: c[0] - 0.3, lines: [
+      { t1: vo('n31') - 0.3, lines: [
+        { t: vo('n28'), s: '什么值得我去做？', mk: '◇', who: 'essay' },
         { t: vo('n29'), s: '随笔设想，有一天——', mk: '◇', who: 'film' },
         { t: a[0], s: N30[0], mk: '◇', who: 'essay' },
         { t: a[1], s: N30[1], who: 'essay' },
       ] },
+      { t1: c[0] - 0.3, lines: [{ t: vo('n31'), s: '我不在乎它的目标是不是“高尚”。', mk: '◇', who: 'essay' }] },
       { t1: f[0] - 0.3, lines: [{ t: c[0], s: N32[0], mk: '◇', who: 'counter' }, { t: c[1], s: N32[1], who: 'counter' }] },
       { t1: 1e9, lines: [{ t: f[0], s: N33[0], mk: '◇', who: 'film' }, { t: f[1], s: N33[1], who: 'film' }, { t: f[2], s: N33[2], who: 'film' }] },
     ], lt);

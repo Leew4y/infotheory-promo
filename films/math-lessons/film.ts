@@ -13,6 +13,6 @@ import vigil from '../../styles/vigil';
 
 // vigil is the chosen look (2026-10-09); the other two directions (Chapel, Manifesto) are kept unused in backup/.
 selectStyle([vigil]);
-export default defineFilm({ id: 'math-lessons', fps: 30, bpm: 60, chapters: 4 });
+export default defineFilm({ id: 'math-lessons', fps: 30, bpm: 60, chapters: 4, punctuation: 'display' });
 // the voice (2026-10-10): narration.json, made by just narrate; lines placed at fixed times in the scenes
 useNarration(script as never, lock as never);

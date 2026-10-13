@@ -20,6 +20,7 @@ narratedScene({
       'Fontenelle · 巴黎科学院 1699 年卷序言 · 据 1742 年《全集》第五卷 p. 1',
       M, 400, sstep(tw - 0.1, tw + 0.8, lt), '6', 64,
     );
-    voiceLine('回应“数学无用”的说法', M, 300, sstep(tp, tp + 0.8, lt), 'film', { size: 28 });
+    // the spoken attribution is on the page too (preface is shown, not captioned; PR #9 review)
+    voiceLine('巴黎科学院 1699 年卷的序言，就回应过“数学无用”的说法', M, 300, sstep(tp, tp + 0.8, lt), 'film', { size: 28 });
   },
 });
