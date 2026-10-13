@@ -43,7 +43,11 @@ footage (demo scenes keep at least their edit).
 
 `just scaffold <id>` writes a module per plan scene (never overwrites). Fill in `draw` with the style's roles
 (`text`, `statement`, `plate`, `backdrop`, `C.*`, `F.*`, `M`, `COL`), texts from `copy(sceneId, key)`, animations
-landing on `vo(lineId)`. Then `just fonts <id>` and `just build <id>`.
+landing on `vo(lineId)` (or on a phrase: `voParts(lineId, parts)`). Narrated pages: `split: 16` for phrase captions
+synced to the voice, `shown: [...]` for lines the page displays verbatim (quotes, refrains), so they are not captioned
+twice. Large display lines follow the display punctuation rule (AGENTS.md): no trailing ，、；：。 — the line break is
+the pause — except a 。 in a block whose other line ends in ？ or ！; use `displayText`. Then `just fonts <id>` and
+`just build <id>`.
 
 ## 4. Look at it, cheaply
 
@@ -56,7 +60,7 @@ landing on `vo(lineId)`. Then `just fonts <id>` and `just build <id>`.
 
 ```bash
 just plan-check <id>        # plan, modules, copy only from the plan, captures, narration lock, assets
-just validate <id>          # rendering, safe area, overlaps, contrast, glyphs (+ plan diagnostics)
+just validate <id>          # rendering, safe area, overlaps, contrast, glyphs, display punctuation (+ plan diagnostics)
 just mix <id>               # final mix: every line >= 6 dB over the music, -16 LUFS
 ```
 

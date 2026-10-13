@@ -18,6 +18,9 @@
  *   glyph (engine/inspect.ts), WCAG AA: 4.5, large text (>= 24 px, or >= 18.66 px bold) 3. Below AA: an error for
  *   fully shown text, a warning for text at 0.5–0.9 alpha; text below 0.5 alpha is counted as unchecked in the report.
  *   Boxes are axis-aligned and sampled on five frames per scene: a heuristic, not a proof of glyph-level legibility.
+ * - display punctuation (AGENTS.md): on the same frames, a scene's large display line (>= 32 px, at least half shown;
+ *   not the chapter label or captions) that ends in ，、；：or 。 is a warning: on screen a line break is the pause. A 。 is
+ *   allowed when another large line on the frame ends in ？ or ！ (parallel sentences, engine displayText's `stop`).
  * Diagnostics: { level, code, path, message }, also written to out/<film>/validate.json. With --json, stdout is only
  * the JSON list and the summary goes to stderr. Exit code 1 on any error, 2 if the tool itself could not run.
  */
@@ -52,7 +55,7 @@ const STYLE = opt('style', '');
 const DIST = path.resolve(ROOT, opt('dist', `dist/${FILM}`));
 const W = 1920, H = 1080, SAFE = 0.05, MIN_ALPHA = 0.02;
 /** Text at least this opaque counts as fully shown (overlap and contrast checks); WCAG large text: 24 px, or 18.66 px bold. */
-const FULL_ALPHA = 0.9, HALF_ALPHA = 0.5, LARGE_PX = 24, LARGE_BOLD_PX = 18.66;
+const FULL_ALPHA = 0.9, HALF_ALPHA = 0.5, LARGE_PX = 24, LARGE_BOLD_PX = 18.66, DISPLAY_PX = 32;
 const OUT = path.join(ROOT, 'out', FILM, 'validate.json');
 
 interface Diag { level: 'error' | 'warning'; style: string; code: string; path: string; message: string }
@@ -140,7 +143,7 @@ try {
         const d = s.end - s.start;
         for (const [tag, t] of [['0%', s.start], ['25%', s.start + d * 0.25], ['50%', s.start + d * 0.5], ['75%', s.start + d * 0.75], ['end', s.end - 1 / FPS]] as const) {
           framesChecked++;
-          let boxes: { s: string; x0: number; y0: number; x1: number; y1: number; alpha: number }[];
+          let boxes: { s: string; px: number; role: string; x0: number; y0: number; x1: number; y1: number; alpha: number }[];
           try {
             boxes = await page.evaluate((t, fps) => window.__layout(t, fps), t, FPS);
           } catch (e) {
@@ -157,6 +160,13 @@ try {
             else if (b.x0 < sx0 || b.y0 < sy0 || b.x1 > sx1 || b.y1 > sy1) err('text-safe-area', where, `"${b.s}" ${box} is outside the ${SAFE * 100}% safe area (alpha ${b.alpha.toFixed(2)})`);
           }
           const where = `scene:${s.name}@${tag}(${t.toFixed(2)}s)`;
+          // display punctuation: a large scene line does not end in a pause mark (a line break is the pause)
+          const big = boxes.filter((b) => b.role !== 'overlay' && b.px >= DISPLAY_PX && b.alpha >= HALF_ALPHA);
+          const parallel = big.some((b) => /[？！]$/u.test(b.s.trim()));
+          for (const b of big) {
+            const end = b.s.trim().match(/[，、；：。]$/u)?.[0];
+            if (end && !(end === '。' && parallel)) warn('display-punctuation', where, `"${b.s}" (${b.px.toFixed(0)} px) ends in "${end}": on screen a line break is the pause; drop it (engine displayText)`);
+          }
           // overlapping text boxes (more than 2 px each way): an error when both are fully shown, a warning when both are
           // at least half shown (steady semi-transparent text, or the middle of a crossfade)
           const shown = boxes.filter((b) => b.alpha >= HALF_ALPHA);

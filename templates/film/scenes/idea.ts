@@ -15,7 +15,7 @@ scene({
   ],
   draw(lt) {
     background();
-    statement('一页只讲一件事。', 'One page, one idea.', lt);
+    statement('一页只讲一件事', 'One page, one idea.', lt);
     POINTS.forEach(([k, t, n], i) => row(k, t, n, M, 440 + i * 110, sstep(1.2 + i * 0.4, 1.8 + i * 0.4, lt)));
     // the diagram: input -> process -> output, drawn in
     const y = 560, x0 = COL + 80, x1 = W - M - 80, xm = (x0 + x1) / 2;

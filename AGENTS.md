@@ -34,7 +34,7 @@ Every film command takes the film id first (default `infotheory`); outputs go to
 | `just render-range <film> <from> <to> [--draft] [--style id]` | silent half-open range in film seconds, snapped to frames; filenames use the start/end frame numbers |
 | `just test-plan` | plan workflow, real short exports and deliberate failures of the plan checks |
 | `just fonts <film>` | font subsets for the film's text, per style (run after changing any text) |
-| `just validate <film> [--style id]` | schema, timeline, rendering, text inside the 5 % safe area, no overlapping text, WCAG AA contrast (as exported, glyph by glyph, on sampled frames); `--json` gives the diagnostics list |
+| `just validate <film> [--style id]` | schema, timeline, rendering, text inside the 5 % safe area, no overlapping text, WCAG AA contrast (as exported, glyph by glyph, on sampled frames), display punctuation (warning); `--json` gives the diagnostics list |
 | `just sheet <film> [--style a,b]` | contact sheet of representative moments in every style: `out/<film>/sheet/sheet.jpg` + `sheet.json` |
 | `just shots <film> 5,20.5 [--style id]` | single frames |
 | `just dev <film>` | preview at http://127.0.0.1:5174 (`?style=<id>`) |
@@ -75,6 +75,10 @@ Every film command takes the film id first (default `infotheory`); outputs go to
 - Fonts come only from `fonts/catalog.json`; a style lists the ids it uses in `fonts.json`. Adding a font to the
   catalog (a download) needs the person's confirmation.
 - Text on a full-frame plate goes over `backdrop(...)` so it stays readable.
+- Display punctuation (Chinese, Develata 2026-10-13): on screen a line break is the pause. A large display line (>= 32
+  px) does not end in ，、；：。; ？！, a dash and an ellipsis stay; a block that also ends a line in ？ or ！ keeps its 。
+  so the sentences read in parallel. Pass display lines through `displayText(s, stop)`; small print (sources, notes)
+  keeps its punctuation; phrase captions (`split`) drop the same marks. `just validate` warns (`display-punctuation`).
 - Product demos: `demoScene({ name, asset, edit, camera, cursor, clicks, title, ... })` (engine/demo.ts) with an asset
   imported from `films/<film>/captures/<id>.json`. The edit lists source segments `{ from, to, speed }` in recording order,
   without overlap (cuts between them; no reordering or repeats);

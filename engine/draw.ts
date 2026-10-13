@@ -13,8 +13,24 @@ export const ctx = cv.getContext('2d')!;
  * the rendered size in canvas pixels (font size times the smaller of the transform's two axis scales, so a squashed
  * text never counts as larger than it is), the numeric weight, the fill as the canvas reports it, and the alpha.
  */
-export interface TextBox { s: string; font: string; px: number; weight: number; color: string; x0: number; y0: number; x1: number; y1: number; alpha: number }
+export interface TextBox { s: string; font: string; px: number; weight: number; color: string; x0: number; y0: number; x1: number; y1: number; alpha: number; role: TextRole }
+/** Who drew a text box: the scene, or the overlays drawn over every scene (chapter label, captions). */
+export type TextRole = 'scene' | 'overlay';
 let boxes: TextBox[] | null = null;
+let role: TextRole = 'scene';
+/** Mark the text drawn from now on as the scene's or the overlays' (engine/frame.ts). */
+export function textRole(r: TextRole): void {
+  role = r;
+}
+/**
+ * Display punctuation (Develata, 2026-10-13; AGENTS.md): on screen a line break is the pause, so a large display line
+ * drops a trailing comma, enumeration comma, semicolon, colon or full stop; a question or exclamation mark, a dash and
+ * an ellipsis stay. `stop` keeps a full stop, for a block that also ends a line in ？ or ！ (parallel sentences). Small
+ * print keeps its punctuation.
+ */
+export function displayText(s: string, stop = false): string {
+  return s.replace(stop ? /[，、；：]+$/u : /[，、；：。]+$/u, '');
+}
 /**
  * How text() paints (for the contrast check, engine/inspect.ts): 'draw' the glyphs (normal); 'hide' nothing (the
  * background); 'box' a solid rectangle over the text's ink extent, in the same fill, alpha, compositing and transform,
@@ -125,7 +141,7 @@ export function text(s: string, x: number, y: number, o: TextOpts = {}): void {
       ys.push(q.y);
     }
     const px = (o.size ?? 40) * Math.min(Math.hypot(t.a, t.b), Math.hypot(t.c, t.d));
-    boxes.push({ s, font: ctx.font, px, weight: weightOf(o.weight), color: String(ctx.fillStyle), x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys), alpha: ctx.globalAlpha });
+    boxes.push({ s, font: ctx.font, px, weight: weightOf(o.weight), color: String(ctx.fillStyle), x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys), alpha: ctx.globalAlpha, role });
   }
   if (mode === 'draw') ctx.fillText(s, x, y);
   else if (mode === 'box' && m) ctx.fillRect(x - m.actualBoundingBoxLeft, y - m.actualBoundingBoxAscent, m.actualBoundingBoxLeft + m.actualBoundingBoxRight, m.actualBoundingBoxAscent + m.actualBoundingBoxDescent);

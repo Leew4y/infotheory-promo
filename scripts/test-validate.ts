@@ -13,6 +13,8 @@
  *      - two fully shown strings on top of each other (text-overlap);
  *      - a steady low-contrast string at alpha 0.7 (text-contrast-partial warning);
  *      - a label running off the frame (text-overflow);
+ *      - a large display line ending in a full stop (display-punctuation warning), and small print ending in one (no
+ *        diagnostic: small print keeps its punctuation);
  *      validate must exit 1 and report exactly those codes, all on the fault scene.
  * Only the directories this run created are removed afterwards (also on failure). Needs uv (fonts).
  * Exit code 0 when every case behaves as expected, 1 otherwise.
@@ -65,6 +67,8 @@ scene({
     text('叠在一起', 210, 465, { size: 40, color: C.fg });
     text('半透明的低对比', 700, 460, { size: 40, color: C.bg2, alpha: 0.7 });
     text('出画面', W - 40, 800, { size: 40, color: C.fg });
+    text('结尾有句号的大字。', 200, 640, { size: 40, color: C.fg });
+    text('小字的句子保留句号。', 200, 720, { size: 20, color: C.fg });
   },
 });
 `);
@@ -84,6 +88,7 @@ scene({
   const want: [string, string, Diag[]][] = [
     ['text-contrast', '看不清的字', errs], ['text-contrast', '几乎透明', errs], ['text-contrast', '"白"', errs],
     ['text-overlap', '叠在一起', errs], ['text-overflow', '出画面', errs], ['text-contrast-partial', '半透明的低对比', warns],
+    ['display-punctuation', '结尾有句号的大字', warns],
   ];
   if (v2.code !== 1) failures.push(`faults: expected exit 1, got ${v2.code}`);
   for (const [code, s, list] of want) if (!has(code, s, list)) failures.push(`faults: expected ${code} for "${s}"`);
