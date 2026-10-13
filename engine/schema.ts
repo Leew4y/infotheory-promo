@@ -13,6 +13,7 @@ export const FilmSpec = z.object({
   fps: z.number().int().positive(),
   bpm: z.number().finite().positive(),
   chapters: z.number().int().nonnegative(),
+  punctuation: z.literal('display').optional(),
 });
 
 /** [start, end, zh, en]: seconds within the scene. */

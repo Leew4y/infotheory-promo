@@ -4,4 +4,4 @@ import { defineFilm, selectStyle } from '../../engine';
 import style from '../../styles/paper-dawn';
 
 selectStyle([style]);
-export default defineFilm({ id: 'template', fps: 30, bpm: 80, chapters: 1 });
+export default defineFilm({ id: 'template', fps: 30, bpm: 80, chapters: 1, punctuation: 'display' });

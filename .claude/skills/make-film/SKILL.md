@@ -43,11 +43,12 @@ footage (demo scenes keep at least their edit).
 
 `just scaffold <id>` writes a module per plan scene (never overwrites). Fill in `draw` with the style's roles
 (`text`, `statement`, `plate`, `backdrop`, `C.*`, `F.*`, `M`, `COL`), texts from `copy(sceneId, key)`, animations
-landing on `vo(lineId)` (or on a phrase: `voParts(lineId, parts)`). Narrated pages: `split: 16` for phrase captions
-synced to the voice, `shown: [...]` for lines the page displays verbatim (quotes, refrains), so they are not captioned
-twice. Large display lines follow the display punctuation rule (AGENTS.md): no trailing ，、；：。 — the line break is
-the pause — except a 。 in a block whose other line ends in ？ or ！; use `displayText`. Then `just fonts <id>` and
-`just build <id>`.
+landing on `vo(lineId)` (or on a phrase: `voParts(lineId, parts)`). In a film's own `narratedScene` (not yet in a
+plan film: the plan schema and `planScene` do not take them): `split: 16` for phrase captions synced to the voice,
+`shown: [...]` for lines the page displays verbatim (quotes, refrains), so they are not captioned twice. With
+`punctuation: 'display'` in `defineFilm` (the templates set it), captions hold one sentence each and large display
+lines follow the display punctuation rule (AGENTS.md): no trailing ，、；：。 — the line break is the pause — except a 。
+in a block whose other line ends in ？ or ！; use `displayText`. Then `just fonts <id>` and `just build <id>`.
 
 ## 4. Look at it, cheaply
 

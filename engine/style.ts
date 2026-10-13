@@ -11,6 +11,7 @@ import type { Grade } from './gl';
 import type { Rect } from './capture';
 import { check, GradeSpec } from './schema';
 import { displayText } from './util';
+import { film } from './film';
 
 export interface Palette {
   /** Page paper and its darker tone. */
@@ -173,6 +174,6 @@ export function style(): StylePackage {
 export const background = (): void => style().background();
 export const plate = (u: PlateParams): void => style().plate(u);
 export const backdrop: StylePackage['backdrop'] = (...a) => style().backdrop(...a);
-/** A statement is a large display line: its Chinese follows the display punctuation rule (displayText; AGENTS.md). */
-export const statement: StylePackage['statement'] = (zh, ...a) => style().statement(displayText(zh), ...a);
+/** A statement is a large display line: under the display punctuation rule its Chinese drops a trailing pause mark. */
+export const statement: StylePackage['statement'] = (zh, ...a) => style().statement(film().punctuation === 'display' ? displayText(zh) : zh, ...a);
 export const row: StylePackage['row'] = (...a) => style().row(...a);

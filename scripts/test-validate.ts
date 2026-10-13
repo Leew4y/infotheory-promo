@@ -91,6 +91,8 @@ scene({
     ['display-punctuation', '结尾有句号的大字', warns],
   ];
   if (v2.code !== 1) failures.push(`faults: expected exit 1, got ${v2.code}`);
+  // small print keeps its punctuation: no display-punctuation diagnostic may name it
+  if (v2.diags.some((d) => d.message.includes('小字的句子保留句号'))) failures.push('faults: small print was reported for display punctuation');
   for (const [code, s, list] of want) if (!has(code, s, list)) failures.push(`faults: expected ${code} for "${s}"`);
   const known = new Set(want.map(([c]) => c));
   for (const d of v2.diags) {

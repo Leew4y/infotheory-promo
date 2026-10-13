@@ -103,7 +103,14 @@ def cosyvoice3_backend(job):
     # the parameters (CosyVoice maps them straight to the GPU, holding a second copy while loading, which ran out of
     # memory). fp32: fp16 also fits but was ~4x slower here (RTF 5-9 against 1.2-2.0, RTX 3060 Laptop, 2026-10-10).
     load = torch.load
-    torch.load = lambda *a, **k: load(*a, **{**k, 'map_location': 'cpu'})
+    def cpu_load(*a, **k):
+        # memory-mapped where the checkpoint allows it: the weights are paged in from disk while they are copied to the
+        # GPU instead of being held twice in RAM (the model failed to load with ~2.5 GB of RAM free; same weights)
+        try:
+            return load(*a, **{**k, 'map_location': 'cpu', 'mmap': True})
+        except (RuntimeError, ValueError):
+            return load(*a, **{**k, 'map_location': 'cpu'})
+    torch.load = cpu_load
     try:
         model = AutoModel(model_dir=job['model_dir'], fp16=False)
     finally:

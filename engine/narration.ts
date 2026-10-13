@@ -97,40 +97,86 @@ export interface NarrationTiming {
 export const captionWidth = (s: string): number => [...s].reduce((w, c) => w + (c.charCodeAt(0) < 128 ? 0.5 : 1), 0);
 /** Punctuation a caption does not end on (Chinese subtitle practice: the break is the pause). */
 const SOFT_END = /[，。；、：,.;:]+$/;
+/** Marks that end a sentence inside a caption: a caption holds one sentence (Develata, 2026-10-13). */
+const SENTENCE_END = /[。；？！]$/u;
+/** Whether the film follows the display punctuation rule (defineFilm({ punctuation: 'display' })). */
+const displayRule = (): boolean => film().punctuation === 'display';
+
 /**
- * A caption split into phrases of at most `max` widths (captionWidth). Pieces end after Chinese punctuation or a dash;
- * a piece still too wide is cut into near-equal parts (never inside a Latin word, a number or a quotation); consecutive pieces are
- * then grouped into the fewest captions, the most even in width. A caption's trailing comma, full stop, semicolon or
- * colon is dropped (Chinese subtitle practice: the break is the pause). Pre: max >= 4. Post: every caption fits
- * (unless a single unbreakable word does not), and the captions joined are the text less those trailing marks.
+ * A caption's text cut into its sentences (after 。；？！ followed by more text), marks kept. Pre: none. Post: the
+ * sentences joined are the text.
  */
-export function splitCaption(text: string, max: number): string[] {
-  const fit = (s: string) => captionWidth(s.replace(SOFT_END, ''));
-  const pieces = text.match(/[^，。；：？！、—]*(?:[，。；：？！、]|—+|$)/g)!.filter((p) => p.trim()).flatMap((p) => {
-    const w = fit(p);
-    if (w <= max) return [p];
-    const n = Math.ceil(w / max), units = p.match(/"[^"]*"|“[^”]*”|《[^》]*》|[A-Za-z0-9.%]+\s?|\s|./gu)!, parts: string[] = [];
-    let cur = '';
-    for (const u of units) {
-      if (cur && parts.length < n - 1 && captionWidth(cur + u) > w / n + 0.25) { parts.push(cur); cur = ''; }
-      cur += u;
-    }
-    return [...parts, cur];
-  });
-  // fewest captions, then the least sum of squared slack (dynamic programming over the pieces)
-  const best: { cost: number; from: number }[] = [{ cost: 0, from: -1 }];
-  for (let i = 1; i <= pieces.length; i++) {
-    best[i] = { cost: Infinity, from: i - 1 };
-    for (let j = i - 1; j >= 0; j--) {
-      const w = fit(pieces.slice(j, i).join(''));
-      if (w > max && j < i - 1) break;
-      const c = best[j].cost + 1e4 + (max - Math.min(w, max)) ** 2;
-      if (c < best[i].cost) best[i] = { cost: c, from: j };
-    }
-  }
+export function sentences(text: string): string[] {
+  return (text.match(/[^。；？！]*[。；？！]+|[^。；？！]+$/gu) ?? [text]).filter((p) => p.trim());
+}
+
+/**
+ * A caption split into phrases of at most `max` widths (captionWidth). It is first cut into sentences (a caption
+ * never runs across 。；？！); a sentence into pieces, each ending after Chinese punctuation, a dash or an ellipsis; a
+ * piece still too wide is cut only at a space (never between two Chinese characters, inside a word, a number, a
+ * quotation or an ellipsis), else kept whole; within a sentence, consecutive pieces are grouped into the fewest
+ * captions, the most even in width. With `strip` (the display rule), a caption's trailing comma, full stop, semicolon
+ * or colon is dropped. Pre: max >= 4. Post: the captions joined are the text less those trailing marks and spaces at
+ * the cuts.
+ */
+export function splitCaption(text: string, max: number, strip = true): string[] {
+  const fit = (x: string) => captionWidth(x.trim().replace(SOFT_END, ''));
   const out: string[] = [];
-  for (let i = pieces.length; i > 0; i = best[i].from) out.unshift(pieces.slice(best[i].from, i).join(''));
-  return out.map((p) => p.trim().replace(SOFT_END, '')).filter(Boolean);
+  for (const sentence of sentences(text)) {
+    const pieces = (sentence.match(/[^，。；：？！、—…]*(?:[，。；：？！、]+|—+|…+|$)/gu) ?? []).filter((p) => p.trim()).flatMap((p) => {
+      if (fit(p) <= max) return [p];
+      // too wide: cut at spaces only, into near-equal parts
+      const words = p.match(/\S+\s*/gu) ?? [p];
+      if (words.length < 2) return [p];
+      const n = Math.ceil(fit(p) / max), parts: string[] = [];
+      let cur = '';
+      for (const u of words) {
+        if (cur && parts.length < n - 1 && captionWidth(cur + u) > fit(p) / n + 0.25) { parts.push(cur); cur = ''; }
+        cur += u;
+      }
+      return [...parts, cur];
+    });
+    // fewest captions, then the least sum of squared slack (dynamic programming over the pieces of this sentence)
+    const best: { cost: number; from: number }[] = [{ cost: 0, from: -1 }];
+    for (let k = 1; k <= pieces.length; k++) {
+      best[k] = { cost: Infinity, from: k - 1 };
+      for (let j = k - 1; j >= 0; j--) {
+        const w = fit(pieces.slice(j, k).join(''));
+        if (w > max && j < k - 1) break;
+        const c = best[j].cost + 1e4 + (max - Math.min(w, max)) ** 2;
+        if (c < best[k].cost) best[k] = { cost: c, from: j };
+      }
+    }
+    const group: string[] = [];
+    for (let k = pieces.length; k > 0; k = best[k].from) group.unshift(pieces.slice(best[k].from, k).join(''));
+    out.push(...group);
+  }
+  return out.map((p) => (strip ? p.trim().replace(SOFT_END, '') : p.trim())).filter(Boolean);
+}
+
+/** The shortest a caption cut from another is shown (Netflix: 5/6 s), when the whole has room for it. */
+export const CAPTION_MIN = 0.8;
+/**
+ * Captions with one sentence each (the display rule): a caption whose Chinese holds more than one sentence is cut at
+ * its sentence ends; each part gets CAPTION_MIN (when the whole is long enough) and the rest of the time in
+ * proportion to spoken length; its English is cut at sentence ends (a full stop followed by a space: "4.7" is not one)
+ * and paired when it has as many sentences, else every part keeps the whole English line. Captions with one sentence
+ * are returned unchanged.
+ */
+export function sentenceSubs(subs: Sub[]): Sub[] {
+  return subs.flatMap(([a, b, zh, en]) => {
+    const parts = sentences(zh);
+    if (parts.length < 2) return [[a, b, zh, en] as Sub];
+    const ens = en.split(/(?<=[.!?]["”’)]*)\s+(?=\S)/u).map((x) => x.trim()).filter(Boolean);
+    const w = parts.map((p) => Math.max(1, spokenLength(p))), total = w.reduce((x, y) => x + y, 0);
+    const floor = b - a >= CAPTION_MIN * parts.length ? CAPTION_MIN : 0, rest = b - a - floor * parts.length;
+    let t = a;
+    return parts.map((p, k) => {
+      const d = floor + (rest * w[k]) / total, sub: Sub = [+t.toFixed(3), +(k === parts.length - 1 ? b : t + d).toFixed(3), p, ens.length === parts.length ? ens[k] : en];
+      t += d;
+      return sub;
+    });
+  });
 }
 
 /**
@@ -157,13 +203,14 @@ export function narrationTiming(name: string, o: NarrationTiming): { dur: number
     const dur = lock!.lines[id].duration;
     local.push({ id, t, dur });
     if (o.shown === true || o.shown?.includes(id)) { /* the display text is the caption */ }
-    else if (o.split === undefined) subs.push([t, t + dur, line.text, line.en ?? '']);
-    else splitCaption(line.text, o.split).forEach((p, k, all) => subs.push([t + (dur * k) / all.length, t + (dur * (k + 1)) / all.length, p, k ? '' : line.en ?? '']));
+    else if (o.split !== undefined) splitCaption(line.text, o.split, displayRule()).forEach((p, k, all) => subs.push([t + (dur * k) / all.length, t + (dur * (k + 1)) / all.length, p, k ? '' : line.en ?? '']));
+    else if (displayRule()) subs.push(...sentenceSubs([[t, t + dur, line.text, line.en ?? '']]));
+    else subs.push([t, t + dur, line.text, line.en ?? '']);
     t += dur + (i < ids.length - 1 ? (line.pause ?? gap) : 0);
   });
   const dur = Math.ceil(Math.max(o.minDur ?? 0, t + tail) * FPS - 1e-9) / FPS;
-  if (o.split !== undefined) {
-    if (!(Number.isFinite(o.split) && o.split >= 4)) throw new Error(`scene "${name}": split must be >= 4 (got ${o.split})`);
+  if (o.split !== undefined && !(Number.isFinite(o.split) && o.split >= 4)) throw new Error(`scene "${name}": split must be >= 4 (got ${o.split})`);
+  if (o.split !== undefined || displayRule()) {
     const said = local.map((p) => ({ t: p.t, dur: p.dur, text: lock!.lines[p.id].text, read: lock!.lines[p.id].read, spans: lock!.lines[p.id].spans }));
     subs.splice(0, subs.length, ...syncSubs(subs, said, dur));
   }
@@ -223,7 +270,7 @@ export function placeNarration(s: SceneDef, at: Record<string, number>): SceneDe
     starts.set(p.id, p.t);
     placements.push({ id: p.id, t: s.t0 + p.t, dur: p.dur });
   }
-  s.subs = syncSubs(s.subs, ps.map((p) => ({ t: p.t, dur: p.dur, text: lock!.lines[p.id].text, read: lock!.lines[p.id].read, spans: lock!.lines[p.id].spans })), s.d);
+  s.subs = syncSubs(displayRule() ? sentenceSubs(s.subs) : s.subs, ps.map((p) => ({ t: p.t, dur: p.dur, text: lock!.lines[p.id].text, read: lock!.lines[p.id].read, spans: lock!.lines[p.id].spans })), s.d);
   return s;
 }
 
@@ -238,17 +285,6 @@ const SNAP = 0.6;
 export const spokenLength = (s: string): number =>
   (s.match(/[㐀-鿿]/g)?.length ?? 0) + 2 * (s.match(/[A-Za-z]+/g)?.length ?? 0) + (s.match(/\d/g)?.length ?? 0);
 
-/**
- * Captions retimed to the voice (scene seconds). Each caption belongs to the line whose text contains it (letters,
- * digits and CJK compared), else to the line it overlaps most (none: unchanged).
- * A line's captions, in order, split its speech where they fall in its reading (readingSplits; else in proportion to
- * their spoken length); each boundary after the first
- * moves to the nearest place where the speech resumes after a pause (the lock's spans) within SNAP, later than the
- * previous one, so a caption appears as its phrase is spoken. The first caption starts with the line; each ends where
- * the next begins; the last stays CAPTION_HOLD after the speech, but not past the next line, the next other caption
- * or the scene's end, and runs on to whichever of those comes next if it would otherwise leave a gap under 0.5 s. Pre: lines do not overlap (placeNarration checks). Post: the owned captions of a line are
- * contiguous, ordered, and cover the line's speech.
- */
 /** Weight of one character of what is said: a CJK character a syllable, a Latin letter a quarter of one. */
 const weight = (c: string): number => (/[A-Za-z]/.test(c) ? 0.25 : 1);
 /**
@@ -277,20 +313,46 @@ export function readingSplits(captions: string[], read: string): number[] | null
     firsts.push(first < 0 ? at : first);
     lasts.push(at);
   }
+  const tail = (x: string) => bare(x).match(/\p{N}+$/u)?.[0].length ?? 0, head = (x: string) => bare(x).match(/^\p{N}+/u)?.[0].length ?? 0;
   return captions.map((_, k) => {
-    if (k === 0) return /^\p{N}/u.test(bare(captions[0])) ? 0 : cum[firsts[0]] / total; // leading digits are read first
-    const endsInDigit = /\p{N}$/u.test(bare(captions[k - 1]));
-    return (endsInDigit ? cum[firsts[k]] : cum[lasts[k - 1]]) / total;
+    if (k === 0) return head(captions[0]) ? 0 : cum[firsts[0]] / total; // leading digits are read first
+    // digits are read out between the previous caption's last letter and this one's first: shared by digit count
+    const dp = tail(captions[k - 1]), dn = head(captions[k]);
+    const at = dp + dn ? lasts[k - 1] + ((firsts[k] - lasts[k - 1]) * dp) / (dp + dn) : lasts[k - 1];
+    const lo = Math.floor(at), frac = at - lo;
+    return (cum[lo] + (lo < r.length ? frac * weight(r[lo]) : 0)) / total;
   });
 }
 
+/**
+ * Captions retimed to the voice (scene seconds). A caption belongs to a line whose text contains it (letters, digits
+ * and CJK compared), the nearest in time, so a repeated phrase stays with its own line; a caption no line contains
+ * belongs to the line it overlaps most (none: unchanged). A line's captions, in order, start where they fall in its
+ * reading (readingSplits; else in proportion to their spoken length), placed on its speech and matched to the pauses
+ * (placeOnSpeech), so a caption appears as its phrase is spoken. The first caption of a line that opens with it starts
+ * with the line; each ends where the next begins; the last stays CAPTION_HOLD after the speech, but not past the next
+ * line, the next other caption or the scene's end, and runs on to whichever of those comes next if it would otherwise
+ * leave a gap under 0.5 s. Pre: lines do not overlap (placeNarration checks). Post: the owned captions of a line are
+ * contiguous, ordered, and cover the line's speech.
+ */
 export function syncSubs(subs: Sub[], lines: { t: number; dur: number; text?: string; read?: string; spans?: [number, number][] }[], end: number): Sub[] {
   const ls = [...lines].sort((a, b) => a.t - b.t);
+  // a caption belongs to a line whose text contains it, the nearest in time (a repeated phrase stays with its own
+  // line); a caption no line contains belongs to the line it overlaps most (none: unchanged)
+  const near = (a: number, b: number, l: { t: number; dur: number }) => {
+    const o = Math.min(b, l.t + l.dur) - Math.max(a, l.t);
+    return o > 0 ? -o : Math.max(l.t - b, a - (l.t + l.dur));
+  };
   const owner = subs.map(([a, b, zh]) => {
     const said = bare(zh);
-    const by = said ? ls.findIndex((l) => l.text !== undefined && bare(l.text).includes(said)) : -1;
-    if (by >= 0) return by;
-    let best = -1, most = 0;
+    let best = -1, score = Infinity;
+    ls.forEach((l, i) => {
+      if (!said || l.text === undefined || !bare(l.text).includes(said)) return;
+      const d = near(a, b, l);
+      if (d < score) { score = d; best = i; }
+    });
+    if (best >= 0) return best;
+    let most = 0;
     ls.forEach((l, i) => {
       const o = Math.min(b, l.t + l.dur) - Math.max(a, l.t);
       if (o > most + 1e-9) { most = o; best = i; }
@@ -304,20 +366,8 @@ export function syncSubs(subs: Sub[], lines: { t: number; dur: number; text?: st
     const w = mine.map((j) => Math.max(1, spokenLength(subs[j][2])));
     const total = w.reduce((x, y) => x + y, 0);
     const split = l.read !== undefined ? readingSplits(mine.map((j) => subs[j][2]), l.read) : null;
-    const onsets = (l.spans ?? []).slice(1).map(([a]) => l.t + a);
-    const tol = Math.max(SNAP, 0.15 * l.dur);
-    const at: number[] = [];
-    let cum = 0, used = -1;
-    for (let k = 0; k < mine.length; k++) {
-      if (k > 0) cum += w[k - 1];
-      const frac = split ? split[k] : cum / total;
-      if (k === 0 && frac < 0.02) { at.push(l.t); continue; } // the line opens with this caption
-      const want = l.t + l.dur * frac, after = k > 0 ? at[k - 1] : l.t;
-      let pick = -1;
-      onsets.forEach((c, m) => { if (m > used && c > after && Math.abs(c - want) <= tol && (pick < 0 || Math.abs(c - want) < Math.abs(onsets[pick] - want))) pick = m; });
-      if (pick >= 0) used = pick;
-      at.push(pick >= 0 ? onsets[pick] : k > 0 ? Math.max(want, after + 0.3) : want);
-    }
+    const fracs = mine.map((_, k) => (split ? split[k] : w.slice(0, k).reduce((x, y) => x + y, 0) / total));
+    const at = placeOnSpeech(l.t, l.dur, l.spans ?? [], fracs);
     const nextLine = i + 1 < ls.length ? ls[i + 1].t : end;
     const others = subs.map((x, j) => (owner[j] !== i && x[0] > l.t ? x[0] : Infinity));
     const limit = Math.min(nextLine, end, ...others);
@@ -329,6 +379,66 @@ export function syncSubs(subs: Sub[], lines: { t: number; dur: number; text?: st
     });
   });
   return out;
+}
+
+/** How much a pause before an onset counts against distance when choosing where a phrase starts (per second of
+ *  pause, in units of the snapping tolerance): a long pause at punctuation beats a short breath nearby. */
+const PAUSE_PULL = 0.5;
+/**
+ * Where phrases start in a line placed at `t` lasting `dur` (scene seconds), from where they fall in its reading
+ * (`fracs`, fractions of its spoken weight, ascending) and its speech spans (seconds from the line's start; empty:
+ * none measured). Each fraction is first placed on the speech axis (pauses take no reading weight); then the phrases
+ * are matched to onsets (where the speech resumes after a pause) by dynamic programming: an increasing matching that
+ * minimises, summed over the phrases, |onset - estimate| / tol - PAUSE_PULL * min(pause, 1 s), with
+ * tol = max(SNAP, 15 % of the line); a phrase left unmatched costs 1 and keeps its estimate (at least 0.3 s after the
+ * previous phrase). A first phrase at fraction < 0.02 starts with the line.
+ */
+function placeOnSpeech(t: number, dur: number, spans: [number, number][], fracs: number[]): number[] {
+  const speech = spans.reduce((x, [a, b]) => x + (b - a), 0);
+  const est = (f: number): number => {
+    if (!spans.length || speech <= 0) return t + dur * f;
+    let left = f * speech;
+    for (const [a, b] of spans) {
+      if (left <= b - a) return t + a + left;
+      left -= b - a;
+    }
+    return t + spans[spans.length - 1][1];
+  };
+  const onsets = spans.slice(1).map(([a], m) => ({ at: t + a, pause: a - spans[m][1] }));
+  const tol = Math.max(SNAP, 0.15 * dur);
+  const want = fracs.map(est);
+  const free = fracs.map((f, k) => !(k === 0 && f < 0.02));
+  // state (k, m): k phrases placed, the last onset used is m - 1 (m = 0: none yet)
+  const K = fracs.length, M = onsets.length;
+  const cost: number[][] = Array.from({ length: K + 1 }, () => Array(M + 1).fill(Infinity));
+  const from: number[][] = Array.from({ length: K + 1 }, () => Array(M + 1).fill(-1));
+  const took: number[][] = Array.from({ length: K + 1 }, () => Array(M + 1).fill(-1));
+  cost[0][0] = 0;
+  for (let k = 0; k < K; k++) for (let m = 0; m <= M; m++) {
+    const c = cost[k][m];
+    if (!Number.isFinite(c)) continue;
+    const skip = c + (free[k] ? 1 : 0);
+    if (skip < cost[k + 1][m]) { cost[k + 1][m] = skip; from[k + 1][m] = m; took[k + 1][m] = -1; }
+    if (!free[k]) continue;
+    for (let n = m; n < M; n++) {
+      const d = Math.abs(onsets[n].at - want[k]);
+      if (d > tol) continue;
+      const v = c + d / tol - PAUSE_PULL * Math.min(onsets[n].pause, 1);
+      if (v < cost[k + 1][n + 1]) { cost[k + 1][n + 1] = v; from[k + 1][n + 1] = m; took[k + 1][n + 1] = n; }
+    }
+  }
+  let m = 0;
+  for (let n = 1; n <= M; n++) if (cost[K][n] < cost[K][m]) m = n;
+  const picked: number[] = Array(K).fill(-1);
+  for (let k = K; k > 0; k--) { picked[k - 1] = took[k][m]; m = from[k][m]; }
+  const at: number[] = [];
+  for (let k = 0; k < K; k++) {
+    const prev = k ? at[k - 1] : t;
+    if (!free[k]) at.push(t);
+    else if (picked[k] >= 0) at.push(Math.max(onsets[picked[k]].at, prev));
+    else at.push(Math.max(want[k], k ? prev + 0.3 : t));
+  }
+  return at;
 }
 
 /** A line's start on its scene's clock (seconds), for animations that land on it. Call it inside draw(). */

@@ -75,10 +75,12 @@ Every film command takes the film id first (default `infotheory`); outputs go to
 - Fonts come only from `fonts/catalog.json`; a style lists the ids it uses in `fonts.json`. Adding a font to the
   catalog (a download) needs the person's confirmation.
 - Text on a full-frame plate goes over `backdrop(...)` so it stays readable.
-- Display punctuation (Chinese, Develata 2026-10-13): on screen a line break is the pause. A large display line (>= 32
+- Display punctuation (Chinese, Develata 2026-10-13; a film opts in with `defineFilm({ ..., punctuation: 'display' })`,
+  as the templates, math-lessons, raa-demo and infotheory do): on screen a line break is the pause. A large display line (>= 32
   px) does not end in ，、；：。; ？！, a dash and an ellipsis stay; a block that also ends a line in ？ or ！ keeps its 。
   so the sentences read in parallel. Pass display lines through `displayText(s, stop)`; small print (sources, notes)
-  keeps its punctuation; captions drop the same marks from their Chinese line (the engine does it), and so does
+  keeps its punctuation; captions hold one sentence each (cut at 。；？！) and drop the same marks from their Chinese
+  line (the engine does it), and so does
   `statement()`. `just validate` warns (`display-punctuation`).
 - Product demos: `demoScene({ name, asset, edit, camera, cursor, clicks, title, ... })` (engine/demo.ts) with an asset
   imported from `films/<film>/captures/<id>.json`. The edit lists source segments `{ from, to, speed }` in recording order,

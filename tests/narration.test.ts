@@ -2,7 +2,7 @@
 import { expect, test } from 'bun:test';
 import { defineFilm, FRAMES } from '../engine/film';
 import { scene } from '../engine/scene';
-import { narratedScene, narrationReport, captionWidth, placeNarration, readingSplits, splitCaption, spokenLength, syncSubs, useNarration, vo, type NarrationLock, type NarrationScript } from '../engine/narration';
+import { narratedScene, narrationReport, captionWidth, placeNarration, readingSplits, sentences, sentenceSubs, splitCaption, spokenLength, syncSubs, useNarration, vo, type NarrationLock, type NarrationScript } from '../engine/narration';
 
 defineFilm({ id: 'narration-test', fps: 30, bpm: 80, chapters: 1 });
 const script: NarrationScript = {
@@ -93,11 +93,57 @@ test('caption boundaries are found in the reading: numbers written out, Latin wo
   expect(readingSplits(['不在', '这句话里'], '完全不同')).toBeNull();
 });
 
-test('captions split into phrases of at most 16 widths, balanced, never inside a word, a number or a quotation', () => {
+test('captions split into phrases: one sentence each, balanced, cut only at punctuation or spaces (PR #9 review)', () => {
   expect(splitCaption('我们不应因为机器能够给出答案，就停止人类自己的探索；也不应因为答案来自强大的机器，就放弃检验它的责任。', 16))
     .toEqual(['我们不应因为机器能够给出答案', '就停止人类自己的探索', '也不应因为答案来自强大的机器', '就放弃检验它的责任']);
-  expect(splitCaption('七月，一份 AI 协助生成的"否证"通过了证明检查程序——因为程序本身有漏洞。', 16))
-    .toEqual(['七月，一份 AI 协助生成的', '"否证"通过了证明检查程序——', '因为程序本身有漏洞']);
+  // a piece too wide is cut at a space, never between two Chinese characters ("还帮" / "着找出" was the bug)
+  expect(splitCaption('漏洞报告一小时后，修复就推出了；后来，一个专门的安全 AI 还帮着找出了内核里更多的错误。', 16))
+    .toEqual(['漏洞报告一小时后，修复就推出了', '后来，一个专门的安全 AI', '还帮着找出了内核里更多的错误']);
+  // never across a sentence end ("被撤回。722" was the bug)
+  expect(splitCaption('公布后的第二天，一个符号错误，让三篇手稿被撤回。722，变成 719。', 16))
+    .toEqual(['公布后的第二天，一个符号错误', '让三篇手稿被撤回', '722，变成 719']);
+  // no space and too wide: kept whole rather than cut inside words; an ellipsis stays whole
+  expect(splitCaption('在完全清醒的时候……把自己的一生烧进去并且不后悔地一直做下去。', 16))
+    .toEqual(['在完全清醒的时候……', '把自己的一生烧进去并且不后悔地一直做下去']);
   expect(splitCaption('短句。', 16)).toEqual(['短句']);
+  expect(splitCaption('短句。', 16, false)).toEqual(['短句。']);
   expect(captionWidth('AI 写道')).toBe(1.5 + 2);
+});
+
+test('a caption holds one sentence: sentenceSubs cuts at sentence ends, 0.8 s each then the rest by spoken length (2 of 18), English paired', () => {
+  expect(sentenceSubs([[0, 4, '是 4.7 比特；只有 4.1。', 'Uniform: 4.7 bits. Real: 4.1.']]).map((x) => x[3])).toEqual(['Uniform: 4.7 bits.', 'Real: 4.1.']);
+  expect(sentences('可以。只要肯多花几个比特，噪声就不是终点。')).toEqual(['可以。', '只要肯多花几个比特，噪声就不是终点。']);
+  expect(sentenceSubs([[0, 6, '可以。只要肯多花几个比特，噪声就不是终点。', 'Yes. Spend a few more bits, and noise is not the end.']])).toEqual([
+    [0, 1.289, '可以。', 'Yes.'], [1.289, 6, '只要肯多花几个比特，噪声就不是终点。', 'Spend a few more bits, and noise is not the end.'],
+  ]);
+  expect(sentenceSubs([[1, 2, '一句话。', '']])).toEqual([[1, 2, '一句话。', '']]);
+});
+
+test('phrases land where they are spoken: estimates on the speech axis, long pauses preferred (PR #9 review cases)', () => {
+  const at = (text: string, read: string, dur: number, spans: [number, number][], parts: string[]) =>
+    syncSubs(parts.map((p) => [0, dur, p, ''] as [number, number, string, string]), [{ t: 0, dur, text, read, spans }], 99).map((x) => x[0]);
+  // claim1: the third phrase starts at 4.38 s (it was put at 3.43 s, inside "它的系统")
+  expect(at('2026 年 9 月，OpenAI 宣布：它的系统，给出了一道百万美元数学难题的解。', '二〇二六年九月，OpenAI 宣布：它的系统，给出了一道百万美元数学难题的解。', 7.66,
+    [[0.03, 1.35], [1.97, 3.06], [3.43, 4.04], [4.38, 7.63]], ['2026 年 9 月', 'OpenAI 宣布：它的系统', '给出了一道百万美元数学难题的解'])).toEqual([0, 1.97, 4.38]);
+  // n32: the second line starts at 5.15 s (it was 3.17 s, 2 s early)
+  const n32 = '反方必须说出来：自主，不等于可以接受；一个系统可以正确地完成一个有害的目标。';
+  expect(at(n32, n32, 8.69, [[0.09, 1.41], [2.18, 2.74], [3.17, 4.43], [5.15, 5.77], [6.07, 8.66]],
+    ['反方必须说出来：自主，不等于可以接受；', '一个系统可以正确地完成一个有害的目标。'])).toEqual([0, 5.15]);
+  // n33: the third part at 6.21 s, after the long pause, not 6.77 s after a short breath
+  const n33 = '所以，即使有一天它会自己选择，要检验的也不只是答案，还有目标、行为与后果。';
+  expect(at(n33, n33, 9.05, [[0.03, 0.35], [0.73, 1.61], [1.86, 3], [3.43, 4.22], [4.54, 5.65], [6.21, 6.59], [6.77, 7.31], [7.6, 8.26], [8.46, 9.02]],
+    ['所以，即使有一天它会自己选择，', '要检验的也不只是答案，', '还有目标、行为与后果。'])).toEqual([0, 3.43, 6.21]);
+  // paths: already right before, still right (a speech-axis estimate alone would have moved it)
+  const paths = '可题面留了两条路：要么证明，没有外力时，任何合乎条件的水流都永远不会“破裂”；要么找到一种水流，再配一个光滑的外力，让它在有限时间里“破裂”。';
+  expect(at(paths, paths, 14.76, [[0.01, 1.37], [2, 2.7], [3.07, 4.02], [4.33, 6.18], [6.43, 7.72], [8.91, 10.47], [10.79, 12.3], [12.96, 14.76]],
+    ['可题面留了两条路：', '要么证明，没有外力时，任何合乎条件的水流都永远不会“破裂”；', '要么找到一种水流，再配一个光滑的外力，让它在有限时间里“破裂”。'])).toEqual([0, 2, 8.91]);
+});
+
+test('a repeated phrase stays with its own line; digits read between two captions are shared by count', () => {
+  const lines = [{ t: 0, dur: 1, text: '可以。' }, { t: 5, dur: 1, text: '可以。' }];
+  const out = syncSubs([[0, 1, '可以。', ''], [5, 6, '可以。', '']], lines, 10);
+  expect(out.map((x) => x[0])).toEqual([0, 5]);
+  // "公元 1999" | "2000 年": the reading 一九九九二〇〇〇 lies between them, half each (4 + 4 digits)
+  const r = readingSplits(['公元 1999', '2000 年'], '公元一九九九二〇〇〇年')!;
+  expect(r[1]).toBeCloseTo(6 / 11, 9);
 });

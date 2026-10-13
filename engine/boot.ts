@@ -50,6 +50,8 @@ declare global {
     __styles: string[];
     __timeline: () => { film: string; style: string; fps: number; bpm: number; frames: number; duration: number; scenes: { name: string; kind: string; f0: number; f1: number; start: number; end: number }[] };
     __gpu: () => string;
+    /** The film's punctuation rule ('display', or '' when it draws text as written). */
+    __punctuation: () => string;
     __cues: () => { t: number; name: string; [k: string]: number | string }[];
     __scenes: () => { name: string; kind: string; start: number; end: number; fadeIn: number; fadeOut: number; subs: [number, number][] }[];
     __layout: (t: number, fps?: number) => Promise<TextBox[]>;
@@ -170,6 +172,7 @@ export function boot(o: BootOptions): void {
     return recordText(false);
   };
   window.__gpu = gpuName;
+  window.__punctuation = () => film().punctuation ?? '';
   window.__notes = allNotes;
   window.__narration = narrationReport;
   window.__cues = () =>

@@ -7,7 +7,7 @@ selectStyle(plan.styles.map((id) => {
   if (!s) throw new Error(`film-plan.json: style ${id} is not bundled`);
   return s;
 }));
-export default defineFilm({ id: plan.film, fps: plan.fps, bpm: plan.bpm ?? 80, chapters: (plan as { chapters?: number }).chapters ?? 0 });
+export default defineFilm({ id: plan.film, fps: plan.fps, bpm: plan.bpm ?? 80, chapters: (plan as { chapters?: number }).chapters ?? 0, punctuation: 'display' });
 const locks = import.meta.glob('./narration.lock.json', { import: 'default', eager: true }) as Record<string, NarrationLock>;
 const captures = import.meta.glob('./captures/**/*.json', { import: 'default', eager: true }) as Record<string, CaptureAsset>;
 usePlan(plan, locks['./narration.lock.json'], captures);
