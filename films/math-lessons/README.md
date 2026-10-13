@@ -16,7 +16,7 @@
 | 事实核验表 | research/facts.md（终稿快照 facts.v3.md） |
 | 论证地图 | research/argument-map.md |
 | 逻辑审计报告 | review/10-audit-v4.md（v4 的两轮 Codex 审计原文）；review/03-freeze-v1.md（冻结前两轮自查）；review/04-audit-v1-report.md（独立盲审原文）与 04-audit-v1-verification.md（逐条核实）；review/06-audit-v2-report.md（复核审计原文） |
-| 修订记录 | research/revisions.md（R1–R35：初稿原句、证据、改句；R22–R27 为 v4 审计，R28–R35 为 PR #9 审阅） |
+| 修订记录 | research/revisions.md（R1–R37：初稿原句、证据、改句；R22–R27、R36–R37 为 v4 的两轮 Codex 审计，R28–R35 为 PR #9 审阅） |
 | 风格选择与自评 | review/01-directions.md（三个方向）、02-vigil.md（自评、配乐与性能）、05-compare-sheet.jpg（与 paper-dawn、nebula 并排） |
 | 流程记录 | review/workflow-notes.md |
 | 终稿验收 | review/07-final.md；验收后的修改（字形错误、B/C 移到 backup/、片尾不署名、基线）：review/08-post-acceptance.md；面向 X / 抖音的评审与 v4 改版：review/09-social-review.md |
