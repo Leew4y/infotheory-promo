@@ -6,31 +6,24 @@
  * to tell them apart: 'film' (the film's statements of fact and its claims), 'essay' (lines of the essay, a voice, not
  * evidence), 'counter' (counter-arguments, set smaller with a rule), 'response' (the litany's silent second half).
  */
-import { ctx, text, measure, label, rule, rollNumber, C, F, COL, W, clamp, sstep } from '../../engine';
+import { ctx, text, displayText, measure, label, rule, rollNumber, C, F, COL, W, clamp, sstep } from '../../engine';
 
 export type Voice = 'film' | 'essay' | 'counter' | 'response';
 
-/** A verse mark at (x, y) (baseline of the line it marks): "1".."18" in mono accent, "◇" as a small diamond, "" none. */
+/**
+ * A verse mark at (x, y) (baseline of the line it marks): "1".."16" in mono accent, the number of the line's source on
+ * the index page. "◇" (the film's own judgement, a counter-argument or the essay) and "" draw nothing: since v4
+ * (Develata, 2026-10-13) a judgement is the line without a number, as the index page says; the marks stay in the scene
+ * code as its classification.
+ */
 export function verse(m: string, x: number, y: number, a: number, size = 40): void {
-  if (!m || a <= 0.002) return;
-  if (m !== '◇') {
-    text(m, x, y, { font: F.mono, size: Math.max(18, size * 0.5), color: C.accent, alpha: a, align: 'center' });
-    return;
-  }
-  const r = Math.max(6, size * 0.16), cy = y - size * 0.34;
-  ctx.save();
-  ctx.globalAlpha = a;
-  ctx.strokeStyle = C.muted;
-  ctx.lineWidth = 1.6;
-  ctx.beginPath();
-  ctx.moveTo(x, cy - r);
-  ctx.lineTo(x + r, cy);
-  ctx.lineTo(x, cy + r);
-  ctx.lineTo(x - r, cy);
-  ctx.closePath();
-  ctx.stroke();
-  ctx.restore();
+  if (!m || m === '◇' || a <= 0.002) return;
+  text(m, x, y, { font: F.mono, size: Math.max(18, size * 0.5), color: C.accent, alpha: a, align: 'center' });
 }
+
+/** Display punctuation: engine displayText (AGENTS.md). */
+export const display = displayText;
+const keepsStops = (lines: string[]) => lines.some((l) => /[？！]$/u.test(l));
 
 /**
  * The sound of a verse number: a chime pitch on D Dorian, rising with the number (1 = D5), an octave lower once it
@@ -54,27 +47,28 @@ const lsOf = (who: Voice, size: number) => (who === 'essay' ? size * 0.09 : size
 const widthOf = (s: string, who: Voice, size: number) => measure(s, sizeOf(who, size), F.body, 400, lsOf(who, sizeOf(who, size)));
 
 /**
- * One display line in a voice, left-aligned at x or centred on x (align 'center'); `mk` is its verse mark, drawn in
- * the left margin of the line. A counter line gets a vertical rule and the tag 反方, an essay line the tag
- * 随笔 · 价值判断与思辨 (so the viewer sees what kind of statement it is)
- * (tags only when `tag` is set, on the first line of a block).
+ * One display line in a voice, left-aligned at x or centred on x (align 'center'), its punctuation per display();
+ * `mk` is its verse mark, drawn in the left margin of the line. A counter line gets a vertical rule and the tag 反方
+ * (only when `tag` is set, on the first line of a block), so the viewer sees it is not the film's claim.
  */
-export function voiceLine(s: string, x: number, y: number, a: number, who: Voice, o: { size?: number; onDark?: boolean; align?: CanvasTextAlign; mk?: string; tag?: boolean } = {}): void {
+export function voiceLine(raw: string, x: number, y: number, a: number, who: Voice, o: { size?: number; onDark?: boolean; align?: CanvasTextAlign; mk?: string; tag?: boolean; stop?: boolean } = {}): void {
   if (a <= 0.002) return;
-  const size = sizeOf(who, o.size ?? 48), ls = lsOf(who, size);
+  const s = display(raw, o.stop), size = sizeOf(who, o.size ?? 48), ls = lsOf(who, size);
   const w = measure(s, size, F.body, 400, ls);
   const x0 = o.align === 'center' ? x - w / 2 : x;
   text(s, x0, y, { size, color: tone(who, !!o.onDark), alpha: a, ls });
   if (o.mk) verse(o.mk, x0 - Math.min(size * 0.75, 44), y, a, size);
   if (who === 'counter') rule(x0 - 22, y - size * 0.95, x0 - 22, y + size * 0.2, tone(who, !!o.onDark), a, 2);
-  if (o.tag && (who === 'counter' || who === 'essay')) label(who === 'counter' ? '反方' : '随笔 · 价值判断与思辨', x0, y - size * 1.25, a, o.onDark ? C.mutedOnDark : C.muted, 18);
+  // the counter-argument is tagged; the essay's lines are not (v4: the voice says "随笔设想", the index page says it too)
+  if (o.tag && who === 'counter') label('反方', x0, y - size * 1.25, a, o.onDark ? C.mutedOnDark : C.muted, 18);
 }
 
 /** A quotation block: large Chinese lines, the original or a gloss in small text below, then the source. */
 export function quote(lines: string[], below: string[], source: string, x: number, y: number, a: number, mk = '', size = 60, who: Voice = 'film', latin = true): number {
   let yy = y;
+  const stop = keepsStops(lines);
   lines.forEach((l, i) => {
-    voiceLine(l, x, yy, a, who, { size, mk: i === 0 ? mk : '', tag: i === 0 && who === 'counter' });
+    voiceLine(l, x, yy, a, who, { size, mk: i === 0 ? mk : '', tag: i === 0 && who === 'counter', stop });
     yy += sizeOf(who, size) * 1.45;
   });
   yy += 10;
@@ -95,22 +89,22 @@ export interface Block { t1: number; lines: Line[]; y?: number; size?: number }
 /** Display text on a plate: each block's lines centred, appearing line by line, the block fading out at t1. */
 export function recite(blocks: Block[], lt: number, x = W / 2): void {
   for (const b of blocks) {
-    const size = b.size ?? 50, lh = size * 1.75, n = b.lines.length;
+    const size = b.size ?? 50, lh = size * 1.75, n = b.lines.length, stop = keepsStops(b.lines.map((l) => l.s));
     const y0 = (b.y ?? 520) - ((n - 1) * lh) / 2;
     b.lines.forEach((l, i) => {
       const a = sstep(l.t, l.t + 0.6, lt) * (1 - sstep(b.t1 - 0.5, b.t1, lt));
       if (a <= 0.002) return;
       const y = y0 + i * lh;
       if (!l.resp) {
-        voiceLine(l.s, x, y, a, l.who, { size, onDark: true, align: 'center', mk: l.mk, tag: i === 0 && l.who !== 'film' });
+        voiceLine(l.s, x, y, a, l.who, { size, onDark: true, align: 'center', mk: l.mk, tag: i === 0 && l.who !== 'film', stop });
         return;
       }
       // a litany line: the spoken half, then the silent answer in the response voice, centred as one line
-      const gap = size * 0.4, w1 = widthOf(l.s, l.who, size), w2 = widthOf(l.resp.s, 'response', size);
+      const gap = size * 0.4, w1 = widthOf(display(l.s, stop), l.who, size), w2 = widthOf(display(l.resp.s, stop), 'response', size);
       const xs = x - (w1 + gap + w2) / 2;
-      voiceLine(l.s, xs, y, a, l.who, { size, onDark: true, mk: l.mk });
+      voiceLine(l.s, xs, y, a, l.who, { size, onDark: true, mk: l.mk, stop });
       const ar = sstep(l.resp.t, l.resp.t + 0.4, lt) * (1 - sstep(b.t1 - 0.5, b.t1, lt));
-      voiceLine(l.resp.s, xs + w1 + gap, y, ar, 'response', { size, onDark: true });
+      voiceLine(l.resp.s, xs + w1 + gap, y, ar, 'response', { size, onDark: true, stop });
     });
   }
 }

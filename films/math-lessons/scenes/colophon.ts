@@ -1,5 +1,6 @@
 // The closing index: every verse number shown in the film, with its source (script/narration.v4.md,
-// research/sources.md). No credit line: per Develata (2026-10-10) the film carries no name, so it can circulate freely.
+// research/sources.md), and the key: a numbered line has a source, an unnumbered one is the film's judgement (v4: the
+// ◇ mark is no longer drawn), the essay's lines are named as such. No credit line: per Develata (2026-10-10) the film carries no name, so it can circulate freely.
 import { text, label, rule, background, M, W, C, F, scene, sstep } from '../../../engine';
 import { bell } from '../lib';
 
@@ -39,6 +40,6 @@ scene({
       text(String(i + 1), x + 24, y, { font: F.mono, size: 22, color: C.accent, alpha: ai, align: 'right' });
       text(e, x + 48, y, { size: 22, color: C.fg2, alpha: ai });
     });
-    label('出处细节与核查状态：research/sources.md、research/facts.md', M, 790, sstep(2.0, 2.6, lt), C.muted, 18);
+    label('页边数字是出处编号；没有编号的句子，是本片的判断与思辨；开头两句与“随笔设想”一段，出自一篇随笔。', M, 790, sstep(2.0, 2.6, lt), C.fg2, 20);
   },
 });

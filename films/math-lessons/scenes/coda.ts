@@ -10,6 +10,6 @@ scene({
   cam: () => ({ z: 1 }),
   draw(lt) {
     // the plate's own near-black ground: no plate image, only the line
-    text('这一次，答案来得比问题更汹涌。', W / 2, 545, { size: 56, color: C.fgOnDark, alpha: sstep(0.8, 1.6, lt), align: 'center', ls: 6 });
+    text('这一次，答案来得比问题更汹涌', W / 2, 545, { size: 56, color: C.fgOnDark, alpha: sstep(0.8, 1.6, lt), align: 'center', ls: 6 });
   },
 });

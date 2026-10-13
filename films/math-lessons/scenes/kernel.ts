@@ -42,7 +42,7 @@ narratedScene({
     text('报告一小时后推出修复；独立检查仍然有效，但两边都要用最新版本；后来，一个专门的安全 AI 帮 Lean 团队找出了更多内核错误。', M, 880, { size: 21, color: C.fg2, alpha: c });
     voiceLine('公布，不等于检验。', W / 2, 750, sstep(t4, t4 + 0.75, lt), 'film', { size: 50, align: 'center', mk: '◇' });
     const d = sstep(t4 + 1.6, t4 + 2.4, lt);
-    text('要紧的是独立，不一定是人工。', W / 2, 810, { size: 32, color: C.fg2, alpha: d, align: 'center' });
+    text('要紧的是独立，不一定是人工', W / 2, 810, { size: 32, color: C.fg2, alpha: d, align: 'center' });
     verse('◇', M - 34, 916, d, 30);
     text('还要核对：形式化的命题是不是原来的问题；新颖与重要，另行判断。', M, 916, { size: 21, color: C.fg2, alpha: d });
   },
