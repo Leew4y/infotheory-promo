@@ -6,7 +6,7 @@
  * to tell them apart: 'film' (the film's statements of fact and its claims), 'essay' (lines of the essay, a voice, not
  * evidence), 'counter' (counter-arguments, set smaller with a rule), 'response' (the litany's silent second half).
  */
-import { ctx, text, measure, label, rule, ink, dot, rollNumber, C, F, COL, W, clamp, sstep, eout } from '../../engine';
+import { ctx, text, measure, label, rule, rollNumber, C, F, COL, W, clamp, sstep } from '../../engine';
 
 export type Voice = 'film' | 'essay' | 'counter' | 'response';
 
@@ -115,32 +115,6 @@ export function recite(blocks: Block[], lt: number, x = W / 2): void {
   }
 }
 
-// ---- the cycloid (F-M03): an inverted cycloid with generating radius r, lowest point at (cx, yb)
-
-/** Point of the inverted cycloid at arc length s from the lowest point (|s| <= 4r): θ = 2 asin(s / 4r). */
-export function cycloidAt(cx: number, yb: number, r: number, s: number): [number, number] {
-  const th = 2 * Math.asin(clamp(s / (4 * r), -1, 1));
-  return [cx + r * (th + Math.sin(th)), yb - r * (1 - Math.cos(th))];
-}
-/** The whole arch, drawn in with a pen over k (0..1). */
-export function cycloid(cx: number, yb: number, r: number, k: number, a = 1): void {
-  const pts: [number, number][] = [];
-  for (let i = 0; i <= 120; i++) {
-    const th = -Math.PI + (2 * Math.PI * i) / 120;
-    pts.push([cx + r * (th + Math.sin(th)), yb - r * (1 - Math.cos(th))]);
-  }
-  ink(pts, k, C.fg2, 2, a);
-}
-/**
- * A bead released from rest at arc length s0 (negative: left of the lowest point) at time t0. On the cycloid the
- * tangential motion is simple harmonic, s(t) = s0 cos(ω (t - t0)) with ω = sqrt(g / 4r), whatever s0 is; this film
- * takes ω = π/2 per second, so every bead reaches the bottom 1 s after release and again every 2 s (two beats at 60 BPM).
- */
-export const OMEGA = Math.PI / 2;
-export function beadS(s0: number, t0: number, t: number): number {
-  return t <= t0 ? s0 : s0 * Math.cos(OMEGA * (t - t0));
-}
-
 // ---- data graphics
 
 /** Where the 722 manuscripts sit (release and withdrawal draw the same grid): 38 x 19 squares in the right column. */
@@ -189,11 +163,3 @@ export function count(value: string, unit: string, x: number, y: number, lt: num
   text(s, x, y, { font: F.mono, size, color: C.fg, alpha: a });
   text(unit, x + measure(s, size, F.mono) + 24, y, { size: 36, color: C.fg2, alpha: a });
 }
-
-/** A flash at a point that decays over 0.6 s after time t (a bead reaching the bottom). */
-export function flash(x: number, y: number, lt: number, t: number): void {
-  const k = lt - t;
-  if (k < 0 || k > 0.6) return;
-  dot(x, y, 6 + 26 * eout(k / 0.6), C.accent, 0.5 * (1 - k / 0.6));
-}
-

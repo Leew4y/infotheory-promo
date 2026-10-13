@@ -80,3 +80,17 @@ Develata 的要求：直接上传母版到 X 和抖音，面向大众，但更�
 2. 结尾提问用哪一句（A / B / C，见 v4）？
 3. X 是否有 Premium？没有的话，要不要另做 140 秒以内的精简版？
 4. 抖音先用横屏（推荐），还是现在就做竖版？
+
+## 7. 决定与实施（2026-10-13）
+
+Develata 的决定：按 v4 重写；X 先不发（免费账号限 140 秒）；抖音先用横屏；结尾不提问，改为一句"字面完整、意思未完"的尾句，只上屏不念——选定"这一次，答案来得比问题更汹涌。"（Develata 定句式、要求比喻，"汹涌"由我提议：接全片的流体与一次涌出的七百多篇手稿）。
+
+实施：
+
+- 台词：v4 经 Codex 独立审计（max）：PASS，6 项全部采纳，记为 revisions.md R22–R27；Clay 奖金补为 F-H22（S24，Clay 官网）。41 句中 23 句沿用 v3 的录音，18 句新合成（zh-male-professor）；不再使用的 18 句录音删除（git 历史可取回）。
+- 结构（16 场）：序（召唤、片名）→ 一 题目（claim、paths、dispute）→ 二 无用（useless、numbers、hardy）→ 三 被需要（needed）→ 四 检验（release、withdrawal、kernel）→ 声音 → 递火 → 尾句（coda，黑场）→ 索引。删去 fontenelle、cycloid、defenders、statement 四场（摆线与辩护者两句不再念）。
+- 画面：场景全部改为随配音计时（narratedScene），动画落在说到的那个短语上（voParts）。页面大字只放关键词、数字、方程、表格与图；引文、复沓句、反方与板上的字逐字显示时不再配字幕。索引改为 16 条，按出场顺序。
+- 字幕：每条不超过 16 个字宽，在说到时出现（第 5 节的同一机制），句末逗号、句号不显示。
+- 配乐：score.py 按新场景重写，落在句子上的音乐读 `out/math-lessons/narration.cues.json`（`just cues` 现在一并导出）。
+- 片长 4 分 59.3 秒（句间停顿由约 1 秒收到约 0.7 秒；v3 为 4 分 59.5 秒）。
+- 没有单独的 v4 分镜文件：分镜就是 narration.v4.md 加场景文件（storyboard.v3.md 与 captions.v3.md 只对 v3 有效）。
