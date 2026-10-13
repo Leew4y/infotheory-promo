@@ -271,6 +271,11 @@
 
 ---
 
+### S24 Clay Mathematics Institute，"The Millennium Prize Problems"（<https://www.claymath.org/millennium-problems/>，2026-10-12 读取，页面修改时间 2026-09-11）
+
+- S24a："The prizes were announced at a meeting in Paris, held on May 24, 2000 at the Collège de France."
+- S24b："…the Board of Directors of CMI designated a $7 million prize fund for the solutions to these problems, with $1 million allocated to the solution of each problem."
+
 ## 未核实清单（不得当作事实使用）
 
 1. Fontenelle 序言 1702 年初印本的文字（只核了 1742 年《全集》本）；英译本原书；序言写作日期。
