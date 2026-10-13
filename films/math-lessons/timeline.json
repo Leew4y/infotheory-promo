@@ -1,9 +1,10 @@
 {
  "film": "math-lessons",
+ "style": "vigil",
  "fps": 30,
  "bpm": 60,
- "frames": 8985,
- "duration": 299.5,
+ "frames": 8980,
+ "duration": 299.3333333333333,
  "scenes": [
   {
    "name": "invocation",
@@ -22,116 +23,116 @@
    "end": 15
   },
   {
-   "name": "fontenelle",
+   "name": "claim",
    "kind": "page",
    "f0": 450,
-   "f1": 825,
+   "f1": 882,
    "start": 15,
-   "end": 27.5
+   "end": 29.4
   },
   {
-   "name": "cycloid",
+   "name": "paths",
    "kind": "page",
-   "f0": 825,
-   "f1": 1200,
-   "start": 27.5,
-   "end": 40
-  },
-  {
-   "name": "defenders",
-   "kind": "page",
-   "f0": 1200,
-   "f1": 1425,
-   "start": 40,
-   "end": 47.5
-  },
-  {
-   "name": "numbers",
-   "kind": "page",
-   "f0": 1425,
-   "f1": 1740,
-   "start": 47.5,
-   "end": 58
-  },
-  {
-   "name": "hardy",
-   "kind": "page",
-   "f0": 1740,
-   "f1": 2280,
-   "start": 58,
-   "end": 76
-  },
-  {
-   "name": "release",
-   "kind": "page",
-   "f0": 2280,
-   "f1": 2805,
-   "start": 76,
-   "end": 93.5
-  },
-  {
-   "name": "needed",
-   "kind": "page",
-   "f0": 2805,
-   "f1": 3780,
-   "start": 93.5,
-   "end": 126
-  },
-  {
-   "name": "statement",
-   "kind": "page",
-   "f0": 3780,
-   "f1": 4395,
-   "start": 126,
-   "end": 146.5
+   "f0": 882,
+   "f1": 1461,
+   "start": 29.4,
+   "end": 48.7
   },
   {
    "name": "dispute",
    "kind": "page",
-   "f0": 4395,
-   "f1": 5310,
-   "start": 146.5,
-   "end": 177
+   "f0": 1461,
+   "f1": 2222,
+   "start": 48.7,
+   "end": 74.06666666666666
+  },
+  {
+   "name": "useless",
+   "kind": "page",
+   "f0": 2222,
+   "f1": 2805,
+   "start": 74.06666666666666,
+   "end": 93.5
+  },
+  {
+   "name": "numbers",
+   "kind": "page",
+   "f0": 2805,
+   "f1": 3306,
+   "start": 93.5,
+   "end": 110.2
+  },
+  {
+   "name": "hardy",
+   "kind": "page",
+   "f0": 3306,
+   "f1": 3720,
+   "start": 110.2,
+   "end": 124
+  },
+  {
+   "name": "needed",
+   "kind": "page",
+   "f0": 3720,
+   "f1": 4799,
+   "start": 124,
+   "end": 159.96666666666667
+  },
+  {
+   "name": "release",
+   "kind": "page",
+   "f0": 4799,
+   "f1": 5036,
+   "start": 159.96666666666667,
+   "end": 167.86666666666667
   },
   {
    "name": "withdrawal",
    "kind": "page",
-   "f0": 5310,
-   "f1": 5805,
-   "start": 177,
-   "end": 193.5
+   "f0": 5036,
+   "f1": 5584,
+   "start": 167.86666666666667,
+   "end": 186.13333333333333
   },
   {
    "name": "kernel",
    "kind": "page",
-   "f0": 5805,
-   "f1": 6345,
-   "start": 193.5,
-   "end": 211.5
+   "f0": 5584,
+   "f1": 6431,
+   "start": 186.13333333333333,
+   "end": 214.36666666666667
   },
   {
    "name": "voice",
    "kind": "plate",
-   "f0": 6345,
-   "f1": 7395,
-   "start": 211.5,
-   "end": 246.5
+   "f0": 6431,
+   "f1": 7322,
+   "start": 214.36666666666667,
+   "end": 244.06666666666666
   },
   {
    "name": "fire",
    "kind": "plate",
-   "f0": 7395,
-   "f1": 8760,
-   "start": 246.5,
-   "end": 292
+   "f0": 7322,
+   "f1": 8635,
+   "start": 244.06666666666666,
+   "end": 287.8333333333333
+  },
+  {
+   "name": "coda",
+   "kind": "plate",
+   "f0": 8635,
+   "f1": 8785,
+   "start": 287.8333333333333,
+   "end": 292.8333333333333
   },
   {
    "name": "colophon",
    "kind": "page",
-   "f0": 8760,
-   "f1": 8985,
-   "start": 292,
-   "end": 299.5
+   "f0": 8785,
+   "f1": 8980,
+   "start": 292.8333333333333,
+   "end": 299.3333333333333
   }
  ]
 }
