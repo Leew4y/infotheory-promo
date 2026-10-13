@@ -7,4 +7,4 @@ import paperDawn from '../../styles/paper-dawn';
 import nebula from '../../styles/nebula';
 
 selectStyle([paperDawn, nebula]);
-export default defineFilm({ id: 'infotheory', fps: 30, bpm: 80, chapters: 8 });
+export default defineFilm({ id: 'infotheory', fps: 30, bpm: 80, chapters: 8, punctuation: 'display' });

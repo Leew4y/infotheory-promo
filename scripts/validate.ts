@@ -18,7 +18,8 @@
  *   glyph (engine/inspect.ts), WCAG AA: 4.5, large text (>= 24 px, or >= 18.66 px bold) 3. Below AA: an error for
  *   fully shown text, a warning for text at 0.5–0.9 alpha; text below 0.5 alpha is counted as unchecked in the report.
  *   Boxes are axis-aligned and sampled on five frames per scene: a heuristic, not a proof of glyph-level legibility.
- * - display punctuation (AGENTS.md): on the same frames, a scene's large display line (>= 32 px, at least half shown;
+ * - display punctuation (AGENTS.md; only for a film with defineFilm punctuation 'display'): on the same frames, a
+ *   scene's large display line (>= 32 px, at least half shown;
  *   not the chapter label or captions) that ends in ，、；：or 。 is a warning: on screen a line break is the pause. A 。 is
  *   allowed when another large line on the frame ends in ？ or ！ (parallel sentences, engine displayText's `stop`).
  * Diagnostics: { level, code, path, message }, also written to out/<film>/validate.json. With --json, stdout is only
@@ -124,6 +125,7 @@ try {
     else {
       const scenes: { name: string; start: number; end: number }[] = await page.evaluate(() => window.__scenes());
       const FPS: number = await page.evaluate(() => window.__timeline().fps);
+      const punctuation: string = await page.evaluate(() => window.__punctuation?.() ?? '');
       const duration: number = await page.evaluate(() => window.__duration);
       const eps = 1e-6;
       if (!scenes.length) err('timeline-empty', 'timeline', 'no scenes registered');
@@ -161,7 +163,7 @@ try {
           }
           const where = `scene:${s.name}@${tag}(${t.toFixed(2)}s)`;
           // display punctuation: a large scene line does not end in a pause mark (a line break is the pause)
-          const big = boxes.filter((b) => b.role !== 'overlay' && b.px >= DISPLAY_PX && b.alpha >= HALF_ALPHA);
+          const big = punctuation === 'display' ? boxes.filter((b) => b.role !== 'overlay' && b.px >= DISPLAY_PX && b.alpha >= HALF_ALPHA) : [];
           const parallel = big.some((b) => /[？！]$/u.test(b.s.trim()));
           for (const b of big) {
             const end = b.s.trim().match(/[，、；：。]$/u)?.[0];

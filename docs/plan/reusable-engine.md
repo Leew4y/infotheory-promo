@@ -474,6 +474,11 @@ A1 / A1b 评审修正（Codex，gpt-6-astra max：1 BLOCKER / 8 SHOULD_FIX / 2 N
   再吸附到最近的停顿：placeNarration 重定场景自带的字幕，narratedScene 的 `split` 把一句切成 ≤16 字宽的短语字幕（Netflix 简中规范），
   `shown` 让逐字显示在画面上的句子不再配字幕，`voParts` 让动画落在短语上，`sfx` 可按句子起点给出。单测覆盖切分、定位与吸附；
   默认行为不变（raa-demo、tongzhou 的字幕与画面不受影响，validate 通过）。
+- PR #9 审阅（The-Walls，2026-10-13）后的引擎修改：显示标点改为每部片子打开（`defineFilm({ punctuation: 'display' })`，模板、
+  math-lessons、raa-demo、infotheory 打开；不打开的片子按原样绘制）；字幕一条一句（`sentenceSubs`，每条至少 0.8 秒，英文按"句号 + 空格"
+  配对）；字幕定位改为先在语音轴上估计、再用动态规划配到停顿起点（长停顿优先：|差| / tol − 0.5 × 停顿），审阅指出的错位都进了单测；
+  断句不跨句、不在两个汉字之间切；字幕归属取时间上最近的句子；数字读音按位数分配。TTS 改为 mmap 加载权重（内存紧张时加载失败；
+  同种子重合成与已提交录音逐样本相同）。
 - 合入 PR #6（The-Walls：--out 被播放器占用时保留已验证的视频；synth 母版长度取整），文本无冲突。Codex 评审（high）认为与本链的
   取消、提交点、清理逻辑交互无误，另指出一处经复现确认的问题：占用预检以读写方式打开旧文件，在 POSIX 上把只读旧视频误报为
   "被占用"，而 rename 本可成功——预检现只在 Windows 上做。去静音改动的评审只提了一个 NIT（空样本报错路径），已改。

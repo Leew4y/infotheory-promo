@@ -20,6 +20,12 @@ export interface FilmMeta {
   bpm: number;
   /** Number of chapters, for the page-number overlay. */
   chapters: number;
+  /**
+   * 'display': the film follows the display punctuation rule (AGENTS.md): captions hold one sentence each and drop a
+   * trailing ，、；：。, statement() does the same, validate warns on large scene lines that do not. Omitted: the
+   * film's text is drawn as written (a film made before the rule keeps its published look).
+   */
+  punctuation?: 'display';
 }
 
 export let FILM: FilmMeta | null = null;

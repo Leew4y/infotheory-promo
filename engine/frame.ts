@@ -9,12 +9,19 @@ import { SC, sceneAt, camDrift } from './scene';
 import { film, FPS, frameOf, TOTAL } from './film';
 import { style, type SubLine } from './style';
 import { clamp, displayText, sstep, W, H } from './util';
+import { sentenceSubs } from './narration';
 import { ensure, type MediaRef } from './media';
 import { lap } from './perf';
 
 export type { SubLine };
-/** Every caption on the film clock; the Chinese line follows the display punctuation rule (displayText; English keeps its own). */
-export const SUBS = (): SubLine[] => SC.flatMap((s) => s.subs.map(([a, b, zh, en]) => ({ a: s.t0 + a, b: s.t0 + b, zh: displayText(zh), en, plate: s.kind === 'plate' })));
+/**
+ * Every caption on the film clock. Under the display punctuation rule (defineFilm punctuation 'display') a caption holds
+ * one sentence (sentenceSubs) and its Chinese drops a trailing pause mark (displayText); English keeps its own.
+ */
+export const SUBS = (): SubLine[] => {
+  const rule = film().punctuation === 'display';
+  return SC.flatMap((s) => (rule ? sentenceSubs(s.subs) : s.subs).map(([a, b, zh, en]) => ({ a: s.t0 + a, b: s.t0 + b, zh: rule ? displayText(zh) : zh, en, plate: s.kind === 'plate' })));
+};
 
 export function drawLayer(t: number, jx: number, jy: number): void {
   t = clamp(t, 0, TOTAL - 1e-3);
