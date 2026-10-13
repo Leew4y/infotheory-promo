@@ -86,7 +86,12 @@ Every film command takes the film id first (default `infotheory`); outputs go to
   voice says numbers, versions, amounts, `pause`); `useNarration(script, lock)` in film.ts after `defineFilm`. Time a
   scene by its lines with `narratedScene({ name, kind, draw, lead, gap, tail, minDur })` or `demoScene({ ..., narration: {} })`
   (the footage is never cut short); the lines become the captions; `vo(id)` is a line's start on its scene's clock,
-  the only anchor for animations that land on a sentence (timing is per sentence, not per word). Synthesis samples:
+  the anchor for animations that land on a sentence. The lock records each line's speech spans (pauses measured from
+  the committed audio), so within a line: `split: 16` makes phrase captions of at most 16 character widths, each shown
+  from where it is spoken (Netflix-style timing); `shown: [ids] | true` gives lines displayed verbatim (quotes,
+  refrains, plates) no caption; `voParts(id, parts)` gives where each part of a line is spoken, for animations that land
+  on a phrase; `sfx` may be a function of `at(id)`. `placeNarration` retimes the scene's own captions to the speech the
+  same way. Synthesis samples:
   a line's audio cannot be made again identically, so it is committed and a re-synthesis (`--resynth`) changes the
   timeline. Run `just fonts <film>` after changing captions. With narration, `demoScene`'s `dur` is a minimum (footage
   is never cut). A film with narration exports only with a current final mix (`just mix`; `just all` runs music → mix →

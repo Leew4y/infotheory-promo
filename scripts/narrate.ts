@@ -15,7 +15,9 @@
  *   - no lock entry, or a different key (reading, voice, backend or model changed), or --resynth: synthesized; the old
  *     and new durations are printed (they move the film's timeline).
  * The audio goes to films/<film>/narration/<id>.flac (committed; Develata's decision, 2026-10-09), the lock to
- * films/<film>/narration.lock.json: per line text, reading, duration (seconds, from the sample count), sha256, key.
+ * films/<film>/narration.lock.json: per line text, reading, duration (seconds, from the sample count), sha256, key, and
+ * spans: the speech between pauses (seconds; measured from the committed audio on every run, so a lock made before
+ * spans existed gains them without synthesis), which captions follow (engine/narration.ts, syncSubs).
  * Lines no longer in the script leave the lock and their audio is removed.
  *
  * The adapter, audio/tts.py, runs in the TTS environment for cosyvoice3 (.cache/tts/venv, made by just tts-setup;
@@ -87,6 +89,32 @@ function wavInfo(f: string): { samples: number; rate: number } {
   return fail(`${f}: no data chunk`);
 }
 
+/** Speech spans of an audio file (seconds, 0.01 s): 10 ms frames (16 kHz mono) louder than both -45 dBFS RMS and the
+ *  loudest frame - 30 dB, as audio/tts.py trims; a pause is at least PAUSE quiet frames; a span shorter than 50 ms (a
+ *  click) is dropped. */
+const PAUSE = 15;
+function speechSpans(file: string): [number, number][] {
+  const p = Bun.spawnSync(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-i', file, '-ac', '1', '-ar', '16000', '-f', 's16le', '-'], { stdout: 'pipe', stderr: 'pipe' });
+  if (p.exitCode !== 0) fail(`ffmpeg (decode ${file}): ${p.stderr.toString().trim()}`);
+  const buf = p.stdout;
+  const pcm = new Int16Array(buf.buffer, buf.byteOffset, buf.byteLength >> 1);
+  const n = 160, rms: number[] = [];
+  for (let i = 0; i < pcm.length; i += n) {
+    let s = 0;
+    const e = Math.min(pcm.length, i + n);
+    for (let j = i; j < e; j++) s += pcm[j] * pcm[j];
+    rms.push(Math.sqrt(s / (e - i)) / 32768);
+  }
+  const floor = Math.max(10 ** (-45 / 20), Math.max(0, ...rms) * 10 ** (-30 / 20));
+  const runs: [number, number][] = [];
+  rms.forEach((r, k) => {
+    if (r <= floor) return;
+    const last = runs[runs.length - 1];
+    if (last && k - last[1] <= PAUSE) last[1] = k + 1; else runs.push([k, k + 1]);
+  });
+  return runs.filter(([a, b]) => b - a >= 5).map(([a, b]) => [a / 100, b / 100]);
+}
+
 function python(backend: string): string[] {
   if (backend === 'fake') return ['uv', 'run', '--project', path.join(ROOT, 'audio'), 'python'];
   const venv = path.join(ROOT, '.cache', 'tts', 'venv');
@@ -143,7 +171,7 @@ try {
     const intact = e && existsSync(file) && sha256(readFileSync(file)) === e.sha256;
     if (e && e.key === key && !resynth.has(l.id)) {
       if (!intact) fail(`line "${l.id}": its audio ${path.relative(ROOT, file)} is missing or not the one in the lock; restore it, or make it again with --resynth ${l.id} (the timing will change)`);
-      lines[l.id] = { ...e, text: l.text };
+      lines[l.id] = { ...e, text: l.text, spans: speechSpans(file) };
     } else todo.push({ id: l.id, read, seed, key });
   }
 
@@ -176,7 +204,7 @@ try {
         const l = script.lines.find((x) => x.id === t.id)!;
         const duration = samples / rate;
         const was = old?.lines[t.id]?.duration;
-        lines[t.id] = { text: l.text, read: t.read, duration, sha256: sha256(readFileSync(tmp)), key: t.key };
+        lines[t.id] = { text: l.text, read: t.read, duration, sha256: sha256(readFileSync(tmp)), key: t.key, spans: speechSpans(tmp) };
         console.log(`  ${t.id}: ${duration.toFixed(3)}s${was !== undefined ? ` (was ${was.toFixed(3)}s)` : ''}`);
       }
     }

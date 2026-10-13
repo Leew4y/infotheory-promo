@@ -469,6 +469,11 @@ A1 / A1b 评审修正（Codex，gpt-6-astra max：1 BLOCKER / 8 SHOULD_FIX / 2 N
 - 去静音修正（ADAPTER_VERSION 3）：新音色在 math-lessons 有 5 句开头约 0.6–1 秒空白——句首一个 20–40 ms 的小噪点越过 −45 dBFS，被当作语音起点。
   raa-demo 末句另有约 1.2 秒 −45 至 −50 dB 的底噪在句首。现在语音的起止要求连续至少 50 ms 的帧高于 −45 dBFS 且高于全句最响帧 −30 dB；
   在现有 49 句上核对过只剪掉噪声。test-narration 加了这两种情形的用例。
+- 短语字幕（2026-10-13，math-lessons v4 时做）：Develata 发现字幕比配音晚 1–2 秒——v3 的短语字幕是配音之前按假设语速定的。
+  现在 narrate 把每句的语音段（停顿）写进 lock（从已提交的音频测，不重合成）；引擎按字幕在朗读文本里的位置（数字读法也处理）切分，
+  再吸附到最近的停顿：placeNarration 重定场景自带的字幕，narratedScene 的 `split` 把一句切成 ≤16 字宽的短语字幕（Netflix 简中规范），
+  `shown` 让逐字显示在画面上的句子不再配字幕，`voParts` 让动画落在短语上，`sfx` 可按句子起点给出。单测覆盖切分、定位与吸附；
+  默认行为不变（raa-demo、tongzhou 的字幕与画面不受影响，validate 通过）。
 - 合入 PR #6（The-Walls：--out 被播放器占用时保留已验证的视频；synth 母版长度取整），文本无冲突。Codex 评审（high）认为与本链的
   取消、提交点、清理逻辑交互无误，另指出一处经复现确认的问题：占用预检以读写方式打开旧文件，在 POSIX 上把只读旧视频误报为
   "被占用"，而 rename 本可成功——预检现只在 Windows 上做。去静音改动的评审只提了一个 NIT（空样本报错路径），已改。
