@@ -128,9 +128,10 @@ scenes film=film: (build film)
 shots film=film times="0,10" *args: (build film)
     bun scripts/export.ts --film {{film}} --shots {{times}} {{args}}
 
-# Dump the film's sound-effect cue sheet and resolved timeline to films/<film>/ (its score reads both).
+# Dump the film's sound-effect cue sheet and resolved timeline to films/<film>/, and where each narration line plays to
+# out/<film>/narration.cues.json (a score may place music on lines).
 cues film=film: (build film)
-    bun scripts/export.ts --film {{film}} --cues --timeline
+    bun scripts/export.ts --film {{film}} --cues --timeline --narration
 
 # Synthesize the film's score (films/<film>/score.py) -> out/<film>/music.wav (master), out/<film>/music.mp3 (preview).
 music film=film: (cues film)
