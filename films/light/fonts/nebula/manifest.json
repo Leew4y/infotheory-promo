@@ -1,0 +1,137 @@
+{
+ "film": "light",
+ "style": "nebula",
+ "generator": {
+  "fonttools": "4.66.1",
+  "brotli": "1.2.0"
+ },
+ "charset": " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~·“”≈。一万三上不两个中为么也书人什们伽住使偏先光分利到千即另只台各合否回图圈在地均多好它实就巴平年度开往得快怎挡换提搬数整时是望本来极架格次正每测清灯片画略百的盏相看瞬离秒穿笼算米索约菲被见观议试说起距转轮过返远速里镜际隔面黎齿（），：；？",
+ "fonts": [
+  {
+   "family": "Noto Sans SC",
+   "role": "body",
+   "style": "normal",
+   "weight": "100 900",
+   "file": "NotoSansSC-normal.woff2",
+   "sha256": "78dc3cf012de62f2f907276158063d3bae97291ab94f55306c559cb6dc6c9ffd",
+   "bytes": 77116,
+   "source": {
+    "file": "NotoSansSC[wght].ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/notosanssc/NotoSansSC%5Bwght%5D.ttf",
+    "sha256": "a3041811a78c361b1de50f953c805e0244951c21c5bd412f7232ef0d899af0da"
+   },
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSE-NotoSansSC.txt",
+   "chars": 217,
+   "missing": ""
+  },
+  {
+   "family": "Inter",
+   "role": "latin",
+   "style": "normal",
+   "weight": "100 900",
+   "file": "Inter-normal.woff2",
+   "sha256": "e3e35a8448523b29061e231ddd8d25cd1e21f8a03292629092dd4e0f244f4992",
+   "bytes": 75088,
+   "source": {
+    "file": "Inter[opsz,wght].ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/inter/Inter%5Bopsz%2Cwght%5D.ttf",
+    "sha256": "29160a80ff49ddcab2c97711247e08b1fab27a484a329ce8b813d820dc559031"
+   },
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSE-Inter.txt",
+   "chars": 99,
+   "missing": "。一万三上不两个中为么也书人什们伽住使偏先光分利到千即另只台各合否回图圈在地均多好它实就巴平年度开往得快怎挡换提搬数整时是望本来极架格次正每测清灯片画略百的盏相看瞬离秒穿笼算米索约菲被见观议试说起距转轮过返远速里镜际隔面黎齿（），：；？"
+  },
+  {
+   "family": "Inter",
+   "role": "latin",
+   "style": "italic",
+   "weight": "100 900",
+   "file": "Inter-italic.woff2",
+   "sha256": "14cd1a284c1dbf3d02611ccb1146b8faa4fbdecec8b710bd85313801fd11efd1",
+   "bytes": 80952,
+   "source": {
+    "file": "Inter-Italic[opsz,wght].ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/inter/Inter-Italic%5Bopsz%2Cwght%5D.ttf",
+    "sha256": "acd98e64795781b2058f07b18475e0ecee2a0fe2b42a49e2f9e37d0d6bf66ce6"
+   },
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSE-Inter.txt",
+   "chars": 99,
+   "missing": "。一万三上不两个中为么也书人什们伽住使偏先光分利到千即另只台各合否回图圈在地均多好它实就巴平年度开往得快怎挡换提搬数整时是望本来极架格次正每测清灯片画略百的盏相看瞬离秒穿笼算米索约菲被见观议试说起距转轮过返远速里镜际隔面黎齿（），：；？"
+  },
+  {
+   "family": "JetBrains Mono",
+   "role": "mono",
+   "style": "normal",
+   "weight": "100 800",
+   "file": "JetBrainsMono-normal.woff2",
+   "sha256": "39d514d7977d4b5b70b07b3233203fa900a7da23fb5b09d26c2849d1fc65888e",
+   "bytes": 33668,
+   "source": {
+    "file": "JetBrainsMono[wght].ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/jetbrainsmono/JetBrainsMono%5Bwght%5D.ttf",
+    "sha256": "48715a42ec242c21e9f02692891e147d022299a52e48d5e413e1a942193ffeda"
+   },
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSE-JetBrainsMono.txt",
+   "chars": 99,
+   "missing": "。一万三上不两个中为么也书人什们伽住使偏先光分利到千即另只台各合否回图圈在地均多好它实就巴平年度开往得快怎挡换提搬数整时是望本来极架格次正每测清灯片画略百的盏相看瞬离秒穿笼算米索约菲被见观议试说起距转轮过返远速里镜际隔面黎齿（），：；？"
+  },
+  {
+   "family": "STIX Two Text",
+   "role": "math",
+   "style": "normal",
+   "weight": "400 700",
+   "file": "STIXTwoText-normal.woff2",
+   "sha256": "2e70c7ae65ed1f0db4c5a3364583ba15e5835c91323c0723a92ed376897aa945",
+   "bytes": 30692,
+   "source": {
+    "file": "STIXTwoText[wght].ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/stixtwotext/STIXTwoText%5Bwght%5D.ttf",
+    "sha256": "7962b8b7811e6a896c9a91a0bccbb5241047770eb24d4997c5cb5fe21d5c0df2"
+   },
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSE-STIXTwoText.txt",
+   "chars": 98,
+   "missing": "≈。一万三上不两个中为么也书人什们伽住使偏先光分利到千即另只台各合否回图圈在地均多好它实就巴平年度开往得快怎挡换提搬数整时是望本来极架格次正每测清灯片画略百的盏相看瞬离秒穿笼算米索约菲被见观议试说起距转轮过返远速里镜际隔面黎齿（），：；？"
+  },
+  {
+   "family": "STIX Two Text",
+   "role": "math",
+   "style": "italic",
+   "weight": "400 700",
+   "file": "STIXTwoText-italic.woff2",
+   "sha256": "3fa77a0ec8809ed94d1525d37184a01f5f4852ad0f5e18e5064819f8c6ad902d",
+   "bytes": 34180,
+   "source": {
+    "file": "STIXTwoText-Italic[wght].ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/stixtwotext/STIXTwoText-Italic%5Bwght%5D.ttf",
+    "sha256": "88c0e2e316eaff56eddc9e51e4850317e2a1e490bbf758b2dec4793aedba9c74"
+   },
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSE-STIXTwoText.txt",
+   "chars": 98,
+   "missing": "≈。一万三上不两个中为么也书人什们伽住使偏先光分利到千即另只台各合否回图圈在地均多好它实就巴平年度开往得快怎挡换提搬数整时是望本来极架格次正每测清灯片画略百的盏相看瞬离秒穿笼算米索约菲被见观议试说起距转轮过返远速里镜际隔面黎齿（），：；？"
+  },
+  {
+   "family": "STIX Two Math",
+   "role": "fallback",
+   "style": "normal",
+   "weight": "400",
+   "file": "STIXTwoMath-normal.woff2",
+   "sha256": "762b4b024adf89e43d0b8625447a234ce2862390d61aca7e33cd5dcb83a0e22a",
+   "bytes": 22372,
+   "source": {
+    "file": "STIXTwoMath-Regular.ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/stixtwomath/STIXTwoMath-Regular.ttf",
+    "sha256": "562551b15b836e6e01d1b7350909baf3c8c8d83260c1190fbf4544333e6936de"
+   },
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSE-STIXTwoMath.txt",
+   "chars": 99,
+   "missing": "。一万三上不两个中为么也书人什们伽住使偏先光分利到千即另只台各合否回图圈在地均多好它实就巴平年度开往得快怎挡换提搬数整时是望本来极架格次正每测清灯片画略百的盏相看瞬离秒穿笼算米索约菲被见观议试说起距转轮过返远速里镜际隔面黎齿（），：；？"
+  }
+ ]
+}
