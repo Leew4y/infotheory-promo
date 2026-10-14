@@ -1,0 +1,106 @@
+{
+ "film": "light",
+ "style": "nebula",
+ "fps": 30,
+ "bpm": 80,
+ "frames": 5610,
+ "duration": 187,
+ "scenes": [
+  {
+   "name": "open",
+   "kind": "page",
+   "f0": 0,
+   "f1": 270,
+   "start": 0,
+   "end": 9
+  },
+  {
+   "name": "lanterns",
+   "kind": "page",
+   "f0": 270,
+   "f1": 720,
+   "start": 9,
+   "end": 24
+  },
+  {
+   "name": "roemer",
+   "kind": "page",
+   "f0": 720,
+   "f1": 1260,
+   "start": 24,
+   "end": 42
+  },
+  {
+   "name": "bradley",
+   "kind": "page",
+   "f0": 1260,
+   "f1": 1710,
+   "start": 42,
+   "end": 57
+  },
+  {
+   "name": "wheel",
+   "kind": "page",
+   "f0": 1710,
+   "f1": 2250,
+   "start": 57,
+   "end": 75
+  },
+  {
+   "name": "foucault",
+   "kind": "page",
+   "f0": 2250,
+   "f1": 2700,
+   "start": 75,
+   "end": 90
+  },
+  {
+   "name": "maxwell",
+   "kind": "page",
+   "f0": 2700,
+   "f1": 3240,
+   "start": 90,
+   "end": 108
+  },
+  {
+   "name": "michelson",
+   "kind": "page",
+   "f0": 3240,
+   "f1": 3690,
+   "start": 108,
+   "end": 123
+  },
+  {
+   "name": "laser",
+   "kind": "page",
+   "f0": 3690,
+   "f1": 4230,
+   "start": 123,
+   "end": 141
+  },
+  {
+   "name": "definition",
+   "kind": "page",
+   "f0": 4230,
+   "f1": 4770,
+   "start": 141,
+   "end": 159
+  },
+  {
+   "name": "coda",
+   "kind": "page",
+   "f0": 4770,
+   "f1": 5130,
+   "start": 159,
+   "end": 171
+  },
+  {
+   "name": "sources",
+   "kind": "page",
+   "f0": 5130,
+   "f1": 5610,
+   "start": 171,
+   "end": 187
+  }
+ ]
+}
