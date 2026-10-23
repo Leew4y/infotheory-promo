@@ -578,6 +578,26 @@ A1 / A1b 评审修正（Codex，gpt-6-astra max：1 BLOCKER / 8 SHOULD_FIX / 2 N
 - 对 brief 做一次实质修改（增删一个场景、改一段旁白），重新生成后计划与成片相应变化，且 `plan-check`、`validate` 通过；
 - 一份故意写错的计划（引用不存在的素材、重复场景 ID）在生成前失败。
 
+### 阶段 M · macOS 工作流（2026-10-23，The-Walls 的 Mac：Apple M5 Pro）
+
+起因：0d 一直没在 Mac 上跑过，The-Walls 要在 Mac 上用这套流程做片，并要求"全部改好、方法可以不照搬仓库"。分支 `mac-workflow`。
+- 0d 实测（`spikes/0d-macos/RESULTS.md`）：GPU 能力齐全（ANGLE Metal）；validate、配乐母版与 Windows 记录一致；整片导出约 50 帧/秒（Windows 约 9.3）；
+  CPU 2D 下确定性通过，地平线着色器单帧探测 6/6 逐像素一致。
+- 回归基线按平台分开（`regress/<style>.<os>-<arch>.json`）：同一提交上 Mac 与 Windows 只有 6–10% 的帧哈希相同（文字栅格化不同）。
+  Windows 基线原样改名保留；Mac 基线从未改动的 28506f1 构建录制，之后每一步都对它逐像素通过。
+- 旁白：Apple 芯片上用 `cosyvoice3-mlx`（同一模型的 MLX 版，Homebrew 的 `speech` 工具，固定 revision 的 2.3 GB 模型包），
+  RTF 0.2–0.3，同种子逐字节可重复；男教授音色读同一句，MLX 与 PyTorch 的说话人相似度 0.89–0.90（PyTorch 两句之间 0.86）。
+  lock 每句记录后端并按它校验，跨机器打开片子不会重合成。新音色 `zh-female-warm` 由 Qwen3-TTS VoiceDesign 按描述生成，
+  The-Walls 从四个候选里选定；`just voice-design` 把这一流程固定下来，可逐字节重建该音色。
+- 画幅与分辨率：片子的 `size`（默认 1920×1080，竖屏 1080×1920）；W/H 成为片子定义时设置的活值，GL 目标按像素尺寸延迟分配；
+  导出 `--res` 按短边像素重新绘制（Issue #10），`--maxrate`、`--for x`。四套风格有竖屏版式。全部改动对三个基线风格逐像素不变；
+  2160 导出缩回 1080 与 1080 导出的 PSNR 为 38–40 dB（差异主要是逐帧颗粒）。
+- 工作流（math-lessons 的 workflow-notes 中未处理的条目）：new-film 可加到已有资料的目录；`just texts`；`just sheet-compare`；
+  录屏源视频（≤ 25 MB）可入库，渲染前检查素材帧并给出重建命令（这改变了 2026-10-09"源视频不入库"的决定，需 Develata 知悉）；
+  导出超时报告系统负载与其他导出。
+- 其他：合并 `style/keynote` 并加竖屏版式；`Brewfile`、`just mac-setup`、`just doctor`；Vite 配置导入带扩展名；README 改写为引擎说明。
+- 未验证：Windows 上的全部改动（没有 Windows 机器；分平台基线、导出、TTS 后端选择的 Windows 路径只经代码审读）；raa-demo 的渲染（源视频在 Develata 机器上）。
+
 ## 风险
 
 | 风险 | 缓解 |
@@ -596,6 +616,6 @@ A1 / A1b 评审修正（Codex，gpt-6-astra max：1 BLOCKER / 8 SHOULD_FIX / 2 N
 
 - 阶段 1 开始前：阶段 0 的数据与决策门结论（0a–0c 已完成，见 `spikes/RESULTS.md`）。
 - 录屏一律用 viewport = 输出分辨率、DPR 1（0c 实测 DPR 2 不提高录制分辨率）。
-- 0d 需要协作者在 macOS 上配合运行。
+- 0d 需要协作者在 macOS 上配合运行。（2026-10-23 已在 M5 Pro 上运行，见阶段 M 与 `spikes/0d-macos/RESULTS.md`。）
 - 字体选择需人眼看样张；字体等素材文件的下载逐项确认。
 - A2 字体目录的候选清单（字体族、用途、体积）需 Develata 确认后一次性下载。
