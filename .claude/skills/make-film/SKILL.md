@@ -76,7 +76,7 @@ in a block whose other line ends in ？ or ！; use `displayText`. Then `just fo
   not use: `just sheet-compare <id> <style>[,<style>]` (no edit to the film by hand; it is undone after one build).
 - Look at the frames yourself (read the images) before showing anyone: legibility, what the eye goes to, whether the
   demo screen is readable at its size, whether a number on screen matches the narration. For a portrait film judge
-  legibility at phone size: a 1080-wide frame is about 390 points on a phone, so text under ~28 px is small print.
+  legibility at phone size: a 1080-wide frame is about 390-430 points wide on a phone, so text under ~28 px reads as small print.
 - The same sentence should not be both large on the page and a caption (math-lessons review 09): show a keyword,
   number or diagram, or mark the line `shown`.
 
