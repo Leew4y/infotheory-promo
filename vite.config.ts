@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
-import { confined } from './scripts/lib/confine';
+import { confined } from './scripts/lib/confine.ts';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
 

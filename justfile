@@ -88,7 +88,7 @@ check-imports:
 validate film=film *args: (build film)
     bun scripts/validate.ts --film {{film}} {{args}}
 
-# Pixel regression of every style against films/<film>/regress/<style>.json (SwiftShader + CPU 2D canvas); --style <id> for one.
+# Pixel regression of every style against films/<film>/regress/<style>.<os-arch>.json (SwiftShader + CPU 2D canvas); --style <id> for one.
 regress film=film *args: (build film)
     bun scripts/regress.ts --film {{film}} {{args}}
 
