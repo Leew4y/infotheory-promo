@@ -175,7 +175,8 @@ tts-setup:
 test-narration:
     bun scripts/test-narration.ts
 
-# 1080p30 export -> out/<film>/<film>[-<style>].mp4, e.g. `just export demo 4 18 --noaudio --style nebula`.
+# e.g. `just export demo 4 18 --noaudio --style nebula`, `just export demo 4 18 --res 2160`.
+# Export at the film's frame size -> out/<film>/<film>[-<style>][-<res>p].mp4; --res <short side> (1440p/4K), --for x, --maxrate <Mbit/s>.
 export film=film workers="4" crf="18" *args: (build film)
     bun scripts/export.ts --film {{film}} --workers {{workers}} --crf {{crf}} {{args}}
 
@@ -184,6 +185,7 @@ all film=film: (music film) (mix film) (export film)
 
 # Find a narration voice by description (Apple silicon): `just voice-design my-voice --describe "A=<description>" --describe "B=..."`,
 # listen to out/voice-design/my-voice/*-sample.mp3, then `just voice-design my-voice --pick A` writes voices/my-voice/.
+[macos]
 [positional-arguments]
 voice-design id *args:
     bun scripts/voice-design.ts "$@"
@@ -193,6 +195,7 @@ doctor:
     bun scripts/doctor.ts
 
 # macOS from scratch: Homebrew tools (Brewfile), dependencies, the narration model, then a check.
+[macos]
 mac-setup:
     brew bundle --no-upgrade --file Brewfile
     just setup
