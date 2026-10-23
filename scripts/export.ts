@@ -56,7 +56,7 @@
  * cancels after n frames.
  */
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, statSync, writeFileSync, writeSync } from 'node:fs';
-import { hostname } from 'node:os';
+import { cpus, hostname, loadavg } from 'node:os';
 import path from 'node:path';
 import puppeteer, { type Browser, type Page } from 'puppeteer-core';
 import { chromeArgs, findChrome, loadFilm, killTree, serveDist } from './chrome';
@@ -205,6 +205,20 @@ async function publish(tmp: string, out: string): Promise<void> {
       fail(1, `could not replace ${out} (${code}): is it open in a video player? The verified video is kept as ${kept}`);
     }
   }
+}
+
+/** The machine's load and the other exports holding a lock under out/, for a timeout message. */
+function busyReport(): string {
+  const [l1] = loadavg();
+  const others: string[] = [];
+  try {
+    for (const f of new Bun.Glob('out/*/*.mp4.lock').scanSync({ cwd: ROOT })) {
+      const pid = Number(readFileSync(path.join(ROOT, f), 'utf8').split('\n')[0]);
+      if (pid !== process.pid && pidAlive(pid)) others.push(`${f.replace(/\.lock$/, '')} (pid ${pid})`);
+    }
+  } catch {}
+  return `load average ${l1.toFixed(1)} on ${cpus().length} cores${others.length ? `; other exports running: ${others.join(', ')}` : '; no other export holds a lock'}` +
+    (l1 > cpus().length * 0.8 || others.length ? ' (the machine is busy: run again when it is idle, or with fewer --workers)' : '');
 }
 
 // ---- lock
@@ -541,6 +555,8 @@ try {
   const err = e as Error & { exit?: number };
   const why = cancelReason();
   console.error(`export failed: ${why ?? err.message}`);
+  // a timeout often means the machine was busy (another export or test rendering at the same time), not a broken film
+  if (/time(d)? ?out|exceeded|Waiting failed/i.test(why ?? err.message)) console.error(`  ${busyReport()}`);
   code = err.exit ?? (why?.startsWith('interrupted') || why === 'terminated' ? 130 : 1);
 } finally {
   if (deadlineTimer) clearTimeout(deadlineTimer);
