@@ -174,3 +174,14 @@ all film=film: (music film) (mix film) (export film)
 [positional-arguments]
 voice-design id *args:
     bun scripts/voice-design.ts "$@"
+
+# What this machine has for making films, and the command that fixes each gap (read-only).
+doctor:
+    bun scripts/doctor.ts
+
+# macOS from scratch: Homebrew tools (Brewfile), dependencies, the narration model, then a check.
+mac-setup:
+    brew bundle --no-upgrade --file Brewfile
+    just setup
+    just tts-setup
+    just doctor
