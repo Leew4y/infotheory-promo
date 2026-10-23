@@ -42,7 +42,7 @@ Every film command takes the film id first (default `infotheory`); outputs go to
 | `just new-film <id> <style> [--plan] --portrait` | the same with a 1080 × 1920 frame (phones): `size` in `film-plan.json` / `defineFilm` |
 | `just plan-schema` / `just plan-check <film> [--json]` | generate the committed editor schemas; check the plan, modules, copy, references, assets and narration lock |
 | `just scaffold <film>` | create missing plan scene modules and rewrite the ordered index; keep every existing module |
-| `just render-scene <film> <scene-id> [--draft] [--style id]` | silent scene MP4 in `out/<film>/render/`; one JSON summary on stdout |
+| `just render-scene <film> <scene-id> [--draft] [--style id] [--res px]` | silent scene MP4 in `out/<film>/render/`; one JSON summary on stdout |
 | `just render-range <film> <from> <to> [--draft] [--style id]` | silent half-open range in film seconds, snapped to frames; filenames use the start/end frame numbers |
 | `just test-plan` | plan workflow, real short exports and deliberate failures of the plan checks |
 | `just fonts <film>` | font subsets for the film's text, per style (run after changing any text) |
