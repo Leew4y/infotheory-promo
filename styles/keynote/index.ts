@@ -7,7 +7,7 @@
 import { ctx, text, rgba } from '../../engine/draw';
 import { glPlate } from '../../engine/gl';
 import { C, F, M, type StylePackage, type SubLine } from '../../engine/style';
-import { clamp, eout, sstep, win, W, H } from '../../engine/util';
+import { clamp, eout, portrait, sstep, win, W, H } from '../../engine/util';
 import { PLATE_FS } from './shader';
 
 const PAL = {
@@ -56,7 +56,8 @@ const keynote: StylePackage = {
   plateGrade: { bloom: 0, vig: 0, grain: 0 },
   fills: { page: PAL.bg, plate: PAL.bg },
   motion: { fadeIn: 0.45, fadeOut: 0.45, drift: 0.012 },
-  layout: { margin: 150, column: 1000 },
+  // portrait: a film of size [1080, 1920] (phones); one column, so `column` is the margin
+  layout: { margin: 150, column: 1000, portrait: { margin: 90, column: 90 } },
 
   background() {
     ctx.fillStyle = C.bg;
@@ -102,7 +103,7 @@ const keynote: StylePackage = {
 
   /** Captures as a product shot: a white window with rounded corners, a soft deep shadow and three quiet dots. */
   demo: {
-    area: { x: 150, y: 176, w: W - 300, h: H - 400 },
+    get area() { return portrait() ? { x: M, y: 330, w: W - 2 * M, h: Math.round(H * 0.7) - 90 - 330 } : { x: 150, y: 176, w: W - 300, h: H - 400 }; },
     rippleDur: 0.6,
     pressDur: 0.15,
     cursorEase: (u) => u * u * (3 - 2 * u),
@@ -159,12 +160,14 @@ const keynote: StylePackage = {
   chapterLabel(lt, d, n, ch) {
     const a = win(lt, 0.2, d, 0.6, 0.4);
     if (a <= 0) return;
-    text(String(n).padStart(2, '0'), M, 122, { font: F.latin, size: 24, weight: 700, color: C.accent, alpha: a });
-    text(ch[0], M + 46, 122, { size: 26, weight: 700, color: C.fg, alpha: a });
+    // portrait: lower (below a phone app's top bar) and larger
+    const y = portrait() ? 230 : 122, k = portrait() ? 1.3 : 1;
+    text(String(n).padStart(2, '0'), M, y, { font: F.latin, size: Math.round(24 * k), weight: 700, color: C.accent, alpha: a });
+    text(ch[0], M + 46 * k, y, { size: Math.round(26 * k), weight: 700, color: C.fg, alpha: a });
     ctx.save();
     ctx.globalAlpha = a;
     ctx.fillStyle = C.accent;
-    ctx.fillRect(M, 140, 32, 3);
+    ctx.fillRect(M, y + 18 * k, 32, 3);
     ctx.restore();
   },
 
@@ -174,8 +177,10 @@ const keynote: StylePackage = {
       const a = win(T, s.a, s.b, 0.35, 0.35);
       if (a <= 0) continue;
       const rise = (1 - eout(clamp((T - s.a) / 0.35))) * 6;
-      text(s.zh, W / 2, 968 + rise, { size: 36, weight: 500, color: C.fg, alpha: a, align: 'center' });
-      if (s.en) text(s.en, W / 2, 1010, { font: F.latin, size: 20, color: C.muted, alpha: a, align: 'center' });
+      // portrait: above the bottom quarter, where phone apps put their own text and buttons, and larger
+      const y = portrait() ? Math.round(H * 0.7) : 968, k = portrait() ? 1.3 : 1;
+      text(s.zh, W / 2, y + rise, { size: Math.round(36 * k), weight: 500, color: C.fg, alpha: a, align: 'center' });
+      if (s.en) text(s.en, W / 2, y + 42 * k, { font: F.latin, size: Math.round(20 * k), color: C.muted, alpha: a, align: 'center' });
     }
   },
 };
