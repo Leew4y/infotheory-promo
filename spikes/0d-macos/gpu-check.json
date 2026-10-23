@@ -1,0 +1,25 @@
+{
+ "platform": "darwin arm64",
+ "chrome": "Chrome/155.0.8059.85",
+ "args": [
+  "--window-size=1920,1080",
+  "--ignore-gpu-blocklist",
+  "--mute-audio",
+  "--no-first-run",
+  "--disable-accelerated-2d-canvas"
+ ],
+ "caps": {
+  "webgl2": true,
+  "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Pro, Unspecified Version)",
+  "EXT_color_buffer_float": true,
+  "OES_texture_float_linear": true,
+  "rgba16fFramebufferComplete": true,
+  "shaderCompile": true,
+  "programLink": true,
+  "halfFloatRender": true,
+  "glError": 0
+ },
+ "pageErrors": [],
+ "missing": [],
+ "pass": true
+}
