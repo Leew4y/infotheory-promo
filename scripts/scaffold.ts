@@ -23,7 +23,7 @@ planScene('${s.id}', {
     rows.forEach((s, i) => {
       text(s, W / 2, H * 0.36 + i * H * 0.28 / Math.max(1, rows.length - 1), {
         font: /[^\\x00-\\x7f]/.test(s) ? F.body : F.latin,
-        size: Math.min(W / 36, (W - M * 2) / Math.max(1, [...s].length)),
+        size: Math.min(Math.max(W, H) / 36, (W - M * 2) / Math.max(1, [...s].length)),
         color: C.${s.kind === 'plate' ? 'fgOnDark' : 'fg'}, align: 'center',
       });
     });

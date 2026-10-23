@@ -67,6 +67,9 @@ try {
   const styles = STYLES ?? first.styles;
   for (const s of styles) if (!first.styles.includes(s)) usage(`--style ${s} is not one of the film's styles (${first.styles.join(', ')})`);
   const fps: number = await page.evaluate(() => window.__timeline().fps);
+  // a cell is half the film's frame: 960 x 540 for 1920 x 1080, 540 x 960 for a portrait 1080 x 1920
+  const frame = await page.evaluate(() => window.__frameSize?.() ?? { width: 1920, height: 1080 });
+  const CW = 2 * Math.round(frame.width / 4), CH = 2 * Math.round(frame.height / 4);
   const duration: number = await page.evaluate(() => window.__duration);
   // the moments, over all selected styles
   let ms: Moment[] = [];
@@ -96,12 +99,12 @@ try {
   // the grid: rows = moments, columns = styles
   const n = cells.length;
   const inputs = cells.flatMap((c) => ['-i', path.join(TMP, c.file)]);
-  const scale = cells.map((_, i) => `[${i}:v]scale=960:540[s${i}]`).join(';');
-  const layout = cells.map((c) => `${c.col * 960}_${c.row * 540}`).join('|');
-  const filter = n === 1 ? '[0:v]scale=960:540[o]' : `${scale};${cells.map((_, i) => `[s${i}]`).join('')}xstack=inputs=${n}:layout=${layout}[o]`;
+  const scale = cells.map((_, i) => `[${i}:v]scale=${CW}:${CH}[s${i}]`).join(';');
+  const layout = cells.map((c) => `${c.col * CW}_${c.row * CH}`).join('|');
+  const filter = n === 1 ? `[0:v]scale=${CW}:${CH}[o]` : `${scale};${cells.map((_, i) => `[s${i}]`).join('')}xstack=inputs=${n}:layout=${layout}[o]`;
   const p = Bun.spawnSync(['ffmpeg', '-v', 'error', '-y', ...inputs, '-filter_complex', filter, '-map', '[o]', '-q:v', '3', path.join(TMP, 'sheet.jpg')], { stderr: 'pipe' });
   if (p.exitCode !== 0) throw new Error(`ffmpeg: ${p.stderr.toString().trim()}`);
-  writeFileSync(path.join(TMP, 'sheet.json'), JSON.stringify({ film: FILM, fps, styles, moments: ms, sheet: 'sheet.jpg', cell: [960, 540], cells }, null, 1));
+  writeFileSync(path.join(TMP, 'sheet.json'), JSON.stringify({ film: FILM, fps, styles, moments: ms, sheet: 'sheet.jpg', cell: [CW, CH], cells }, null, 1));
   // publish: replace the previous sheet (checked above) as a whole
   if (existsSync(OUT)) rmSync(OUT, { recursive: true, force: true });
   mkdirSync(path.dirname(OUT), { recursive: true });

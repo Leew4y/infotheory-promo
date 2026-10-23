@@ -54,7 +54,9 @@ const FILM = filmR.film;
 /** One of the film's styles (?style=<id>); omitted: all of them. */
 const STYLE = opt('style', '');
 const DIST = path.resolve(ROOT, opt('dist', `dist/${FILM}`));
-const W = 1920, H = 1080, SAFE = 0.05, MIN_ALPHA = 0.02;
+const SAFE = 0.05, MIN_ALPHA = 0.02;
+/** The film's frame in canvas units (read from the page: defineFilm size), for the frame and safe-area checks. */
+let W = 1920, H = 1080;
 /** Text at least this opaque counts as fully shown (overlap and contrast checks); WCAG large text: 24 px, or 18.66 px bold. */
 const FULL_ALPHA = 0.9, HALF_ALPHA = 0.5, LARGE_PX = 24, LARGE_BOLD_PX = 18.66, DISPLAY_PX = 32;
 const OUT = path.join(ROOT, 'out', FILM, 'validate.json');
@@ -89,7 +91,7 @@ const checked: string[] = [];
 const noted = new Set<string>();
 try {
   browser = await puppeteer.launch({
-    executablePath: CHROME, headless: true, defaultViewport: { width: W, height: H, deviceScaleFactor: 1 },
+    executablePath: CHROME, headless: true, defaultViewport: { width: 1920, height: 1080, deviceScaleFactor: 1 },
     args: chromeArgs('platform'),
   });
   const page = await browser.newPage();
@@ -110,6 +112,7 @@ try {
     if (!ready) return null;
     const pageStyle: string = await page.evaluate(() => window.__style);
     const styles: string[] = await page.evaluate(() => window.__styles);
+    ({ width: W, height: H } = await page.evaluate(() => window.__frameSize?.() ?? { width: 1920, height: 1080 }));
     for (const d of diags) if (d.style === cur) d.style = pageStyle;
     cur = pageStyle;
     checked.push(pageStyle);

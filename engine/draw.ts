@@ -2,7 +2,7 @@
  * Canvas2D drawing primitives: text, rules, pen strokes, circles, hatching, arrows, bits. Default colours and fonts
  * come from the active style (style.ts); the look itself lives in the style package.
  */
-import { clamp, lerp, hash1, parseFamilies, TAU, W, H } from './util';
+import { clamp, lerp, hash1, parseFamilies, TAU, W, H, SCALE } from './util';
 import { C, F, style } from './style';
 
 export const cv = document.getElementById('c') as HTMLCanvasElement;
@@ -128,10 +128,11 @@ export function text(s: string, x: number, y: number, o: TextOpts = {}): void {
     const xs: number[] = [], ys: number[] = [];
     for (const [px, py] of [[x - m.actualBoundingBoxLeft, y - m.actualBoundingBoxAscent], [x + m.actualBoundingBoxRight, y - m.actualBoundingBoxAscent], [x - m.actualBoundingBoxLeft, y + m.actualBoundingBoxDescent], [x + m.actualBoundingBoxRight, y + m.actualBoundingBoxDescent]]) {
       const q = t.transformPoint(new DOMPoint(px, py));
-      xs.push(q.x);
-      ys.push(q.y);
+      // boxes are in frame units, whatever the render scale
+      xs.push(q.x / SCALE);
+      ys.push(q.y / SCALE);
     }
-    const px = (o.size ?? 40) * Math.min(Math.hypot(t.a, t.b), Math.hypot(t.c, t.d));
+    const px = (o.size ?? 40) * Math.min(Math.hypot(t.a, t.b), Math.hypot(t.c, t.d)) / SCALE;
     boxes.push({ s, font: ctx.font, px, weight: weightOf(o.weight), color: String(ctx.fillStyle), x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys), alpha: ctx.globalAlpha, role });
   }
   if (mode === 'draw') ctx.fillText(s, x, y);

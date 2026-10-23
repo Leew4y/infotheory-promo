@@ -3,6 +3,7 @@
  *
  *   bun scripts/new-film.ts <id> --style <style-id>        (just new-film <id> <style>)
  *   Add --plan for templates/film-plan/: set the plan's id/style and scaffold its modules before publication.
+ *   Add --portrait for a 1080 x 1920 frame (phones): the film's size, laid out by the style's portrait layout.
  *
  * Copies the template to films/<id>/ and points it at the style and the id. Refuses an id that is not a valid film id
  * (FilmSpec: lowercase letters, digits, hyphens), an existing films/<id>/, and a style that is not a style package
@@ -37,7 +38,8 @@ const ID = `export default defineFilm({ id: 'template',`;
 const filmTs = readFileSync(path.join(TPL, 'film.ts'), 'utf8');
 const count = (s: string, sub: string) => s.split(sub).length - 1;
 if (!planned && (count(filmTs, IMPORT) !== 1 || count(filmTs, ID) !== 1)) die(`templates/film/film.ts must contain each of these lines exactly once; update scripts/new-film.ts with the template:\n  ${IMPORT}\n  ${ID} ...`);
-const out = filmTs.replace(IMPORT, `import style from '../../styles/${style}';`).replace(ID, `export default defineFilm({ id: '${id}',`);
+const PORTRAIT = argv.includes('--portrait');
+const out = filmTs.replace(IMPORT, `import style from '../../styles/${style}';`).replace(ID, `export default defineFilm({ id: '${id}',${PORTRAIT ? ' size: [1080, 1920],' : ''}`);
 
 const tmp = path.join(ROOT, 'films', `.${id}.${process.pid}.tmp`);
 try {
@@ -48,6 +50,7 @@ try {
     const plan = JSON.parse(readFileSync(planFile, 'utf8'));
     plan.film = id;
     plan.styles = [style];
+    if (PORTRAIT) plan.size = [1080, 1920];
     writeFileSync(planFile, JSON.stringify(plan, null, 2) + '\n');
     scaffold(tmp, id);
   }

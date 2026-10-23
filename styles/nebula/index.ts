@@ -7,21 +7,29 @@
 import { ctx, text, rule, label, measure, rgba } from '../../engine/draw';
 import { glPlate } from '../../engine/gl';
 import { C, F, M, type StylePackage, type SubLine } from '../../engine/style';
-import { clamp, eout, sstep, win, W, H } from '../../engine/util';
+import { clamp, eout, portrait, sstep, win, W, H, SCALE } from '../../engine/util';
 import { NEBULA_FS } from './shader';
 
 const GAS: [number, number, number] = [0.30, 0.62, 0.86];
 
-// the iris is drawn as an alpha mask, then filled with the fade colour (any CSS colour, its own alpha kept)
+// the iris is drawn as an alpha mask, then filled with the fade colour (any CSS colour, its own alpha kept); the mask has
+// the canvas's pixel size and is drawn in frame units
 let MASK: HTMLCanvasElement | null = null;
 function mask(): CanvasRenderingContext2D {
   if (!MASK) {
     MASK = document.createElement('canvas');
-    MASK.width = W;
-    MASK.height = H;
+    MASK.width = Math.round(W * SCALE);
+    MASK.height = Math.round(H * SCALE);
   }
-  return MASK.getContext('2d')!;
+  const m = MASK.getContext('2d')!;
+  m.setTransform(SCALE, 0, 0, SCALE, 0, 0);
+  return m;
 }
+/** Captions' band centre: the lower band of a landscape frame; in portrait above the bottom quarter, where phone apps
+ *  put their own text and buttons. */
+const captionY = () => (portrait() ? Math.round(H * 0.72) : 962);
+/** Type scale of the style's own overlays and rows: larger in portrait, where the frame is seen on a phone. */
+const ts = (px: number) => (portrait() ? Math.round(px * 1.3) : px);
 
 function arrowPath(x: number, y: number, s: number): void {
   const p: [number, number][] = [[0, 0], [0, 17], [4.2, 13.2], [7, 19.5], [9.6, 18.4], [6.9, 12.2], [12.4, 12.2]];
@@ -58,7 +66,7 @@ const nebula: StylePackage = {
   plateGrade: { bloom: 0.42, ca: 0.0014, vig: 0.5, grain: 0.05, sat: 1.06 },
   fills: { page: '#0B0F1A', plate: '#03050A' },
   motion: { fadeIn: 0.45, fadeOut: 0.45, drift: 0.015 },
-  layout: { margin: 170, column: 1010 },
+  layout: { margin: 170, column: 1010, portrait: { margin: 90, column: 90 } },
 
   background: () => glPlate(NEBULA_FS, 1, { time: 0, tint: GAS }),
   // progress brightens and thickens the gas, highlight lights a star
@@ -76,9 +84,9 @@ const nebula: StylePackage = {
 
   row(key, title, note, x, y, a, keyW = 96) {
     if (a <= 0.002) return;
-    text(key, x, y, { font: F.mono, size: 22, color: C.accent, alpha: a });
-    text(title, x + keyW, y, { size: 25, weight: 600, color: C.fg, alpha: a });
-    text(note, x + keyW, y + 32, { size: 19, color: C.muted, alpha: a });
+    text(key, x, y, { font: F.mono, size: ts(22), color: C.accent, alpha: a });
+    text(title, x + keyW, y, { size: ts(25), weight: 600, color: C.fg, alpha: a });
+    text(note, x + keyW, y + ts(32), { size: ts(19), color: C.muted, alpha: a });
   },
 
   /** Small mono capitals, light tracking. */
@@ -108,7 +116,7 @@ const nebula: StylePackage = {
   /** Captures in a dark glass panel: a cyan hairline with a faint glow, the title in mono on a slim bar. */
   demo: {
     // the margins of the layout; below the chapter label, above the captions
-    area: { x: 170, y: 190, w: W - 340, h: H - 420 },
+    get area() { return portrait() ? { x: M, y: 330, w: W - 2 * M, h: captionY() - 80 - 330 } : { x: 170, y: 190, w: W - 340, h: H - 420 }; },
     rippleDur: 0.6,
     pressDur: 0.15,
     cursorEase: (u) => u * u * (3 - 2 * u),
@@ -188,14 +196,14 @@ const nebula: StylePackage = {
   chapterLabel(lt, d, n, ch, chapters) {
     const a = win(lt, 0.2, d, 0.8, 0.5);
     if (a <= 0) return;
-    const x = W - M, y = 128;
+    const x = W - M, y = portrait() ? 230 : 128, top = portrait() ? 186 : 84;
     const num = `CH ${String(n).padStart(2, '0')} / ${String(chapters).padStart(2, '0')}`;
-    text(num, x, y, { font: F.mono, size: 17, color: C.accent, alpha: a, align: 'right', ls: 2 });
-    text(ch[0], x, y + 40, { size: 26, weight: 600, color: C.fg, alpha: a, align: 'right', ls: 2 });
-    label(ch[1], x - measure(ch[0], 26, F.body, 600, 2) - 22, y + 39, a, C.muted, 16, 'right');
+    text(num, x, y, { font: F.mono, size: ts(17), color: C.accent, alpha: a, align: 'right', ls: 2 });
+    text(ch[0], x, y + ts(40), { size: ts(26), weight: 600, color: C.fg, alpha: a, align: 'right', ls: 2 });
+    label(ch[1], x - measure(ch[0], ts(26), F.body, 600, 2) - 22, y + ts(40) - 1, a, C.muted, ts(16), 'right');
     const k = eout(clamp((lt - 0.3) / 1.2));
-    rule(M, 84, W - M, 84, C.rule, a * 0.8, 1);
-    rule(M, 84, M + (W - 2 * M) * (n / chapters) * k, 84, C.accent, a, 2);
+    rule(M, top, W - M, top, C.rule, a * 0.8, 1);
+    rule(M, top, M + (W - 2 * M) * (n / chapters) * k, top, C.accent, a, 2);
   },
 
   captions(T: number, subs: SubLine[]) {
@@ -203,17 +211,18 @@ const nebula: StylePackage = {
       if (T < s.a - 0.6 || T > s.b + 0.6) continue;
       const a = win(T, s.a, s.b, 0.45, 0.45);
       if (a <= 0) continue;
-      const y = 962 + (1 - eout(clamp((T - s.a) / 0.5))) * 6;
-      const w = Math.max(measure(s.zh, 32, F.body, 500, 1), measure(s.en, 20, F.latin, 400, 0)) + 72;
+      const y = captionY() + (1 - eout(clamp((T - s.a) / 0.5))) * 6;
+      const w = Math.max(measure(s.zh, ts(32), F.body, 500, 1), measure(s.en, ts(20), F.latin, 400, 0)) + 72;
+      const k = ts(100) / 100;
       ctx.save();
       ctx.globalAlpha = a * (s.plate ? 0.45 : 0.72);
       ctx.fillStyle = C.bg2;
       ctx.beginPath();
-      ctx.roundRect(W / 2 - w / 2, y - 52, w, 98, 14);
+      ctx.roundRect(W / 2 - w / 2, y - 52 * k, w, 98 * k, 14);
       ctx.fill();
       ctx.restore();
-      text(s.zh, W / 2, y - 8, { size: 32, weight: 500, color: s.plate ? C.fgOnDark : C.fg, alpha: a, align: 'center', ls: 1 });
-      text(s.en, W / 2, y + 28, { font: F.latin, size: 20, color: s.plate ? C.mutedOnDark : C.fg2, alpha: a * 0.9, align: 'center' });
+      text(s.zh, W / 2, y - 8 * k, { size: ts(32), weight: 500, color: s.plate ? C.fgOnDark : C.fg, alpha: a, align: 'center', ls: 1 });
+      text(s.en, W / 2, y + 28 * k, { font: F.latin, size: ts(20), color: s.plate ? C.mutedOnDark : C.fg2, alpha: a * 0.9, align: 'center' });
     }
   },
 };

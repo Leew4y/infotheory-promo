@@ -8,7 +8,7 @@ import { accumulate, glc, post, type Grade } from './gl';
 import { SC, sceneAt, camDrift } from './scene';
 import { film, FPS, frameOf, TOTAL } from './film';
 import { style, type SubLine } from './style';
-import { clamp, displayText, sstep, W, H } from './util';
+import { clamp, displayText, sstep, W, H, SCALE } from './util';
 import { sentenceSubs } from './narration';
 import { ensure, type MediaRef } from './media';
 import { lap } from './perf';
@@ -29,7 +29,8 @@ export function drawLayer(t: number, jx: number, jy: number): void {
   const lt = t - sc.t0;
   const S = style();
   const fill = sc.kind === 'plate' ? S.fills.plate : S.fills.page;
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  // frame units -> canvas pixels (SCALE is 1 except in a --res export)
+  ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = 'source-over';
   ctx.filter = 'none';
@@ -38,7 +39,8 @@ export function drawLayer(t: number, jx: number, jy: number): void {
   const cam = sc.cam ? sc.cam(lt, sc.d) : camDrift()(lt, sc.d);
   const mark = textMark();
   ctx.save();
-  ctx.translate(W / 2 + jx + (cam.x ?? 0), H / 2 + jy + (cam.y ?? 0));
+  // the sub-frame jitter is sub-pixel at the canvas's resolution
+  ctx.translate(W / 2 + jx / SCALE + (cam.x ?? 0), H / 2 + jy / SCALE + (cam.y ?? 0));
   ctx.scale(cam.z, cam.z);
   ctx.translate(-W / 2, -H / 2);
   sc.draw(lt, sc.d, t);
@@ -110,6 +112,7 @@ export function frame(T: number, fps = 30, samples = 1): void {
   ctx.drawImage(glc, 0, 0);
   ctx.globalCompositeOperation = 'source-over';
   t0 = lap('GL -> 2D readback', t0);
+  ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
   overlays(T);
   lap('overlays', t0);
 }

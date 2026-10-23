@@ -8,7 +8,7 @@
 import { ctx, text, rule, label, measure, rgba } from '../../engine/draw';
 import { glPlate } from '../../engine/gl';
 import { C, F, M, type StylePackage, type SubLine } from '../../engine/style';
-import { clamp, eout, sstep, win, W, H } from '../../engine/util';
+import { clamp, eout, portrait, sstep, win, W, H } from '../../engine/util';
 import { PLATE_FS } from './shader';
 
 function arrowPath(x: number, y: number, s: number): void {
@@ -47,7 +47,8 @@ const style: StylePackage = {
   plateGrade: { bloom: 0.15, vig: 0.3, grain: 0.04 },
   fills: { page: '#F2F2F0', plate: '#0A0B0E' },
   motion: { fadeIn: 0.5, fadeOut: 0.5, drift: 0.02 },
-  layout: { margin: 160, column: 1000 },
+  // portrait: a film of size [1080, 1920] (phones); one column, so `column` is the margin
+  layout: { margin: 160, column: 1000, portrait: { margin: 90, column: 90 } },
 
   background() {
     ctx.fillStyle = C.bg;
@@ -93,7 +94,7 @@ const style: StylePackage = {
 
   demo: {
     // the margins of the layout; below the chapter label, above the captions
-    area: { x: 160, y: 190, w: W - 320, h: H - 420 },
+    get area() { return portrait() ? { x: M, y: 330, w: W - 2 * M, h: Math.round(H * 0.7) - 90 - 330 } : { x: M, y: 190, w: W - 2 * M, h: H - 420 }; },
     rippleDur: 0.6,
     pressDur: 0.15,
     cursorEase: (u) => u * u * (3 - 2 * u),
@@ -133,19 +134,23 @@ const style: StylePackage = {
     const a = win(lt, 0.2, d, 0.8, 0.5);
     if (a <= 0) return;
     const num = String(n).padStart(2, '0');
-    text(num, M, 132, { font: F.mono, size: 22, color: C.accent, alpha: a });
-    text(ch[0], M + 56, 132, { size: 24, weight: 600, color: C.fg, alpha: a });
-    label(ch[1], M + 56 + measure(ch[0], 24, F.body, 600) + 24, 131, a, C.muted, 16, 'left');
-    label(`${num} / ${String(chapters).padStart(2, '0')}`, W - M, H - 96, a, C.muted, 16, 'right');
-    rule(M, 150, M + 40, 150, C.accent, a, 2);
+    // portrait: lower, below a phone app's top bar; the page number top right instead of bottom right
+    const y = portrait() ? 230 : 132;
+    text(num, M, y, { font: F.mono, size: 22, color: C.accent, alpha: a });
+    text(ch[0], M + 56, y, { size: 24, weight: 600, color: C.fg, alpha: a });
+    label(ch[1], M + 56 + measure(ch[0], 24, F.body, 600) + 24, y - 1, a, C.muted, 16, 'left');
+    label(`${num} / ${String(chapters).padStart(2, '0')}`, W - M, portrait() ? y - 1 : H - 96, a, C.muted, 16, 'right');
+    rule(M, y + 18, M + 40, y + 18, C.accent, a, 2);
   },
 
   captions(T: number, subs: SubLine[]) {
     for (const s of subs) {
       const a = win(T, s.a, s.b, 0.5, 0.5);
       if (a <= 0) continue;
-      text(s.zh, W / 2, 950, { size: 32, weight: 500, color: s.plate ? C.fgOnDark : C.fg, alpha: a, align: 'center' });
-      text(s.en, W / 2, 990, { font: F.latin, size: 21, color: s.plate ? C.mutedOnDark : C.muted, alpha: a, align: 'center' });
+      // portrait: above the bottom quarter, where phone apps put their own text and buttons, and larger (a phone)
+      const y = portrait() ? Math.round(H * 0.7) : 950, k = portrait() ? 1.3 : 1;
+      text(s.zh, W / 2, y, { size: Math.round(32 * k), weight: 500, color: s.plate ? C.fgOnDark : C.fg, alpha: a, align: 'center' });
+      text(s.en, W / 2, y + 40 * k, { font: F.latin, size: Math.round(21 * k), color: s.plate ? C.mutedOnDark : C.muted, alpha: a, align: 'center' });
     }
   },
 };

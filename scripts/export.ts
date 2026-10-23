@@ -2,6 +2,14 @@
  * Offline export (the design follows abstract-algebra-promo's export.mjs, driven here through puppeteer-core):
  *
  *   bun scripts/export.ts --film <id> [--workers 4] [--from 0] [--to <end>] [--crf 18] [--out out/<id>/<id>.mp4] [--draft]
+ *                         [--res <pixels on the short side>] [--maxrate <Mbit/s>] [--for x]
+ *     --res: the output resolution, e.g. 1440 or 2160 for a 1920x1080 film (2560x1440, 3840x2160), 2160 for a 1080x1920
+ *     one (2160x3840), 720 for a small preview: the page renders at that scale (engine/util.ts SCALE), it is not an
+ *     upscale; written to out/<id>/<id>[-<style>]-<res>p.mp4 unless --out. Captures are drawn from their recorded pixels.
+ *     --maxrate: cap the video bitrate (x264 VBV: maxrate, buffer twice that) on top of the CRF.
+ *     --for x: a copy for posting on X: maxrate 20 Mbit/s (X's web upload states 25 Mbit/s; recorded in
+ *     films/math-lessons/review/09-social-review.md), and a warning when it is longer than 140 s or larger than 512 MB
+ *     (the limits of an account without Premium, same source).
  *     --draft: a quick look while editing, not the film: no motion blur (one sample per frame), x264 veryfast, written
  *     to out/<id>/<id>[-<style>]-draft.mp4 unless --out; with --from/--to it renders just the part being worked on.
  *   Frames reach this process as JPEG files the page POSTs to the local server (__frameTo: the JPEG is encoded off the
@@ -76,7 +84,13 @@ let takeFrame: ((n: number, body: Uint8Array) => string | null) | null = null;
 const SINGLE = flag('shots') || flag('cues') || flag('timeline') || flag('scenes') || flag('narration');
 const WORKERS = SINGLE ? 1 : Math.max(1, +(opt('workers', '4') ?? 4));
 const STYLE = opt('style');
-const OUT = path.resolve(ROOT, opt('out', `out/${FILM}/${FILM}${STYLE ? `-${STYLE}` : ''}${DRAFT ? '-draft' : ''}.mp4`)!);
+const RES = opt('res');
+if (RES !== undefined && !/^\d+$/.test(RES)) { console.error(`--res ${RES}: pixels on the short side, e.g. 1440 or 2160`); process.exit(2); }
+const FOR = opt('for');
+if (FOR !== undefined && FOR !== 'x') { console.error(`--for ${FOR}: x is the only preset (or give --maxrate)`); process.exit(2); }
+const MAXRATE = opt('maxrate') ?? (FOR === 'x' ? '20' : undefined);
+if (MAXRATE !== undefined && !(Number(MAXRATE) > 0)) { console.error(`--maxrate ${MAXRATE}: Mbit/s, a positive number`); process.exit(2); }
+const OUT = path.resolve(ROOT, opt('out', `out/${FILM}/${FILM}${STYLE ? `-${STYLE}` : ''}${RES ? `-${RES}p` : ''}${FOR ? `-${FOR}` : ''}${DRAFT ? '-draft' : ''}.mp4`)!);
 // the audio: --audio, else the final mix out/<film>/master.wav (music + narration, audio/mix.py) when there is one, else
 // the score's loudness-normalized master out/<film>/music.wav (the MP3s are only for the preview player). A final mix
 // must still match what it was made from (master.json: the music, the narration lock, the placements), checked below.
@@ -254,9 +268,9 @@ const finite = (v: unknown, what: string): number => {
   if (!Number.isFinite(n)) throw new Error(`ffprobe reported no usable ${what} (${JSON.stringify(v)})`);
   return n;
 };
-interface Probe { videoFrames: number; videoDuration: number; audioDuration: number | null; color: string }
+interface Probe { videoFrames: number; videoDuration: number; audioDuration: number | null; color: string; width: number; height: number }
 async function probe(file: string): Promise<Probe> {
-  const j = JSON.parse(await runProbe(['-count_packets', '-show_entries', 'stream=codec_type,nb_read_packets,duration,color_space,color_primaries,color_transfer,color_range', '-of', 'json', file]));
+  const j = JSON.parse(await runProbe(['-count_packets', '-show_entries', 'stream=codec_type,nb_read_packets,duration,width,height,color_space,color_primaries,color_transfer,color_range', '-of', 'json', file]));
   const streams: Record<string, unknown>[] = Array.isArray(j?.streams) ? j.streams : [];
   const v = streams.find((s) => s.codec_type === 'video');
   const a = streams.find((s) => s.codec_type === 'audio');
@@ -266,6 +280,7 @@ async function probe(file: string): Promise<Probe> {
     videoDuration: finite(v.duration, 'video duration'),
     audioDuration: a ? finite(a.duration, 'audio duration') : null,
     color: [v.color_space, v.color_primaries, v.color_transfer, v.color_range].join('/'),
+    width: finite(v.width, 'video width'), height: finite(v.height, 'video height'),
   };
 }
 const audioSeconds = async (file: string) => finite((await runProbe(['-show_entries', 'format=duration', '-of', 'csv=p=0', file])).trim(), `duration of ${file}`);
@@ -314,7 +329,7 @@ async function launch(id: number, chrome: string, url: string, fps: () => number
   const page = await browser.newPage();
   page.on('pageerror', (e: unknown) => console.error(`worker ${id} page error:`, e instanceof Error ? e.message : String(e)));
   page.on('console', (m) => { if (m.type() === 'error') console.error(`worker ${id} console.error:`, m.text()); });
-  await loadFilm(page, url, FILM, STYLE ?? '');
+  await loadFilm(page, url, FILM, STYLE ?? '', 60_000, RES && !SINGLE ? `res=${RES}` : '');
   const frame = async (t: number): Promise<Buffer> => {
     const durl: string = await page.evaluate((t, f, k) => window.__frame(t, f, k), t, fps(), DRAFT ? 1 : 3);
     return Buffer.from(durl.slice(durl.indexOf(',') + 1), 'base64');
@@ -350,7 +365,9 @@ try {
   const tl = await workers[0].evaluate(() => window.__timeline());
   FPS = tl.fps;
   const gpu = await workers[0].evaluate(() => window.__gpu());
-  console.log(`${WORKERS} worker${WORKERS > 1 ? 's' : ''} ready in ${((performance.now() - tLoad) / 1000).toFixed(1)}s   renderer: ${gpu}`);
+  // the canvas's pixel size: the film's frame times the render scale (--res)
+  const size = await workers[0].evaluate(() => window.__frameSize?.() ?? { width: 1920, height: 1080, scale: 1, pixels: [1920, 1080] as [number, number] });
+  console.log(`${WORKERS} worker${WORKERS > 1 ? 's' : ''} ready in ${((performance.now() - tLoad) / 1000).toFixed(1)}s   renderer: ${gpu}   ${size.pixels[0]}x${size.pixels[1]}${size.scale !== 1 ? ` (frame ${size.width}x${size.height} at scale ${+size.scale.toFixed(4)})` : ''}`);
   if (/swiftshader|llvmpipe|software/i.test(gpu)) console.error('!!! WebGL is on a software renderer');
   if (!SINGLE && !NOAUDIO) {
     // a film with narration exports its final mix (or --audio, explicitly); the mix must match the film as it is now
@@ -417,6 +434,7 @@ try {
     ffArgs.push('-vf', // accurate_rnd / full_chroma_int: swscale's default rounding shifts colours by 2-6 levels here (measured, see the plan's 1c record)
       'scale=in_color_matrix=bt601:in_range=pc:out_color_matrix=bt709:out_range=tv:flags=accurate_rnd+full_chroma_int+full_chroma_inp,format=yuv420p,setparams=colorspace=bt709:color_primaries=bt709:color_trc=bt709:range=tv',
       '-c:v', 'libx264', '-preset', DRAFT ? 'veryfast' : 'medium', '-crf', CRF, '-profile:v', 'high', '-r', String(FPS),
+      ...(MAXRATE ? ['-maxrate', `${MAXRATE}M`, '-bufsize', `${2 * Number(MAXRATE)}M`] : []),
       '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-color_range', 'tv');
     if (!NOAUDIO) ffArgs.push('-c:a', 'aac', '-b:a', '256k');
     ffArgs.push('-movflags', '+faststart', '-f', 'mp4', tmpOut);
@@ -504,14 +522,17 @@ try {
     if (Math.abs(p.videoDuration - span) > 0.5 / FPS) problems.push(`video lasts ${p.videoDuration.toFixed(4)}s, expected ${span.toFixed(4)}s`);
     if (!NOAUDIO && p.audioDuration === null) problems.push('no audio track');
     if (!NOAUDIO && p.audioDuration !== null && Math.abs(p.audioDuration - span) > aacFrame + 1e-3) problems.push(`audio lasts ${p.audioDuration.toFixed(4)}s, the video ${span.toFixed(4)}s`);
+    if (p.width !== size.pixels[0] || p.height !== size.pixels[1]) problems.push(`video is ${p.width}x${p.height}, expected ${size.pixels[0]}x${size.pixels[1]}`);
     if (p.color !== 'bt709/bt709/bt709/tv') problems.push(`video colour tags are ${p.color}, expected bt709/bt709/bt709/tv (space/primaries/transfer/range)`);
     if (problems.length) throw new Error(`output failed its checks: ${problems.join('; ')}`);
-    const size = statSync(tmpOut).size;
+    const bytes = statSync(tmpOut).size;
     checkCancel();
     await publish(tmpOut, OUT); // the commit point: nothing after this may turn the job into a failure
     tmpOut = null;
     committed = true;
-    console.log(`done: ${OUT}  (${(size / 1e6).toFixed(1)} MB, ${((performance.now() - t0) / 60000).toFixed(1)} min, ${p.videoFrames} frames${NOAUDIO ? '' : `, audio ${p.audioDuration!.toFixed(3)}s`})`);
+    console.log(`done: ${OUT}  (${p.width}x${p.height}, ${(bytes / 1e6).toFixed(1)} MB, ${((bytes * 8) / span / 1e6).toFixed(1)} Mbit/s, ${((performance.now() - t0) / 60000).toFixed(1)} min, ${p.videoFrames} frames${NOAUDIO ? '' : `, audio ${p.audioDuration!.toFixed(3)}s`})`);
+    if (FOR === 'x' && span > 140) console.warn(`note: ${span.toFixed(1)} s is longer than the 140 s an X account without Premium may post`);
+    if (FOR === 'x' && bytes > 512e6) console.warn(`note: ${(bytes / 1e6).toFixed(0)} MB is larger than the 512 MB an X account without Premium may post`);
   }
 } catch (e) {
   const err = e as Error & { exit?: number };

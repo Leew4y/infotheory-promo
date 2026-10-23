@@ -10,7 +10,7 @@
 import type { Grade } from './gl';
 import type { Rect } from './capture';
 import { check, GradeSpec } from './schema';
-import { displayText } from './util';
+import { displayText, portrait } from './util';
 import { film } from './film';
 
 export interface Palette {
@@ -86,6 +86,8 @@ export interface StylePackage {
     /** Left/right margin and the x of the right (diagram) column. */
     margin: number;
     column: number;
+    /** The same for a portrait frame (film size taller than wide); a style without it uses the values above. */
+    portrait?: { margin: number; column: number };
   };
   background(): void;
   plate(u: PlateParams): void;
@@ -137,8 +139,14 @@ export function useStyle(s: StylePackage): void {
   active = s;
   Object.assign(C, s.palette);
   Object.assign(F, s.fonts);
-  M = s.layout.margin;
-  COL = s.layout.column;
+  const L = portrait() && s.layout.portrait ? s.layout.portrait : s.layout;
+  M = L.margin;
+  COL = L.column;
+}
+
+/** Install the active style again (its layout follows the frame: defineFilm calls this after setting the size). */
+export function restyle(): void {
+  if (active) useStyle(active);
 }
 
 /**

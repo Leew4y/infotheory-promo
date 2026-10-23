@@ -90,10 +90,10 @@ export function serveDist(dist: string, o: { media?: string; frames?: FrameSink 
  * renders another film or names no style or another style than requested (a stale dist/), or when __ready() throws
  * (e.g. a missing font bundle).
  */
-export async function loadFilm(page: import('puppeteer-core').Page, url: string, film: string, style: string, timeout = 60_000): Promise<{ style: string; styles: string[] }> {
+export async function loadFilm(page: import('puppeteer-core').Page, url: string, film: string, style: string, timeout = 60_000, query = ''): Promise<{ style: string; styles: string[] }> {
   const thrown = new Promise<never>((_, reject) => page.once('pageerror', (e) => reject(new Error(`page threw while loading: ${e instanceof Error ? e.message : String(e)}`))));
   thrown.catch(() => {});
-  await Promise.race([page.goto(`${url}/?export=1${style ? `&style=${encodeURIComponent(style)}` : ''}`, { waitUntil: 'load' }), thrown]);
+  await Promise.race([page.goto(`${url}/?export=1${style ? `&style=${encodeURIComponent(style)}` : ''}${query ? `&${query}` : ''}`, { waitUntil: 'load' }), thrown]);
   await Promise.race([page.waitForFunction(() => typeof window.__frame === 'function', { timeout }), thrown]);
   const got = await page.evaluate(() => ({ film: window.__film, style: window.__style, styles: window.__styles }));
   if (got.film !== film) throw new Error(`the page renders film "${got.film}", not "${film}" (stale dist/? run just build ${film})`);
