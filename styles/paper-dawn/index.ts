@@ -208,9 +208,11 @@ const paperDawn: StylePackage = {
       if (a <= 0) continue;
       const rise = (1 - eout(clamp((T - s.a) / 0.7))) * 10;
       const y = captionY(), x = portrait() ? M : 150, u = ts(100) / 100;
+      // portrait plates: centred left of the middle, clear of the phone app's buttons on the right
+      const cx = portrait() ? Math.round(W * 0.455) : W / 2;
       if (s.plate) {
-        text(s.zh, W / 2, y + rise, { size: ts(38), weight: 500, color: C.fgOnDark, alpha: a, align: 'center', ls: 3 });
-        text(s.en, W / 2, y + 50 * u + rise, { font: F.latin, style: 'italic', size: ts(24), color: C.mutedOnDark, alpha: a * 0.9, align: 'center' });
+        text(s.zh, cx, y + rise, { size: ts(38), weight: 500, color: C.fgOnDark, alpha: a, align: 'center', ls: 3 });
+        text(s.en, cx, y + 50 * u + rise, { font: F.latin, style: 'italic', size: ts(24), color: C.mutedOnDark, alpha: a * 0.9, align: 'center' });
       } else {
         rule(x, y, x + 36, y, C.accent, a, 1.5);
         text(s.zh, x, y + 50 * u + rise, { size: ts(34), weight: 500, color: C.fg, alpha: a, ls: 2 });

@@ -27,7 +27,9 @@ function mask(): CanvasRenderingContext2D {
 }
 /** Captions' band centre: the lower band of a landscape frame; in portrait above the bottom quarter, where phone apps
  *  put their own text and buttons. */
-const captionY = () => (portrait() ? Math.round(H * 0.72) : 962);
+const captionY = () => (portrait() ? Math.round(H * 0.7) : 962);
+/** Captions' centre: the frame's in landscape; in portrait left of it, clear of the phone app's buttons on the right. */
+const captionX = () => (portrait() ? Math.round(W * 0.455) : W / 2);
 /** Type scale of the style's own overlays and rows: larger in portrait, where the frame is seen on a phone. */
 const ts = (px: number) => (portrait() ? Math.round(px * 1.3) : px);
 
@@ -219,11 +221,11 @@ const nebula: StylePackage = {
       ctx.globalAlpha = a * (s.plate ? 0.45 : 0.72);
       ctx.fillStyle = C.bg2;
       ctx.beginPath();
-      ctx.roundRect(W / 2 - w / 2, y - 52 * k, w, 98 * k, 14);
+      ctx.roundRect(captionX() - w / 2, y - 52 * k, w, 98 * k, 14);
       ctx.fill();
       ctx.restore();
-      text(s.zh, W / 2, y - 8 * k, { size: ts(32), weight: 500, color: s.plate ? C.fgOnDark : C.fg, alpha: a, align: 'center', ls: 1 });
-      text(s.en, W / 2, y + 28 * k, { font: F.latin, size: ts(20), color: s.plate ? C.mutedOnDark : C.fg2, alpha: a * 0.9, align: 'center' });
+      text(s.zh, captionX(), y - 8 * k, { size: ts(32), weight: 500, color: s.plate ? C.fgOnDark : C.fg, alpha: a, align: 'center', ls: 1 });
+      text(s.en, captionX(), y + 28 * k, { font: F.latin, size: ts(20), color: s.plate ? C.mutedOnDark : C.fg2, alpha: a * 0.9, align: 'center' });
     }
   },
 };

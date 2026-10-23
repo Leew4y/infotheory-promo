@@ -25,8 +25,9 @@
  * Diagnostics: { level, code, path, message }, also written to out/<film>/validate.json. With --json, stdout is only
  * the JSON list and the summary goes to stderr. Exit code 1 on any error, 2 if the tool itself could not run.
  */
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { filmChars } from './lib/charset';
 import puppeteer, { type Browser } from 'puppeteer-core';
 import { chromeArgs, findChrome, loadFilm, serveDist } from './chrome';
 import { filmArg, mediaDir } from './film-arg';
@@ -119,6 +120,13 @@ try {
     for (const d of diags) if (d.style === cur) d.style = pageStyle;
     cur = pageStyle;
     checked.push(pageStyle);
+    // the committed subsets must cover every character the film's sources can draw, not only those on sampled frames
+    const manifestFile = path.join(ROOT, 'films', FILM, 'fonts', pageStyle, 'manifest.json');
+    if (existsSync(manifestFile)) {
+      const have = new Set<string>(JSON.parse(readFileSync(manifestFile, 'utf8')).charset ?? '');
+      const missing = [...filmChars(FILM, pageStyle)].filter((ch) => !have.has(ch));
+      if (missing.length) err('fonts-stale', `fonts/${pageStyle}`, `the font subsets do not cover ${missing.length} character(s) the film's text uses: ${missing.slice(0, 20).join(' ')}${missing.length > 20 ? ' …' : ''} (run just fonts ${FILM})`);
+    }
     const { unplaced } = await page.evaluate(() => window.__narration());
     for (const id of unplaced) if (!noted.has(`unplaced|${id}`)) { noted.add(`unplaced|${id}`); err('narration-unplaced', `narration:${id}`, `narration line "${id}" is placed in no scene (narratedScene / demoScene narration)`); }
     // notes the film recorded while registering (engine/notes.ts) are warnings, once (they recur in every style)

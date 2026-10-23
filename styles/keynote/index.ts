@@ -180,8 +180,10 @@ const keynote: StylePackage = {
       const rise = (1 - eout(clamp((T - s.a) / 0.35))) * 6;
       // portrait: above the bottom quarter, where phone apps put their own text and buttons, and larger
       const y = portrait() ? Math.round(H * 0.7) : 968, k = portrait() ? 1.3 : 1;
-      text(s.zh, W / 2, y + rise, { size: Math.round(36 * k), weight: 500, color: C.fg, alpha: a, align: 'center' });
-      if (s.en) text(s.en, W / 2, y + 42 * k, { font: F.latin, size: Math.round(20 * k), color: C.muted, alpha: a, align: 'center' });
+      // portrait: centred left of the middle, clear of the phone app's buttons on the right
+      const x = portrait() ? Math.round(W * 0.455) : W / 2;
+      text(s.zh, x, y + rise, { size: Math.round(36 * k), weight: 500, color: C.fg, alpha: a, align: 'center' });
+      if (s.en) text(s.en, x, y + 42 * k, { font: F.latin, size: Math.round(20 * k), color: C.muted, alpha: a, align: 'center' });
     }
   },
 };

@@ -36,8 +36,8 @@ import {
   CACHE, CATALOG, die, famKey, fontTools, GENERATOR, glyphCheck, isCJK, licence, printGlyphReport, readCatalog, referenceFor, ROOT,
   sha256 as sha, source, type Entry, type StyleFont,
 } from './font-lib';
-import { literals } from './literals';
-import { FilmPlanSpec, planTexts } from '../engine/plan';
+import { filmChars } from './lib/charset';
+import { FilmPlanSpec } from '../engine/plan';
 
 const argv = Bun.argv.slice(2);
 const opt = (k: string, d: string) => (argv.includes(`--${k}`) ? argv[argv.indexOf(`--${k}`) + 1] : d);
@@ -102,25 +102,7 @@ for (const f of lock.fonts) {
 }
 
 // ---- 2. character set
-function walk(dir: string): string[] {
-  return readdirSync(dir).flatMap((n) => {
-    const p = path.join(dir, n);
-    return statSync(p).isDirectory() ? (n === 'fonts' ? [] : walk(p)) : /\.ts$/.test(n) ? [p] : [];
-  });
-}
-const chars = new Set<string>();
-for (let c = 0x20; c < 0x7f; c++) chars.add(String.fromCharCode(c));
-for (const f of [...walk(path.join(ROOT, 'films', FILM)), ...walk(path.join(ROOT, 'styles', STYLE))])
-  for (const s of literals(readFileSync(f, 'utf8'))) for (const ch of s) chars.add(ch);
-const NARRATION = path.join(ROOT, 'films', FILM, 'narration.json');
-const PLAN = path.join(ROOT, 'films', FILM, 'film-plan.json');
-if (existsSync(PLAN))
-  for (const text of planTexts(FilmPlanSpec.parse(JSON.parse(readFileSync(PLAN, 'utf8'))))) for (const ch of text) chars.add(ch);
-else if (existsSync(NARRATION))
-  for (const l of (JSON.parse(readFileSync(NARRATION, 'utf8')).lines ?? []) as { text?: string; en?: string }[])
-    for (const ch of `${l.text ?? ''}${l.en ?? ''}`) chars.add(ch);
-if (existsSync(EXTRA)) for (const ch of readFileSync(EXTRA, 'utf8')) chars.add(ch);
-for (const ws of ['\n', '\r', '\t', '\b', '\f', '\v', '\0']) chars.delete(ws);
+const chars = filmChars(FILM, STYLE);
 const text = [...chars].sort().join('');
 const textFile = path.join(CACHE, `${FILM}-${STYLE}-${process.pid}-chars.txt`);
 writeFileSync(textFile, text, 'utf8');

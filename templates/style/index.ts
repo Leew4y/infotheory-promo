@@ -149,8 +149,9 @@ const style: StylePackage = {
       if (a <= 0) continue;
       // portrait: above the bottom quarter, where phone apps put their own text and buttons, and larger (a phone)
       const y = portrait() ? Math.round(H * 0.7) : 950, k = portrait() ? 1.3 : 1;
-      text(s.zh, W / 2, y, { size: Math.round(32 * k), weight: 500, color: s.plate ? C.fgOnDark : C.fg, alpha: a, align: 'center' });
-      text(s.en, W / 2, y + 40 * k, { font: F.latin, size: Math.round(21 * k), color: s.plate ? C.mutedOnDark : C.muted, alpha: a, align: 'center' });
+      const x = portrait() ? Math.round(W * 0.455) : W / 2;
+      text(s.zh, x, y, { size: Math.round(32 * k), weight: 500, color: s.plate ? C.fgOnDark : C.fg, alpha: a, align: 'center' });
+      text(s.en, x, y + 40 * k, { font: F.latin, size: Math.round(21 * k), color: s.plate ? C.mutedOnDark : C.muted, alpha: a, align: 'center' });
     }
   },
 };
