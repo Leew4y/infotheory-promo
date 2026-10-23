@@ -20,22 +20,33 @@
  *   3. per style: the cursor's tip is drawn where (300, 150) of the footage is on the canvas (the footage's box is found
  *      in the frame), and the click (ripple, press) changes nothing up to local frame 14 and shows from frame 15;
  *      on the web scenes, 4 frames after each click's frame (worked out by hand through the edit), the ripple's centre
- *      lies within 3 px of the page's own red marker in the composited frame (camera, cut and speed included);
+ *      (a circle fitted to web minus webbare, see ringCentre) lies within 3 px of the page's own red marker in the
+ *      composited frame (camera, cut and speed included);
  *   4. validate: no errors, exactly one warning for the recorded click that the edit cuts (capture-event-cut);
- *   5. a missing frame is an error (strict mode): with one frame file removed, rendering that frame fails;
+ *   5. a missing frame file stops the render before it starts (the pre-check, scripts/lib/captures.ts: it names the
+ *      capture, the frame, the source and its sha256); a frame file the page cannot decode still fails the render
+ *      (strict mode, engine/media.ts) instead of being drawn as a placeholder;
  *   6. a failed re-import (bad events file) leaves the manifest and frames as they were, and nothing staged behind;
+ *      --store-source puts the source in films/<film>/captures/sources/ (sha256 as recorded), refuses a file over the
+ *      size limit and a name another capture's source has with other content, changing nothing; with every source
+ *      there, the pre-check's message says `just captures <film>`, and --rebuild without --from (that recipe without
+ *      a directory) re-derives the frames from there;
  *   7. --rebuild refuses a manifest whose id is a path, re-derives a cleared cache from the sources (sha256), and refuses
  *      a changed source without touching the frames;
  *   8. the web capture itself: each recorded click names its target and box, lies within 4 px of the red marker the
- *      page draws at the press, which shows 0–2 frames after the event frame.
+ *      page draws at the press, which shows no earlier than the event's frame and less than LATENCY_MS after the event
+ *      (the 30 fps frames bound the latency to an interval of 1/30 s; a click fails only when the whole interval is
+ *      later than LATENCY_MS).
  * Every fixture path is created exclusively before anything is written (an existing one aborts the run), and only
  * those are removed afterwards. Needs ffmpeg, uv (fonts).
  */
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { closeSync, copyFileSync, existsSync, ftruncateSync, mkdirSync, openSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import type { CaptureAsset, Segment } from '../engine/capture';
 import { mediaDir } from './film-arg';
 import { makeNumberedVideo, readBarcode } from './lib/barcode';
+import { SOURCE_LIMIT } from './lib/captures';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const ID = `capture-fixture-${process.pid}`;
@@ -57,6 +68,16 @@ const LEAD = 7, CAP = 90, GRAY = 60;
 /** The source frame local frame l of the cap scene shows (worked out by hand from EDIT at 30 fps). */
 const capSource = (l: number) => (l < 60 ? l : 90 + 2 * (l - 60));
 const STYLES = ['nebula', 'paper-dawn'];
+/**
+ * How long the page may take to show a click in the recording (the event to the first screencast frame showing it).
+ * 66 ms is the phase 0c criterion (spikes/RESULTS.md, Windows, 99 Hz screencast). On macOS the headless screencast runs
+ * at 60 Hz, and a frame is stamped 3–12, 19–23 or 36–39 ms after the frame it shows began (0, 1 or 2 intervals of
+ * 16.7 ms plus a few ms, varying between clicks and sessions): the page showed a click 4–54 ms after the event in 180
+ * clicks at load averages 3.5–5.3, once 66 ms in a run with a 226 ms screencast stall (spikes/0d-macos/RESULTS.md,
+ * latency/). macOS gets the Windows bound plus one 60 Hz interval (its frames take 16.7 ms instead of about 10, and up
+ * to three of them, the wait for the next frame and two in the pipeline, make up the latency): 83 ms.
+ */
+const LATENCY_MS = process.platform === 'darwin' ? 83 : 66;
 const W = 1920, H = 1080, FB = W * H * 4;
 
 const failures: string[] = [];
@@ -78,6 +99,39 @@ async function eachFrame(file: string, fn: (f: number, px: Uint8Array) => void):
   }
   await dec.exited;
   return f;
+}
+
+/**
+ * The centre of a ripple: a least-squares circle (x^2 + y^2 + Dx + Ey + F = 0) through the pixels where `pick` holds,
+ * within `r` px of their per-axis median (a few stray pixels elsewhere in the frame, e.g. encoder noise, do not count),
+ * or null if fewer than `min`. Not their centroid: a ripple under a moving camera is drawn on the motion-blur sub-frames
+ * at slightly different centres and radii, so its ring is spread wider on one side than the other, and a threshold keeps
+ * more pixels on the wide side. That pulled the centroid 2.0, 2.6 px off the true centre (paper-dawn, click 0, during
+ * the zoom); one stray pixel 600 px away moved it another 1.5 px (nebula). The circle fit stays within 0.2 px of the
+ * centre worked out from the style's window rect and the camera.
+ */
+function ringCentre(p: Uint8Array, pick: (i: number) => boolean, r = 80, min = 20): { x: number; y: number; n: number } | null {
+  const xs: number[] = [], ys: number[] = [];
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (pick((y * W + x) * 4)) { xs.push(x + 0.5); ys.push(y + 0.5); }
+  if (xs.length < min) return null;
+  const median = (v: number[]) => { const s = [...v].sort((a, b) => a - b); return s[s.length >> 1]; };
+  const mx = median(xs), my = median(ys);
+  // normal equations of the fit, in coordinates relative to the median (well conditioned)
+  const A = [[0, 0, 0], [0, 0, 0], [0, 0, 0]], v = [0, 0, 0];
+  let n = 0;
+  for (let k = 0; k < xs.length; k++) {
+    const x = xs[k] - mx, y = ys[k] - my;
+    if (x * x + y * y > r * r) continue;
+    const row = [x, y, 1], z = -(x * x + y * y);
+    for (let i = 0; i < 3; i++) { v[i] += row[i] * z; for (let j = 0; j < 3; j++) A[i][j] += row[i] * row[j]; }
+    n++;
+  }
+  if (n < min) return null;
+  const det = (m: number[][]) => m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+  const d = det(A);
+  if (!(Math.abs(d) > 1e-9)) return null;
+  const col = (c: number) => det(A.map((row, i) => row.map((x, j) => (j === c ? v[i] : x)))) / d; // Cramer's rule
+  return { x: mx - col(0) / 2, y: my - col(1) / 2, n };
 }
 
 /** Centroid of the pixels where `pick` holds, within `r` px of (cx, cy) (or the whole frame), or null if fewer than `min`. */
@@ -228,7 +282,7 @@ demoScene({ name: 'webbare', ...webOpts, clicks: [] });
     probe.forEach((l, k) => {
       const a = keep.get(WEB0 + l), b = keep.get(BARE0 + l);
       if (!a || !b) return off.push(`click ${k}: frames missing`);
-      const ring = centroid(a, (i) => Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 60, W / 2, H / 2, Infinity, 20);
+      const ring = ringCentre(a, (i) => Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 60);
       if (!ring) return off.push(`click ${k}: no ripple at local frame ${l}`);
       const red = centroid(b, (i) => b[i] > 190 && b[i + 1] < 80 && b[i + 2] < 80, ring.x, ring.y, 60, 4);
       if (!red) return off.push(`click ${k}: no page marker near the ripple at (${ring.x.toFixed(1)}, ${ring.y.toFixed(1)})`);
@@ -248,13 +302,23 @@ demoScene({ name: 'webbare', ...webOpts, clicks: [] });
   if (cuts.length !== 1) failures.push(`validate: expected one capture-event-cut warning, got ${cuts.length}`);
   if (v.code === 0 && !errs.length && cuts.length === 1) ok('validate: no errors; the cut click is one warning');
 
-  // 5. a missing frame fails the render: at 1.5 s = output frame 45 = local frame 38 of cap = source frame 38
+  // 5. a missing frame stops the render at the pre-check: at 1.5 s = output frame 45 = local frame 38 of cap = source frame 38
   const dir = path.join(MEDIA, 'num'), victim = path.join(dir, '00038.jpg');
+  const shots = () => run(['bun', 'scripts/export.ts', '--film', ID, '--shots', '1.5', '--dir', path.join(WORK, 'shots')]);
   renameSync(victim, `${victim}.bak`);
-  const shot = run(['bun', 'scripts/export.ts', '--film', ID, '--shots', '1.5', '--dir', path.join(WORK, 'shots')]);
+  const shot = shots();
   renameSync(`${victim}.bak`, victim);
-  if (shot.code === 0) failures.push('missing frame: rendering succeeded, expected a failure');
-  else ok('missing frame: rendering fails instead of drawing a placeholder');
+  if (shot.code !== 2 || !shot.err.includes('capture "num"') || !shot.err.includes('00038.jpg') || !shot.err.includes(asset.source.sha256) || !/not available here/.test(shot.err))
+    failures.push(`missing frame: expected the pre-check to stop the render (exit 2) naming capture num, frame 00038, its source and sha256; got exit ${shot.code}: ${shot.err.trim().split('\n').slice(0, 4).join(' | ')}`);
+  else ok('missing frame: the pre-check stops the render and names the capture, the frame, the source and its sha256');
+  // the page itself stays strict: a frame file it cannot decode fails the render (no placeholder)
+  renameSync(victim, `${victim}.bak`);
+  writeFileSync(victim, 'not a jpeg');
+  const bad5 = shots();
+  rmSync(victim);
+  renameSync(`${victim}.bak`, victim);
+  if (bad5.code === 0 || /cannot be rendered on this machine/.test(bad5.err)) failures.push(`undecodable frame: expected the render itself to fail (exit ${bad5.code})`);
+  else ok('undecodable frame: the render fails in strict mode instead of drawing a placeholder');
 
   // 6. a failed re-import changes nothing
   const before = readFileSync(manifest, 'utf8');
@@ -266,6 +330,45 @@ demoScene({ name: 'webbare', ...webOpts, clicks: [] });
   if (fi.code === 0 || readFileSync(manifest, 'utf8') !== before || frames() !== 180 || staged.length)
     failures.push(`failed import: exit ${fi.code}, manifest ${readFileSync(manifest, 'utf8') === before ? 'kept' : 'changed'}, ${frames()} frames (expected 180), left behind: ${staged.join(', ') || 'nothing'}`);
   else ok('failed import: manifest and frames unchanged, nothing staged left behind');
+
+  // 6b. --store-source and the committed sources directory
+  const SOURCES = path.join(FILM, 'captures', 'sources');
+  const hash = (f: string) => createHash('sha256').update(readFileSync(f)).digest('hex');
+  const stored = run(['bun', 'scripts/import-capture.ts', '--film', ID, '--id', 'kept', gray, '--store-source']);
+  const kept: CaptureAsset | null = existsSync(path.join(FILM, 'captures', 'kept.json')) ? JSON.parse(readFileSync(path.join(FILM, 'captures', 'kept.json'), 'utf8')) : null;
+  if (stored.code !== 0 || !kept || kept.source.file !== 'gray.mp4' || !existsSync(path.join(SOURCES, 'gray.mp4')) || hash(path.join(SOURCES, 'gray.mp4')) !== kept.source.sha256 || readdirSync(SOURCES).some((n) => n.startsWith('.')))
+    failures.push(`--store-source: exit ${stored.code}, ${existsSync(path.join(SOURCES, 'gray.mp4')) ? 'source stored' : 'no source'}: ${stored.err.trim()}`);
+  else ok('--store-source: the source is in captures/sources/ with the recorded sha256, nothing staged left');
+  const big = path.join(WORK, 'big.mp4'), fd = openSync(big, 'w');
+  ftruncateSync(fd, SOURCE_LIMIT + 1);
+  closeSync(fd);
+  const tooBig = run(['bun', 'scripts/import-capture.ts', '--film', ID, '--id', 'big', big, '--store-source']);
+  if (tooBig.code !== 2 || !/limit/.test(tooBig.err) || existsSync(path.join(FILM, 'captures', 'big.json')) || existsSync(path.join(SOURCES, 'big.mp4')) || existsSync(path.join(MEDIA, 'big')))
+    failures.push(`--store-source over the limit: exit ${tooBig.code}: ${tooBig.err.trim()}`);
+  else ok(`--store-source refuses a video over the ${SOURCE_LIMIT / 2 ** 20} MB limit before anything is done`);
+  mkdirSync(path.join(WORK, 'alt'));
+  const alt = path.join(WORK, 'alt', 'gray.mp4');
+  await makeNumberedVideo(alt, 1, 30); // another file named gray.mp4
+  const clash = run(['bun', 'scripts/import-capture.ts', '--film', ID, '--id', 'other', alt, '--store-source']);
+  if (clash.code !== 1 || !/is the source of capture "(gray|kept)"/.test(clash.err) || hash(path.join(SOURCES, 'gray.mp4')) !== kept?.source.sha256 || existsSync(path.join(FILM, 'captures', 'other.json')) || existsSync(path.join(MEDIA, 'other')))
+    failures.push(`--store-source name clash: exit ${clash.code}: ${clash.err.trim()}`);
+  else ok("--store-source refuses a file name another capture's source has with other content; nothing changes");
+  // the other sources put there by hand (as the pre-check's message says), then the cache cleared
+  copyFileSync(video, path.join(SOURCES, path.basename(video)));
+  copyFileSync(path.join(WORK, 'web.mp4'), path.join(SOURCES, 'web.mp4'));
+  rmSync(path.join(MEDIA, 'num'), { recursive: true });
+  rmSync(path.join(MEDIA, 'kept'), { recursive: true });
+  const pre = run(['bun', 'scripts/export.ts', '--film', ID, '--shots', '0.1', '--dir', path.join(WORK, 'shots')]);
+  const advice = pre.err.split(`rebuild the frames: just captures ${ID}\n`).length - 1;
+  if (pre.code !== 2 || !pre.err.includes('capture "kept"') || !pre.err.includes('capture "num"') || advice !== 2)
+    failures.push(`pre-check with the sources committed: exit ${pre.code}, ${advice} rebuild hint(s): ${pre.err.trim()}`);
+  else ok(`pre-check: both cleared captures named, each with "just captures ${ID}"`);
+  const fromDefault = run(['bun', 'scripts/import-capture.ts', '--film', ID, '--rebuild']);
+  const count = (id: string) => (existsSync(path.join(MEDIA, id)) ? readdirSync(path.join(MEDIA, id)).filter((n) => n.endsWith('.jpg')).length : 0);
+  const after = run(['bun', 'scripts/export.ts', '--film', ID, '--shots', '0.1', '--dir', path.join(WORK, 'shots')]);
+  if (fromDefault.code !== 0 || count('num') !== 180 || count('kept') !== 60 || after.code !== 0)
+    failures.push(`rebuild from captures/sources: exit ${fromDefault.code}, ${count('num')} and ${count('kept')} frames (expected 180 and 60), then a shot exits ${after.code}: ${(fromDefault.err || after.err).trim()}`);
+  else ok('rebuild without --from (just captures <film>): every capture re-derived from captures/sources/; the pre-check passes');
 
   // 7. --rebuild: a path as id is refused; a cleared cache is re-derived; a changed source is refused, frames kept
   const evil = path.join(FILM, 'captures', 'evil.json');
@@ -285,7 +388,7 @@ demoScene({ name: 'webbare', ...webOpts, clicks: [] });
 
   // 8. the web capture (Playwright): every recorded click lands where the page itself marks it, on time
   const webDir = path.join(MEDIA, 'web');
-  const problems: string[] = [];
+  const problems: string[] = [], latencies: string[] = [];
   for (const [k, e] of clicks.entries()) {
     if (!e.target?.startsWith('div#b') || !e.box || !(e.x! >= e.box.x && e.x! <= e.box.x + e.box.w && e.y! >= e.box.y && e.y! <= e.box.y + e.box.h))
       problems.push(`click ${k}: target ${e.target} / box ${JSON.stringify(e.box)} missing or not around (${e.x}, ${e.y})`);
@@ -306,12 +409,17 @@ demoScene({ name: 'webbare', ...webOpts, clicks: [] });
       if (m >= 40) { first = s + i; cx = sx / m; cy = sy / m; }
     }
     if (first < 0) { problems.push(`click ${k}: the page's marker never appears near (${ex.toFixed(0)}, ${ey.toFixed(0)})`); continue; }
+    // asset frame i shows the last screencast frame stamped at or before i / fps, so the frame that first shows the
+    // marker was stamped in ((first - 1) / fps, first / fps]: the page's latency lies in (lo, hi]
     const lag = first - fe, dist = Math.hypot(cx + 0.5 - ex, cy + 0.5 - ey);
-    if (lag < 0 || lag > 2) problems.push(`click ${k}: the page shows it ${lag} frame(s) after the event frame (allowed 0–2)`);
+    const lo = ((first - 1) / web.fps - e.t!) * 1000, hi = (first / web.fps - e.t!) * 1000;
+    latencies.push(`${Math.max(0, lo).toFixed(0)}–${hi.toFixed(0)}`);
+    if (lag < 0) problems.push(`click ${k}: the page shows it in frame ${first}, before the event's frame ${fe}`);
+    if (lo >= LATENCY_MS) problems.push(`click ${k}: the page shows it in frame ${first}, ${lo.toFixed(0)}–${hi.toFixed(0)} ms after the event (allowed up to ${LATENCY_MS} ms)`);
     if (dist > 4) problems.push(`click ${k}: recorded at (${ex.toFixed(1)}, ${ey.toFixed(1)}), the page marks (${(cx + 0.5).toFixed(1)}, ${(cy + 0.5).toFixed(1)}): ${dist.toFixed(1)} px (allowed 4)`);
   }
   if (problems.length) failures.push(...problems.map((p) => `capture: ${p}`));
-  else if (clicks.length === 4) ok('capture: 4 clicks with target and box, each marked by the page within 4 px and 0–2 frames of the recorded event');
+  else if (clicks.length === 4) ok(`capture: 4 clicks with target and box, each marked by the page within 4 px and ${LATENCY_MS} ms of the recorded event (latency per click, ms: ${latencies.join(', ')})`);
 } catch (e) {
   failures.push(e instanceof Error ? e.message : String(e));
 } finally {

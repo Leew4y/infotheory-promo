@@ -9,15 +9,21 @@
  * its own hard watchdog (kills the whole process tree), and each case checks: the exit code, that it ended within
  * its bound, that no Chrome / ffmpeg / stand-in process started by it is still running, that the old target is
  * untouched (failures) or replaced by a video whose frame count and audio length ffprobe confirms (successes), and
- * that no temporary or lock file is left. Stand-ins in scripts/test-fixtures replace ffmpeg / ffprobe to stall the
- * encoder or the final probe, or to report unusable probe results.
+ * that no temporary or lock file is left. Stand-ins in scripts/test-fixtures replace ffmpeg / ffprobe to stall or fail
+ * the encoder, to stall the final probe, or to report unusable probe results.
  * A real SIGINT is sent only on macOS / Linux: on Windows a child cannot be sent SIGINT (Bun's kill() terminates it
- * outright), so there the interrupt is exercised through --abort-after, which takes the same cancel path.
+ * outright), so there the interrupt is exercised through --abort-after, which takes the same cancel path. The signal
+ * goes out when the export reports a given number of written frames (EXPORT_PROGRESS_EVERY makes it report them), so the
+ * case interrupts rendering on a fast machine and a slow one alike.
+ * The leftover-process check counts every process the job started, its browser's included. The branded Chrome on macOS
+ * may start GoogleUpdater processes that outlive it, which the check reports; the pinned Chrome for Testing (just
+ * browser) has no updater, so the run warns when it would use another browser.
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { hostname } from 'node:os';
 import path from 'node:path';
-import { killTree } from './chrome';
+import { findChrome, killTree } from './chrome';
+import { pinnedChrome } from './lib/browser-pin';
 import { requireFilm } from './film-arg';
 
 const ROOT = path.resolve(import.meta.dir, '..');
@@ -31,6 +37,10 @@ const stub = (f: string) => JSON.stringify(['bun', path.join(FIX, f)]);
 if (!existsSync(path.join(ROOT, 'out', FILM, 'music.wav'))) { console.error(`out/${FILM}/music.wav missing: run \`just music ${FILM}\` first`); process.exit(2); }
 rmSync(DIR, { recursive: true, force: true });
 mkdirSync(DIR, { recursive: true });
+let BROWSER = '';
+try { BROWSER = findChrome(); } catch (e) { console.error((e as Error).message); process.exit(2); }
+const PINNED = !process.env.CHROME_PATH && BROWSER === pinnedChrome();
+if (!PINNED) console.log(`note: the exports use ${BROWSER}, not the pinned Chrome for Testing (just browser); a branded Chrome may start updater processes that the leftover check reports`);
 
 type Proc = { pid: number; ppid: number; start: number; cmd: string };
 /** Every process: id, parent id, start (orders starts) and command line. */
@@ -75,18 +85,20 @@ function family(root: number) {
     },
   };
 }
-async function probeTarget(): Promise<{ frames: number; audio: number } | null> {
-  const p = Bun.spawn(['ffprobe', '-v', 'error', '-count_packets', '-show_entries', 'stream=codec_type,nb_read_packets,duration', '-of', 'json', TARGET], { stdout: 'pipe', stderr: 'ignore' });
+async function probeTarget(): Promise<{ frames: number; audio: number; size: string; color: string } | null> {
+  const p = Bun.spawn(['ffprobe', '-v', 'error', '-count_packets', '-show_entries', 'stream=codec_type,nb_read_packets,duration,width,height,color_space,color_primaries,color_transfer,color_range', '-of', 'json', TARGET], { stdout: 'pipe', stderr: 'ignore' });
   const [out, code] = [await new Response(p.stdout).text(), await p.exited];
   if (code !== 0) return null;
-  const s = JSON.parse(out).streams as { codec_type: string; nb_read_packets: string; duration: string }[];
+  const s = JSON.parse(out).streams as Record<string, string>[];
   const v = s.find((x) => x.codec_type === 'video'), a = s.find((x) => x.codec_type === 'audio');
-  return v && a ? { frames: +v.nb_read_packets, audio: +a.duration } : null;
+  return v && a ? { frames: +v.nb_read_packets, audio: +a.duration, size: `${v.width}x${v.height}`, color: [v.color_space, v.color_primaries, v.color_transfer, v.color_range].join('/') } : null;
 }
 
 interface Case {
   name: string; args: string[]; env?: Record<string, string>; expect: number | 'nonzero'; within: number;
-  success?: { frames: number; audio: number }; prepare?: () => Promise<void> | void; signal?: { after: number; sig: NodeJS.Signals };
+  success?: { frames: number; audio: number; size?: string }; prepare?: () => Promise<void> | void;
+  /** Send `sig` once the export reports `afterFrames` written frames; it must then exit within `within` seconds. */
+  signal?: { afterFrames: number; sig: NodeJS.Signals; within: number };
   keepLock?: boolean;
   /** Windows: hold the old target open in another process with this share mode while the job runs (a video player). */
   hold?: 'Read' | 'ReadWrite';
@@ -95,21 +107,53 @@ interface Case {
 }
 type Job = ReturnType<typeof Bun.spawn>;
 const start = (c: Case): Job => Bun.spawn(['bun', path.join(ROOT, 'scripts', 'export.ts'), '--film', FILM, '--out', TARGET, ...c.args], { env: { ...process.env, ...(c.env ?? {}) }, stdout: 'pipe', stderr: 'pipe' });
+/** A stream's whole text; `onLine` sees each complete line as it arrives. */
+async function collect(stream: ReadableStream<Uint8Array>, onLine?: (line: string) => void): Promise<string> {
+  const dec = new TextDecoder();
+  let all = '', rest = '';
+  for await (const chunk of stream) {
+    const s = dec.decode(chunk, { stream: true });
+    all += s;
+    if (!onLine) continue;
+    const lines = (rest + s).split('\n');
+    rest = lines.pop()!;
+    for (const l of lines) onLine(l);
+  }
+  return all;
+}
 async function finish(c: Case, job: Job, t0: number): Promise<{ ok: boolean; notes: string[] }> {
   const fam = family(job.pid!);
   let killed = false;
   const watchdog = setTimeout(async () => { killed = true; await killTree(job.pid); }, (c.within + 30) * 1000);
-  if (c.signal) setTimeout(() => { try { process.kill(job.pid, c.signal!.sig); } catch {} }, c.signal.after * 1000);
-  const [out, err, code] = await Promise.all([new Response(job.stdout as ReadableStream).text(), new Response(job.stderr as ReadableStream).text(), job.exited]);
+  // the signal: once the export's progress line reports enough written frames
+  let signalled: { at: number; frames: number } | null = null;
+  const onLine = c.signal ? (l: string) => {
+    const m = /^frame (\d+)\/\d+/.exec(l);
+    if (!signalled && m && +m[1] >= c.signal!.afterFrames) {
+      signalled = { at: performance.now(), frames: +m[1] };
+      try { process.kill(job.pid, c.signal!.sig); } catch {}
+    }
+  } : undefined;
+  const [out, err, code] = await Promise.all([collect(job.stdout as ReadableStream<Uint8Array>, onLine), collect(job.stderr as ReadableStream<Uint8Array>), job.exited]);
   clearTimeout(watchdog);
-  const secs = (performance.now() - t0) / 1000;
+  const end = performance.now();
+  const secs = (end - t0) / 1000;
   await Bun.sleep(1500); // let the OS reap killed children
-  const notes: string[] = [];
+  const notes: string[] = [], info: string[] = [];
   if (killed) notes.push('watchdog had to kill the job');
   if (c.expect === 'nonzero' ? code === 0 : code !== c.expect) notes.push(`exit ${code}, expected ${c.expect}`);
   if (secs > c.within) notes.push(`took ${secs.toFixed(1)}s, bound ${c.within}s`);
+  if (c.signal) {
+    const s = signalled as { at: number; frames: number } | null;
+    if (!s) notes.push(`the export never reported ${c.signal.afterFrames} written frames, so no ${c.signal.sig} was sent`);
+    else {
+      const after = (end - s.at) / 1000;
+      info.push(`${c.signal.sig} sent at frame ${s.frames}, exit ${after.toFixed(1)}s later`);
+      if (after > c.signal.within) notes.push(`exit ${after.toFixed(1)}s after ${c.signal.sig}, bound ${c.signal.within}s`);
+    }
+  }
   const left = await fam.left();
-  if (left.length) notes.push(`${left.length} process(es) left running: ${left[0].slice(0, 100)}`);
+  if (left.length) notes.push(`${left.length} process(es) left running: ${left.slice(0, 3).map((l) => l.slice(0, 120)).join(' | ')}${PINNED ? '' : ' (not the pinned browser: see the note above)'}`);
   const stray = readdirSync(DIR).filter((f) => /partial|\.lock/.test(f) && !(c.keepLock && f.endsWith('.lock')));
   if (stray.length) notes.push(`left behind: ${stray.join(', ')}`);
   const content = existsSync(TARGET) ? readFileSync(TARGET) : null;
@@ -119,6 +163,8 @@ async function finish(c: Case, job: Job, t0: number): Promise<{ ok: boolean; not
     else {
       if (p.frames !== c.success.frames) notes.push(`target has ${p.frames} frames, expected ${c.success.frames}`);
       if (Math.abs(p.audio - c.success.audio) > 0.03) notes.push(`target audio ${p.audio.toFixed(3)}s, expected ~${c.success.audio.toFixed(3)}s`);
+      if (p.size !== (c.success.size ?? '1920x1080')) notes.push(`target is ${p.size}, expected ${c.success.size ?? '1920x1080'}`);
+      if (p.color !== 'bt709/bt709/bt709/tv') notes.push(`target colour tags ${p.color}, expected bt709/bt709/bt709/tv`);
     }
   } else if (!content || content.toString() !== SENTINEL) notes.push('old target was not preserved');
   const keptFiles = readdirSync(DIR).filter((f) => /^target\.verified-\d+\.mp4$/.test(f));
@@ -132,20 +178,29 @@ async function finish(c: Case, job: Job, t0: number): Promise<{ ok: boolean; not
   } else if (keptFiles.length) notes.push(`unexpected kept video: ${keptFiles.join(', ')}`);
   for (const f of keptFiles) rmSync(path.join(DIR, f), { force: true });
   const last = (out + err).trim().split('\n').filter(Boolean).slice(-1)[0] ?? '';
-  return { ok: notes.length === 0, notes: [`exit ${code}, ${secs.toFixed(1)}s: ${last.slice(0, 140)}`, ...notes] };
+  return { ok: notes.length === 0, notes: [`exit ${code}, ${secs.toFixed(1)}s: ${last.slice(0, 140)}`, ...info, ...notes] };
 }
 
 const shortWav = path.join(DIR, 'short.wav');
 const deadPid = 999_999;
 const cases: Case[] = [
   { name: 'success (2 s, with audio)', args: ['--from', '30', '--to', '32', '--workers', '2'], expect: 0, within: 120, success: { frames: 60, audio: 2 } },
+  // --res renders at a higher scale (Issue #10): the pixel size, frame count, audio and colour tags of the output
+  { name: 'success at --res 1440 (2560x1440)', args: ['--from', '30', '--to', '31', '--workers', '2', '--res', '1440'], expect: 0, within: 120, success: { frames: 30, audio: 1, size: '2560x1440' } },
+  { name: 'success at --res 2160 (3840x2160)', args: ['--from', '30', '--to', '31', '--workers', '2', '--res', '2160'], expect: 0, within: 180, success: { frames: 30, audio: 1, size: '3840x2160' } },
+  { name: '--res that is not whole and even pixels is refused', args: ['--from', '30', '--to', '31', '--res', '1000'], expect: 'nonzero', within: 60 },
   { name: 'tiny range snaps to frames (0..0.05 s -> 2 frames)', args: ['--from', '0', '--to', '0.05', '--workers', '1'], expect: 0, within: 90, success: { frames: 2, audio: 2 / 30 } },
   { name: 'negative --from is rejected', args: ['--from', '-1', '--to', '1', '--noaudio'], expect: 2, within: 60 },
   { name: 'missing audio without --noaudio', args: ['--from', '30', '--to', '31', '--audio', path.join(DIR, 'nope.wav')], expect: 2, within: 30 },
   { name: 'audio shorter than the range', args: ['--from', '0', '--to', '1', '--audio', shortWav], expect: 1, within: 60,
     prepare: async () => { await Bun.spawn(['ffmpeg', '-v', 'error', '-y', '-f', 'lavfi', '-i', 'sine=d=0.5', shortWav]).exited; } },
   { name: 'worker launch failure', args: ['--from', '30', '--to', '31'], env: { CHROME_PATH: Bun.which('ffmpeg') ?? 'ffmpeg' }, expect: 'nonzero', within: 90 },
-  { name: 'encoder failure', args: ['--from', '30', '--to', '33', '--crf', 'not-a-number'], expect: 1, within: 90 },
+  { name: 'encoder failure', args: ['--from', '30', '--to', '33'], env: { EXPORT_FFMPEG: stub('fail.ts') }, expect: 1, within: 90 },
+  // just export <film> [workers crf] [--flags]: a flag written before workers and crf takes their place
+  { name: 'a flag in the place of workers is refused (just export <film> --maxrate 16)', args: ['--workers', '--maxrate', '--crf', '16', '--from', '30', '--to', '31'], expect: 2, within: 30 },
+  { name: 'a flag in the place of crf is refused (just export <film> 4 --maxrate 16)', args: ['--workers', '4', '--crf', '--maxrate', '16', '--from', '30', '--to', '31'], expect: 2, within: 30 },
+  { name: '--workers 0 is refused', args: ['--workers', '0', '--from', '30', '--to', '31'], expect: 2, within: 30 },
+  { name: '--crf outside 0..51 is refused', args: ['--crf', '52', '--from', '30', '--to', '31'], expect: 2, within: 30 },
   { name: 'interrupt (cancel path via --abort-after)', args: ['--from', '30', '--to', '40', '--abort-after', '10'], expect: 130, within: 90 },
   { name: 'interrupt at the last frame cannot publish', args: ['--from', '30', '--to', '31', '--abort-after', '30'], expect: 130, within: 90 },
   { name: 'deadline exceeded while rendering', args: ['--from', '30', '--to', '60', '--deadline', '6'], expect: 1, within: 60 },
@@ -164,7 +219,8 @@ if (process.platform === 'win32')
     { name: 'target held without delete sharing: rename retried, verified video kept', args: ['--from', '30', '--to', '31', '--workers', '1'], expect: 1, within: 120, hold: 'ReadWrite', kept: 30 },
   );
 if (process.platform !== 'win32')
-  cases.push({ name: 'real SIGINT during rendering', args: ['--from', '30', '--to', '50'], expect: 130, within: 60, signal: { after: 12, sig: 'SIGINT' } });
+  cases.push({ name: 'real SIGINT during rendering', args: ['--from', '30', '--to', '50'], env: { EXPORT_PROGRESS_EVERY: '10' }, expect: 130, within: 120,
+    signal: { afterFrames: 150, sig: 'SIGINT', within: 15 } });
 
 const results: { name: string; ok: boolean; notes: string[] }[] = [];
 for (const c of cases) {

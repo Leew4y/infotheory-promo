@@ -10,7 +10,8 @@
     "isolatedModules": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
-    "noUncheckedIndexedAccess": false
+    "noUncheckedIndexedAccess": false,
+    "allowImportingTsExtensions": true
   },
   "include": ["engine", "films", "styles", "templates", "scripts", "tests", "vite.config.ts"]
 }

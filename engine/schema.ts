@@ -14,6 +14,8 @@ export const FilmSpec = z.object({
   bpm: z.number().finite().positive(),
   chapters: z.number().int().nonnegative(),
   punctuation: z.literal('display').optional(),
+  size: z.tuple([z.number().int().min(64).max(4096), z.number().int().min(64).max(4096)])
+    .refine(([w, h]) => w % 2 === 0 && h % 2 === 0, 'width and height must be even (H.264 4:2:0)').optional(),
 });
 
 /** [start, end, zh, en]: seconds within the scene. */

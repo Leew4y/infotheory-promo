@@ -6,7 +6,7 @@ export { ctx, text, measure, label, para, rgba, rule, ink, circlePts, circle, do
 export { C, F, M, COL, background, plate, backdrop, statement, row, useStyle, selectStyle, type Palette, type Fonts, type PlateParams, type StylePackage } from './style';
 export { scene, camDrift, type Cam, type SceneDef, type Sfx, type Sub } from './scene';
 export { defineFilm, film, bars, BAR, BEAT, BPM, EIGHTH, FPS, FRAMES, TOTAL, type FilmMeta } from './film';
-export { W, H, PI, TAU, clamp, lerp, sstep, eio, eout, ein, eexpo, win, mulberry, hash1, noise1, displayText } from './util';
+export { W, H, portrait, PI, TAU, clamp, lerp, sstep, eio, eout, ein, eexpo, win, mulberry, hash1, noise1, displayText } from './util';
 export type { Grade } from './gl';
 export { boot, type BootOptions, type FontManifest } from './boot';
 export { demoScene, type DemoOpts, type CursorKey } from './demo';
@@ -14,3 +14,4 @@ export { useNarration, narratedScene, placeNarration, vo, voParts, type Narratio
 export type { CaptureAsset, CaptureEvent, CamKey, Rect, Segment } from './capture';
 export { BriefSpec, FilmPlanSpec, usePlan, copy, type Brief, type FilmPlan } from './plan';
 export { planScene, type PlanDraw } from './plan-scene';
+export { cover, type CoverDef } from './cover';

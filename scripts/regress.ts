@@ -5,8 +5,11 @@
  *   just build <id> && bun scripts/regress.ts --film <id> [--style <id>] [--update] [--dist dist/<id>] [--workers 4]
  *                                           [--gpu] [--no-cpu2d-flag] [--allow-new]
  *
- * One baseline per style: films/<film>/regress/<style>.json. Without --style every style of the film is run (the page's
- * __styles, default first), each against its own baseline; with it, only that one. --update rewrites the baselines run.
+ * One baseline per style and platform: films/<film>/regress/<style>.<platform>.json (platform = os-arch, e.g. darwin-arm64,
+ * win32-x64). Text rasterisation differs between operating systems (on 28506f1 only 6-10 % of the frame hashes agree
+ * between macOS and Windows), so each platform keeps its own baseline and each person records it on their own machine.
+ * Without --style every style of the film is run (the page's __styles, default first), each against its own baseline;
+ * with it, only that one. --update rewrites the baselines run (this platform's only).
  *
  * Defaults are the deterministic path from phase 0a: SwiftShader WebGL and the CPU 2D canvas
  * (--disable-accelerated-2d-canvas). --gpu uses the platform GPU backend instead (not exact, see spikes/RESULTS.md);
@@ -18,19 +21,20 @@
  *   FAIL        a frame differs, a baseline frame is gone, or duration / fps changed
  *   INCOMPLETE  all baseline frames match, but today's frame set has frames the baseline lacks (e.g. a moved scene
  *               boundary); those were not compared. Exit 1 unless --allow-new.
- * The baseline is only comparable on the platform that recorded it (system fonts and SwiftShader can differ across
- * OS / CPU) and for the film the page actually renders; otherwise the run stops with exit code 2.
- * To rebuild the baseline from another commit:
+ * A baseline is only comparable on the platform that recorded it and for the film the page actually renders;
+ * otherwise the run stops with exit code 2. When this platform has no baseline yet, record one from a known-good commit
+ * (the commit the other platform's baseline names, or main before your change):
  *   git worktree add ../base <commit> && (cd ../base && bun install && just build <id>)
  *   bun scripts/regress.ts --film <id> --dist ../base/dist/<id> --update
  * Exit code (the worst over the styles run): 0 PASS (or baseline written), 1 FAIL / INCOMPLETE, 2 setup error or not
  * comparable. Writes out/<film>/regress/<style>.json.
  */
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import puppeteer, { type Browser, type Page } from 'puppeteer-core';
 import { chromeArgs, findChrome, loadFilm, serveDist } from './chrome';
 import { mediaDir, requireFilm } from './film-arg';
+import { requireCaptureFrames } from './lib/captures';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const argv = Bun.argv.slice(2);
@@ -43,12 +47,19 @@ for (let i = 0; i < argv.length; i++) {
 const opt = (k: string, d: string) => (argv.includes(`--${k}`) ? argv[argv.indexOf(`--${k}`) + 1] : d);
 const flag = (k: string) => argv.includes(`--${k}`);
 const FILM = requireFilm(argv);
+await requireCaptureFrames(FILM);
 const DIST = path.resolve(ROOT, opt('dist', `dist/${FILM}`));
 const WORKERS = +opt('workers', '4');
 /** The film's frame rate, read from the page's timeline for each style run. */
 let FPS = 0;
 const STYLE = opt('style', '');
-const baselineOf = (style: string) => path.join(ROOT, 'films', FILM, 'regress', `${style}.json`);
+const PLATFORM_ID = `${process.platform}-${process.arch}`;
+const baselineOf = (style: string) => path.join(ROOT, 'films', FILM, 'regress', `${style}.${PLATFORM_ID}.json`);
+/** Baselines of this style recorded on other platforms (for the message when this platform has none). */
+const otherBaselines = (style: string) => {
+  const dir = path.join(ROOT, 'films', FILM, 'regress');
+  return existsSync(dir) ? readdirSync(dir).filter((f) => f.startsWith(`${style}.`) && f.endsWith('.json') && f !== `${style}.${PLATFORM_ID}.json`) : [];
+};
 const reportOf = (style: string) => path.join(ROOT, 'out', FILM, 'regress', `${style}.json`);
 const PLATFORM = `${process.platform} ${process.arch}`;
 
@@ -95,9 +106,16 @@ try {
     FPS = await page.evaluate(() => window.__timeline().fps);
     const BASELINE = baselineOf(pageStyle), REPORT = reportOf(pageStyle);
     const base = flag('update') ? null : existsSync(BASELINE) ? await Bun.file(BASELINE).json() : null;
-    if (!flag('update') && !base) { console.error(`[${pageStyle}] no baseline at ${BASELINE} (run with --update --style ${pageStyle})`); return 2; }
+    if (!flag('update') && !base) {
+      const others = otherBaselines(pageStyle);
+      console.error(`[${pageStyle}] no ${PLATFORM_ID} baseline at ${path.relative(ROOT, BASELINE)}` +
+        (others.length ? ` (other platforms: ${others.join(', ')})` : '') +
+        `. Record it from a known-good commit: git worktree add ../base <commit> && (cd ../base && bun install && just build ${FILM})` +
+        ` && bun scripts/regress.ts --film ${FILM} --style ${pageStyle} --dist ../base/dist/${FILM} --update`);
+      return 2;
+    }
     if (base && base.platform !== PLATFORM) {
-      console.error(`[${pageStyle}] baseline recorded on ${base.platform ?? 'an unknown platform'}; not comparable on ${PLATFORM}. Record a local baseline with --update (do not commit it).`);
+      console.error(`[${pageStyle}] ${path.relative(ROOT, BASELINE)} says it was recorded on ${base.platform ?? 'an unknown platform'}, not ${PLATFORM}`);
       return 2;
     }
     if (base && base.style !== pageStyle) throw new Error(`${BASELINE} is a baseline for style "${base.style}", not "${pageStyle}"`);

@@ -1,6 +1,6 @@
 /**
- * Bundled fonts: download the font sources a style uses from the shared library, subset them to the film's characters,
- * check coverage.
+ * Bundled fonts: download the font sources a style uses from the shared library, check the CJK faces' glyphs, subset
+ * them to the film's characters, check coverage.
  *
  *   bun scripts/fonts.ts --film <id> [--style <id>]     (one bundle per film and style)
  *
@@ -10,24 +10,34 @@
  *    (URL pinned to an upstream commit, licence, sha256). Missing files are downloaded to .cache/fonts/ through a
  *    temporary file and only kept if the sha256 matches; the licence text of every family is fetched the same way
  *    (independently of the font cache). A catalog entry must be locked first (sha256 and weight recorded by
- *    scripts/font-catalog.ts --lock); a mismatch is an error.
+ *    scripts/font-catalog.ts --lock); a mismatch is an error. An entry with a `defects` record is refused unless the
+ *    style's fonts.json entry gives `"acceptDefects": "<why>"` (after a person agreed).
  * 2. The film's character set: every character in the string and template literals of films/<film>/**\/*.ts and of
  *    the style package (comments removed by a string-aware scanner, escapes decoded), plus printable ASCII, plus the
  *    displayed text in film-plan.json, or captions from narration.json (text and en), plus
- *    films/<film>/fonts.extra.txt if present (for text generated at run time, e.g. String.fromCodePoint(...)).
- * 3. Each source is subset to that set with a pinned fontTools (pyftsubset via `uv tool run`, WOFF2, all name records
+ *    films/<film>/fonts.extra.txt if present (for text generated at run time, e.g. String.fromCodePoint(...) or
+ *    toUpperCase(): every character of the file is added as it is, line breaks ignored).
+ * 3. Glyph check of every CJK face (catalog tag zh) on that set (scripts/glyph_check.py on the source file): twins
+ *    (two characters drawn alike), ink (filled counters, solid blocks), punctuation against Noto Serif SC / Noto Sans
+ *    SC. Any error stops here, before anything is written, unless the style accepts the font's defects; warnings are
+ *    printed. The check reads outlines; a person still looks at the glyphs (just glyphs <film>).
+ * 4. Each source is subset to that set with a pinned fontTools (pyftsubset via `uv tool run`, WOFF2, all name records
  *    kept so the copyright and licence notices stay in the fonts) into a temporary directory; only when every face
- *    succeeded does it replace films/<film>/fonts/<style>/, together with each family's OFL text (LICENSE-<family>.txt) and
- *    manifest.json: family, style, weight range, role, file, sha256, source, licence, generator, and the characters
- *    of the set each face lacks. A failure leaves the existing fonts untouched.
- * Needs uv. Exit code 1 on any download, checksum or tool failure.
+ *    succeeded does it replace films/<film>/fonts/<style>/, together with each family's OFL text (LICENSE-<family>.txt,
+ *    with LF line ends whatever the upstream file has) and manifest.json: family, style, weight range, role, file,
+ *    sha256, source, licence, generator, and the characters of the set each face lacks. A failure leaves the existing
+ *    fonts untouched.
+ * Needs uv. Exit code 1 on any download, checksum, glyph-check or tool failure.
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { requireFilm } from './film-arg';
-import { CACHE, CATALOG, die, download, famKey, licence, readCatalog, ROOT, sha256 as sha, type Entry } from './font-lib';
-import { literals } from './literals';
-import { FilmPlanSpec, planTexts } from '../engine/plan';
+import {
+  CACHE, CATALOG, die, famKey, fontTools, GENERATOR, glyphCheck, isCJK, licence, printGlyphReport, readCatalog, referenceFor, ROOT,
+  sha256 as sha, source, type Entry, type StyleFont,
+} from './font-lib';
+import { filmChars } from './lib/charset';
+import { FilmPlanSpec } from '../engine/plan';
 
 const argv = Bun.argv.slice(2);
 const opt = (k: string, d: string) => (argv.includes(`--${k}`) ? argv[argv.indexOf(`--${k}`) + 1] : d);
@@ -65,62 +75,61 @@ if (!/^[a-z0-9][a-z0-9-]*$/.test(STYLE) || !existsSync(path.join(ROOT, 'styles',
 const REFS = path.join(ROOT, 'styles', STYLE, 'fonts.json');
 const OUT = path.join(ROOT, 'films', FILM, 'fonts', STYLE);
 const EXTRA = path.join(ROOT, 'films', FILM, 'fonts.extra.txt');
-// the subsetting toolchain is pinned: the same inputs give byte-identical subsets on any machine with these versions
-const GENERATOR = { fonttools: '4.66.1', brotli: '1.2.0' };
-const UV = process.env.UV ?? (existsSync(path.join(process.env.USERPROFILE ?? '', 'scoop', 'shims', 'uv.exe')) ? path.join(process.env.USERPROFILE!, 'scoop', 'shims', 'uv.exe') : 'uv');
 
-type Src = Entry & { role: string; sha256: string; weight: string };
+type Src = Entry & { role: string; sha256: string; weight: string; acceptDefects?: string };
 const catalog = readCatalog();
-const refs: { id: string; role: string }[] = JSON.parse(readFileSync(REFS, 'utf8')).fonts;
+const refs: StyleFont[] = JSON.parse(readFileSync(REFS, 'utf8')).fonts;
 /** The style's faces in its order: a copy of each catalog entry plus the style's role for it. Entries must be locked. */
 const lock: { fonts: Src[] } = {
   fonts: refs.map((r) => {
     const e = catalog.fonts.find((x) => x.id === r.id);
     if (!e) return die(`${REFS}: font "${r.id}" is not in ${CATALOG}`);
     if (e.sha256 === null || e.weight === null) return die(`${CATALOG}: "${e.id}" is not locked yet (sha256 / weight): run bun scripts/font-catalog.ts --lock`);
-    return { ...e, role: r.role } as Src;
+    if (r.acceptDefects !== undefined && !(typeof r.acceptDefects === 'string' && r.acceptDefects.trim()))
+      return die(`${REFS}: "${r.id}".acceptDefects must say why the style uses the font anyway`);
+    if (e.defects && !r.acceptDefects)
+      return die(`${REFS}: "${e.id}" has a recorded defect: ${e.defects.note} (${e.defects.source}). Choose another font; or, if a person has looked at the glyphs and agreed, add "acceptDefects": "<why>" to its entry`);
+    if (e.defects) console.log(`${e.id}: recorded defect accepted by the style (${r.acceptDefects}): ${e.defects.note}`);
+    return { ...e, role: r.role, ...(r.acceptDefects ? { acceptDefects: r.acceptDefects } : {}) } as Src;
   }),
 };
 
 // ---- 1. sources and licences
 mkdirSync(CACHE, { recursive: true });
 for (const f of lock.fonts) {
-  const dst = path.join(CACHE, f.file);
-  if (!existsSync(dst)) {
-    console.log(`downloading ${f.file} <- ${f.url}`);
-    await download(f.url, dst, (b) => (sha(b) === f.sha256 ? null : `sha256 ${sha(b)} does not match the catalog ${f.sha256}`));
-  }
-  const h = sha(readFileSync(dst));
-  if (f.sha256 !== h) die(`${f.file}: cached copy has sha256 ${h}, the catalog says ${f.sha256}; delete it from ${CACHE}`);
+  await source(f);
   await licence(f);
 }
 
 // ---- 2. character set
-function walk(dir: string): string[] {
-  return readdirSync(dir).flatMap((n) => {
-    const p = path.join(dir, n);
-    return statSync(p).isDirectory() ? (n === 'fonts' ? [] : walk(p)) : /\.ts$/.test(n) ? [p] : [];
-  });
-}
-const chars = new Set<string>();
-for (let c = 0x20; c < 0x7f; c++) chars.add(String.fromCharCode(c));
-for (const f of [...walk(path.join(ROOT, 'films', FILM)), ...walk(path.join(ROOT, 'styles', STYLE))])
-  for (const s of literals(readFileSync(f, 'utf8'))) for (const ch of s) chars.add(ch);
-const NARRATION = path.join(ROOT, 'films', FILM, 'narration.json');
-const PLAN = path.join(ROOT, 'films', FILM, 'film-plan.json');
-if (existsSync(PLAN))
-  for (const text of planTexts(FilmPlanSpec.parse(JSON.parse(readFileSync(PLAN, 'utf8'))))) for (const ch of text) chars.add(ch);
-else if (existsSync(NARRATION))
-  for (const l of (JSON.parse(readFileSync(NARRATION, 'utf8')).lines ?? []) as { text?: string; en?: string }[])
-    for (const ch of `${l.text ?? ''}${l.en ?? ''}`) chars.add(ch);
-if (existsSync(EXTRA)) for (const ch of readFileSync(EXTRA, 'utf8')) chars.add(ch);
-for (const ws of ['\n', '\r', '\t', '\b', '\f', '\v', '\0']) chars.delete(ws);
+const chars = filmChars(FILM, STYLE);
 const text = [...chars].sort().join('');
 const textFile = path.join(CACHE, `${FILM}-${STYLE}-${process.pid}-chars.txt`);
 writeFileSync(textFile, text, 'utf8');
 console.log(`character set: ${chars.size} characters (${[...chars].filter((c) => c.charCodeAt(0) > 0x7e).length} beyond ASCII)${existsSync(EXTRA) ? `, including ${EXTRA}` : ''}`);
 
-// ---- 3. subset into a temporary directory, then replace the film's fonts
+// ---- 3. glyph check of the CJK faces, before anything is written
+const cjk = lock.fonts.filter(isCJK);
+if (cjk.length) {
+  const blocked: string[] = [];
+  try {
+    const reports = await glyphCheck(text, cjk);
+    for (const r of reports) {
+      const f = cjk.find((x) => x.id === r.id)!;
+      printGlyphReport(r, referenceFor(f, catalog).family, f.acceptDefects);
+      if (!f.acceptDefects && r.findings.some((x) => x.level === 'error')) blocked.push(f.id);
+    }
+  } catch (e) {
+    rmSync(textFile, { force: true });
+    die(`glyph check failed: ${e instanceof Error ? e.message : String(e)}`);
+  }
+  if (blocked.length) {
+    rmSync(textFile, { force: true });
+    die(`${blocked.join(', ')}: glyph-check errors; nothing was written. Choose another font for the style, or record the defect in ${CATALOG} and, once a person has looked at the glyphs and agreed, add "acceptDefects": "<why>" to the entry in ${REFS}`);
+  }
+}
+
+// ---- 4. subset into a temporary directory, then replace the film's fonts
 const pyFile = path.join(CACHE, `coverage-${process.pid}.py`);
 writeFileSync(pyFile, `
 import json, sys
@@ -129,17 +138,6 @@ src, text = sys.argv[1], open(sys.argv[2], encoding='utf-8').read()
 cmap = TTFont(src, lazy=True).getBestCmap()
 print(json.dumps([c for c in text if ord(c) not in cmap]))
 `);
-const run = async (args: string[]) => {
-  let p: ReturnType<typeof Bun.spawn>;
-  try {
-    p = Bun.spawn([UV, 'tool', 'run', '--from', `fonttools[woff]==${GENERATOR.fonttools}`, '--with', `brotli==${GENERATOR.brotli}`, ...args], { stdout: 'pipe', stderr: 'pipe' });
-  } catch (e) {
-    throw new Error(`cannot run uv (${UV}): ${e instanceof Error ? e.message : String(e)}; install uv or set UV`);
-  }
-  const [out, err, code] = await Promise.all([new Response(p.stdout as ReadableStream).text(), new Response(p.stderr as ReadableStream).text(), p.exited]);
-  if (code !== 0) throw new Error(`${args.slice(0, 2).join(' ')} failed (${code}): ${err.trim().split('\n').slice(-3).join(' ')}`);
-  return out;
-};
 const TMP = path.join(path.dirname(OUT), `.fonts.${process.pid}.tmp`);
 rmSync(TMP, { recursive: true, force: true });
 mkdirSync(TMP, { recursive: true });
@@ -147,15 +145,16 @@ try {
   const manifest = [];
   for (const f of lock.fonts) {
     const src = path.join(CACHE, f.file);
-    const missing: string[] = JSON.parse(await run(['python', pyFile, src, textFile]));
+    const missing: string[] = JSON.parse(await fontTools(['python', pyFile, src, textFile]));
     // one file per family and style; a static face other than 400 adds its weight (IBM Plex Mono Medium, ...)
     const name = `${famKey(f.family)}-${f.style}${/^\d+$/.test(f.weight) && f.weight !== '400' ? `-${f.weight}` : ''}.woff2`;
     const dst = path.join(TMP, name);
-    await run(['pyftsubset', src, `--text-file=${textFile}`, '--flavor=woff2', '--layout-features=*', '--no-hinting',
+    await fontTools(['pyftsubset', src, `--text-file=${textFile}`, '--flavor=woff2', '--layout-features=*', '--no-hinting',
       '--name-IDs=*', '--name-languages=*', '--name-legacy', `--output-file=${dst}`]);
     const bytes = readFileSync(dst);
     const license = `LICENSE-${famKey(f.family)}.txt`;
-    writeFileSync(path.join(TMP, license), readFileSync(path.join(CACHE, `${famKey(f.family)}-OFL.txt`)));
+    // LF line ends: some upstream OFL.txt files are CRLF, and the committed copies must not depend on the host
+    writeFileSync(path.join(TMP, license), readFileSync(path.join(CACHE, `${famKey(f.family)}-OFL.txt`), 'utf8').replace(/\r\n/g, '\n'));
     manifest.push({ family: f.family, role: f.role, style: f.style, weight: f.weight, file: name, sha256: sha(bytes), bytes: bytes.length,
       source: { file: f.file, url: f.url, sha256: f.sha256 }, license: f.license, licenseFile: license, chars: chars.size - missing.length, missing: missing.join('') });
     console.log(`${name.padEnd(28)} ${(bytes.length / 1024).toFixed(0).padStart(5)} KiB  covers ${chars.size - missing.length}/${chars.size}`);

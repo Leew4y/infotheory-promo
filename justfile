@@ -9,10 +9,15 @@ film := "infotheory"
 default:
     @just --list
 
-# Install JS dependencies (bun) and the Python audio environment (uv).
+# Install JS dependencies (bun), the Python audio environment (uv) and the pinned browser.
 setup:
     bun install
     uv sync --project audio
+    bun scripts/browser.ts
+
+# Download the pinned browser (Chrome for Testing, one exact version, sha256-checked) into .cache/chrome/; the tools prefer it to an installed Chrome.
+browser:
+    bun scripts/browser.ts
 
 # Start a new film from templates/film/, e.g. `just new-film demo nebula` (then `just fonts demo`).
 new-film id style *args:
@@ -56,9 +61,9 @@ import-capture film id video *args:
 capture film id scenario *args:
     bun scripts/capture.ts --film {{film}} --id {{id}} {{quote(scenario)}} {{args}}
 
-# Re-derive every capture of a film from its source videos (found by name in <dir>, checked by sha256).
-captures film dir:
-    bun scripts/import-capture.ts --film {{film}} --rebuild --from {{quote(dir)}}
+# Re-derive every capture of a film from its source videos (found by name in <dir>, default films/<film>/captures/sources/, checked by sha256).
+captures film dir="":
+    bun scripts/import-capture.ts --film {{film}} --rebuild {{ if dir == "" { "" } else { "--from " + quote(dir) } }}
 
 # Live preview at http://127.0.0.1:5174 (space play/pause, arrows seek, [ ] scenes, , . frame step); ?style=<id> picks a style.
 dev $FILM=film:
@@ -76,6 +81,14 @@ fonts film=film *args:
 font-catalog *args:
     bun scripts/font-catalog.ts {{args}}
 
+# Glyph proof for review: the film's characters in every font of each style, from the committed subsets, 48 px with code points -> out/<film>/glyphs/<style>/; --style <id> for one.
+glyphs film=film *args:
+    bun scripts/glyphs.ts --film {{film}} {{args}}
+
+# Glyph check of catalog CJK fonts (the one `just fonts` runs) on --text <chars> or on a film's characters (--film <id>), e.g. `just glyph-check zcool-xiaowei --text 回己受`.
+glyph-check fonts *args:
+    bun scripts/glyph-check.ts {{fonts}} {{args}}
+
 # Type-check the engine, styles, films, templates and scripts.
 check:
     bunx tsc --noEmit
@@ -88,7 +101,7 @@ check-imports:
 validate film=film *args: (build film)
     bun scripts/validate.ts --film {{film}} {{args}}
 
-# Pixel regression of every style against films/<film>/regress/<style>.json (SwiftShader + CPU 2D canvas); --style <id> for one.
+# Pixel regression of every style against films/<film>/regress/<style>.<os-arch>.json (SwiftShader + CPU 2D canvas); --style <id> for one.
 regress film=film *args: (build film)
     bun scripts/regress.ts --film {{film}} {{args}}
 
@@ -119,6 +132,22 @@ test-validate:
 # Contact sheet: the same representative moments in every style of the film (out/<film>/sheet/sheet.jpg + sheet.json); --style a,b, --times t1,t2.
 sheet film=film *args: (build film)
     bun scripts/sheet.ts --film {{film}} {{args}}
+
+# Contact sheet of a film in its styles and in other styles (comma-separated) it does not use: a temporary edit for one build, always undone -> out/<film>/sheet-compare/; --times t1,t2.
+sheet-compare film styles *args:
+    bun scripts/sheet-compare.ts --film {{film}} --with {{styles}} {{args}}
+
+# Every displayed and spoken text of a film for fact-checking (plan text, narration with times, the scene code's literals) -> out/<film>/texts.md and texts.json.
+texts film=film *args: (build film)
+    bun scripts/texts.ts --film {{film}} {{args}}
+
+# Render the film's covers (engine/cover.ts) -> out/<film>/covers/<name>.png and .jpg, text inside the image checked; --only a,b.
+covers film=film *args: (build film)
+    bun scripts/covers.ts --film {{film}} {{args}}
+
+# The film's chapters as description timestamps (MM:SS title), checked against YouTube's rules -> out/<film>/chapters.txt.
+chapters film=film *args: (build film)
+    bun scripts/chapters.ts --film {{film}} {{args}}
 
 # Print the scene list with times.
 scenes film=film: (build film)
@@ -154,9 +183,29 @@ tts-setup:
 test-narration:
     bun scripts/test-narration.ts
 
-# 1080p30 export -> out/<film>/<film>[-<style>].mp4, e.g. `just export demo 4 18 --noaudio --style nebula`.
+# e.g. `just export demo 4 18 --noaudio --style nebula`, `just export demo 4 18 --res 2160`.
+# Export at the film's frame size -> out/<film>/<film>[-<style>][-<res>p].mp4; --res <short side> (1440p/4K), --for x, --maxrate <Mbit/s>.
 export film=film workers="4" crf="18" *args: (build film)
     bun scripts/export.ts --film {{film}} --workers {{workers}} --crf {{crf}} {{args}}
 
 # Everything for a film with a score: cues -> music -> final mix (with the narration, if any) -> video.
 all film=film: (music film) (mix film) (export film)
+
+# Find a narration voice by description (Apple silicon): `just voice-design my-voice --describe "A=<description>" --describe "B=..."`,
+# listen to out/voice-design/my-voice/*-sample.mp3, then `just voice-design my-voice --pick A` writes voices/my-voice/.
+[macos]
+[positional-arguments]
+voice-design id *args:
+    bun scripts/voice-design.ts "$@"
+
+# What this machine has for making films, and the command that fixes each gap (read-only).
+doctor:
+    bun scripts/doctor.ts
+
+# macOS from scratch: Homebrew tools (Brewfile), dependencies, the narration model, then a check.
+[macos]
+mac-setup:
+    brew bundle --no-upgrade --file Brewfile
+    just setup
+    just tts-setup
+    just doctor
