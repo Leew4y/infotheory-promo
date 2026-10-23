@@ -46,6 +46,8 @@ Every film command takes the film id first (default `infotheory`); outputs go to
 | `just render-range <film> <from> <to> [--draft] [--style id]` | silent half-open range in film seconds, snapped to frames; filenames use the start/end frame numbers |
 | `just test-plan` | plan workflow, real short exports and deliberate failures of the plan checks |
 | `just fonts <film>` | font subsets for the film's text, per style (run after changing any text) |
+| `just glyphs <film> [--style id]` | glyph proof for review: the film's character set in every font of each style, drawn from the committed subsets at 48 px with code points and the character in the system font beside it → `out/<film>/glyphs/<style>/NN-<face>.png` + `index.json` |
+| `just glyph-check <font-id>[,<id>] (--text <chars> \| --film <film> [--style id]) [--ref id] [--json]` | the glyph check `just fonts` runs, on catalog CJK fonts without subsetting: vet a font before a style uses it; exit 1 on an error |
 | `just validate <film> [--style id]` | schema, timeline, rendering, text inside the 5 % safe area, no overlapping text, WCAG AA contrast (as exported, glyph by glyph, on sampled frames), display punctuation (warning); `--json` gives the diagnostics list |
 | `just sheet <film> [--style a,b]` | contact sheet of representative moments in every style: `out/<film>/sheet/sheet.jpg` + `sheet.json` |
 | `just sheet-compare <film> <style>[,<style>] [--times t1,t2]` | the same sheet with styles the film does not use (its styles first) → `out/<film>/sheet-compare/`: for one build it writes their font bundles and adds them to `film.ts` / `film-plan.json`, then restores both byte for byte (also after Ctrl+C; a killed run is undone by the next one) |
@@ -90,6 +92,20 @@ Every film command takes the film id first (default `infotheory`); outputs go to
   belong to a style inside scenes; geometry from `M`, `COL`, `W`, `H`.
 - Fonts come only from `fonts/catalog.json`; a style lists the ids it uses in `fonts.json`. Adding a font to the
   catalog (a download) needs the person's confirmation.
+- Font characters and glyphs. `just fonts` subsets to the film's characters: its string literals, the plan or
+  `narration.json`, printable ASCII, and `films/<film>/fonts.extra.txt` if present, a plain text file whose
+  characters are added as they are (newlines ignored). List there what code produces at run time and no literal
+  contains: `toUpperCase()` (math-lessons lists Ó for CÓRDOBA), `String.fromCodePoint`, `Intl` formatting.
+  A catalog entry may carry `"defects": { "note", "source" }`, a known fault of the upstream file (`just font-catalog`
+  marks it DEFECTS; `zcool-xiaowei` has one). `just fonts` refuses such a font unless the style's `fonts.json` entry
+  gives `"acceptDefects": "<why>"`, which only a person can agree to. Before writing anything, `just fonts` runs a
+  glyph check (`scripts/glyph_check.py`, pinned fontTools) on each CJK face (tag `zh`) over the film's characters.
+  Errors: two characters drawn alike (ZCOOL XiaoWei's 己 and 巳), a filled counter or solid block (its 回), and a
+  full-width mark set at Latin width or filled (its 。). Warnings: punctuation sized or placed unlike Noto Serif SC /
+  Noto Sans SC, ideographs not 1 em wide. An error stops `just fonts` (the old subsets stay) unless the face has
+  `acceptDefects`. The check reads outlines: it cannot see that a glyph reads as another character (ZCOOL XiaoWei's
+  受 reads as 要). After choosing or changing a style's fonts, run `just glyphs <film>` and read every cell; vet a
+  candidate CJK font first with `just glyph-check <id> --film <film>`.
 - Text on a full-frame plate goes over `backdrop(...)` so it stays readable.
 - Frame and resolution: a film's frame is `size` in `film-plan.json` / `defineFilm` (default [1920, 1080], both even;
   [1080, 1920] for phones). `W`, `H`, `M`, `COL` and `portrait()` are live values set when the film is defined: scenes

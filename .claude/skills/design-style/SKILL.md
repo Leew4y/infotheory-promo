@@ -30,6 +30,12 @@ Propose 2–3 directions that differ in kind, not in shade. Each: a name, a sent
 roles), font pairing chosen from `fonts/catalog.json` by tag, the page ground, the full-frame background idea
 (what `progress` and `highlight` become), and one line on motion.
 
+Fonts: a tag says what a font is meant for, not that its file is sound. Do not choose a font with a `defects` record
+(`just font-catalog` marks it DEFECTS: ZCOOL XiaoWei, tagged "elegant", draws 回 as a solid block, 己 as 巳, and
+its 受 reads as 要; this reached a delivered film). Check every CJK candidate on the film's text before proposing it:
+`just glyph-check <font-id> --film <film>` (or `--text <chars>` before the film has fonts); an error rules it out,
+warnings go into the direction's description.
+
 Make one sample frame per direction: `just new-style <id>-a` etc., set palette, fonts and ground roughly, add them to
 the film's `selectStyle([...])`, `just fonts <film>`, then `just sheet <film> --times <a page moment>,<a plate moment>`.
 Show the person the sheet with the directions side by side. They pick one (or tell you to pick; then say which and
@@ -43,6 +49,8 @@ why). Remove the directions that were not chosen.
   page as rendered (vignette and texture darken it); large text (>= 24 px) 3:1. Plate text over `backdrop()`.
 - Fonts: chains list only families in the style's `fonts.json`; CJK display faces tagged `gb2312` go before a full CJK
   face (Noto Sans SC / Noto Serif SC) so rare characters still render. Every text must be covered (validate checks).
+  A face that goes first draws every character it has: it must pass the glyph check of `just fonts`, and never be
+  one with a `defects` record unless the person agreed (`acceptDefects` in `fonts.json`, with the reason).
 - Page ground: quiet enough that thin lines and 15 px labels read; texture at low contrast.
 - Plate shader: `uP` = progress (opening -> close), `uQ` = highlight; deterministic in `uTime`; no visible banding.
 - Layout: `margin` and `column` are the grid scenes use; captions and chapter labels must stay inside the 5 % safe area.
@@ -57,13 +65,20 @@ why). Remove the directions that were not chosen.
 ## 3. Check and self-review (at least one round)
 
 ```bash
-just fonts <film>
+just fonts <film>                      # read its glyph check: an error stops it; judge each warning
+just glyphs <film> --style <id>        # glyph proof: out/<film>/glyphs/<id>/, one image per font
 just validate <film>                   # every style of the film: 0 errors (safe area, overlap, contrast, glyphs);
                                        # read the warnings too (text at 0.5-0.9 alpha, overlaps mid-fade)
 just regress <film>                    # styles that already have a baseline must still pass; a new style has none yet
 just sheet <film> --style <id>,<an existing style>
 just shots <film> <t>,<t+1/30>,<t+2/30> --style <id>   # consecutive frames around each fade or transition
 ```
+
+Read the glyph proof first, every image and every cell, at full size: each glyph against the system-font character
+beside its code point. No character may be drawn as another (己/巳/已, 受/要), no counter filled (回 a solid block),
+punctuation at full width and in its Chinese place (，。、 low at the left of the em, … centred on the line, 。 an
+open circle). The contact sheet is too small for this and validate checks only that a font has the character. A
+wrong glyph rules the font out; record the proof in the review file below.
 
 Look at the sheet image yourself and review against this list, writing the result to
 `films/<film>/review/<NN>-<id>.md` (round number, the sheet command, findings, what you changed):
@@ -93,6 +108,8 @@ hand-over that the other platform's baseline for the new style is still to be re
 ## Don'ts
 
 - No new fonts without the person's confirmation (adding to the catalog downloads files).
+- No font with a `defects` record, and no `acceptDefects`, without the person's agreement. A defect you find goes into
+  the catalog entry's `defects` (note and source) so the next style does not pick the font again.
 - No changes to scenes to suit a style; if a scene cannot work in a style, report it as a finding.
 - No randomness that is not seeded; no `Date`, no `performance.now()` in drawing.
 - Do not re-record baselines of the reference film (`infotheory`) without showing before/after frames.
