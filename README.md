@@ -92,6 +92,8 @@ just shots demo 5,20.5        # 检查帧 → out/demo/shots/
 just sheet demo               # 拼图：代表时刻 × 每个风格 → out/demo/sheet/sheet.jpg（--style a,b；--times t1,t2）
 just sheet-compare demo paper-dawn,nebula   # 拼图里加上片子没用的风格（构建期间临时改动，构建完逐字节恢复）
 just texts demo               # 全部画面文字与旁白 → out/demo/texts.md
+just covers demo              # 封面：片子里用 cover({ name, size, draw, overlay }) 声明，各自的画幅（竖版 1080×1920、横版 1920×1080 等）→ out/demo/covers/
+just chapters demo            # 章节时间戳（贴进视频简介），按 YouTube 规则检查：00:00 开头、至少 3 章、每章至少 10 秒 → out/demo/chapters.txt
 just validate demo            # 所有风格：声明、时间轴、渲染、出画面、出 5% 安全区、文字重叠、WCAG AA 对比度、显示标点
 just cues demo / just music demo / just mix demo [--music file|none]   # 音效 cue 与时间轴 / 配乐 / 最终混音
 just export demo [workers crf] [--res 2160] [--for x] [--maxrate 20] [--noaudio] [--style id]

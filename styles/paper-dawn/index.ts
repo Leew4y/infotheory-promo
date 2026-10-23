@@ -133,7 +133,7 @@ const paperDawn: StylePackage = {
   /** Captures as prints pasted on the page: a thin ink border, a soft shadow, the title as a small caps label above. */
   demo: {
     // the margins of the layout; below the chapter label, above the captions
-    get area() { return portrait() ? { x: M, y: 330, w: W - 2 * M, h: captionY() - 90 - 330 } : { x: 150, y: 190, w: W - 300, h: H - 420 }; },
+    get area() { return portrait() ? { x: M, y: 400, w: W - 2 * M, h: captionY() - 90 - 400 } : { x: 150, y: 190, w: W - 300, h: H - 420 }; },
     rippleDur: 0.6,
     pressDur: 0.15,
     cursorEase: (u) => u * u * (3 - 2 * u),
@@ -189,7 +189,8 @@ const paperDawn: StylePackage = {
   chapterLabel(lt, d, n, ch, chapters) {
     const a = win(lt, 0.2, d, 0.8, 0.5);
     if (a <= 0) return;
-    const x = portrait() ? M : 150, y = portrait() ? 230 : 132;
+    // portrait: below a phone app's top bar (about 260 px)
+    const x = portrait() ? M : 150, y = portrait() ? 310 : 132;
     const num = String(n).padStart(2, '0');
     const u = ts(100) / 100;
     text(num, x, y, { font: F.latin, size: ts(26), color: C.accent, alpha: a, ls: 2 });

@@ -103,7 +103,7 @@ const keynote: StylePackage = {
 
   /** Captures as a product shot: a white window with rounded corners, a soft deep shadow and three quiet dots. */
   demo: {
-    get area() { return portrait() ? { x: M, y: 330, w: W - 2 * M, h: Math.round(H * 0.7) - 90 - 330 } : { x: 150, y: 176, w: W - 300, h: H - 400 }; },
+    get area() { return portrait() ? { x: M, y: 400, w: W - 2 * M, h: Math.round(H * 0.7) - 90 - 400 } : { x: 150, y: 176, w: W - 300, h: H - 400 }; },
     rippleDur: 0.6,
     pressDur: 0.15,
     cursorEase: (u) => u * u * (3 - 2 * u),
@@ -162,7 +162,7 @@ const keynote: StylePackage = {
     const a = win(lt, 0.2, d, 0.6, 0.4);
     if (a <= 0) return;
     // portrait: lower (below a phone app's top bar) and larger
-    const y = portrait() ? 230 : 122, k = portrait() ? 1.3 : 1;
+    const y = portrait() ? 310 : 122, k = portrait() ? 1.3 : 1;
     text(String(n).padStart(2, '0'), M, y, { font: F.latin, size: Math.round(24 * k), weight: 700, color: C.accent, alpha: a });
     text(ch[0], M + 46 * k, y, { size: Math.round(26 * k), weight: 700, color: C.fg, alpha: a });
     ctx.save();

@@ -94,7 +94,7 @@ const style: StylePackage = {
 
   demo: {
     // the margins of the layout; below the chapter label, above the captions
-    get area() { return portrait() ? { x: M, y: 330, w: W - 2 * M, h: Math.round(H * 0.7) - 90 - 330 } : { x: M, y: 190, w: W - 2 * M, h: H - 420 }; },
+    get area() { return portrait() ? { x: M, y: 400, w: W - 2 * M, h: Math.round(H * 0.7) - 90 - 400 } : { x: M, y: 190, w: W - 2 * M, h: H - 420 }; },
     rippleDur: 0.6,
     pressDur: 0.15,
     cursorEase: (u) => u * u * (3 - 2 * u),
@@ -135,7 +135,7 @@ const style: StylePackage = {
     if (a <= 0) return;
     const num = String(n).padStart(2, '0');
     // portrait: lower, below a phone app's top bar; the page number top right instead of bottom right
-    const y = portrait() ? 230 : 132;
+    const y = portrait() ? 310 : 132;
     text(num, M, y, { font: F.mono, size: 22, color: C.accent, alpha: a });
     text(ch[0], M + 56, y, { size: 24, weight: 600, color: C.fg, alpha: a });
     label(ch[1], M + 56 + measure(ch[0], 24, F.body, 600) + 24, y - 1, a, C.muted, 16, 'left');

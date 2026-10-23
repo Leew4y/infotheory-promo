@@ -141,6 +141,14 @@ sheet-compare film styles *args:
 texts film=film *args: (build film)
     bun scripts/texts.ts --film {{film}} {{args}}
 
+# Render the film's covers (engine/cover.ts) -> out/<film>/covers/<name>.png and .jpg, text inside the image checked; --only a,b.
+covers film=film *args: (build film)
+    bun scripts/covers.ts --film {{film}} {{args}}
+
+# The film's chapters as description timestamps (MM:SS title), checked against YouTube's rules -> out/<film>/chapters.txt.
+chapters film=film *args: (build film)
+    bun scripts/chapters.ts --film {{film}} {{args}}
+
 # Print the scene list with times.
 scenes film=film: (build film)
     bun scripts/export.ts --film {{film}} --scenes

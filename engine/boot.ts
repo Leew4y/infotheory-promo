@@ -13,6 +13,9 @@
  *   __contrast(t)      measured contrast of every text box (alpha >= 0.5) of the frame at t as exported (for scripts/validate.ts)
  *   __gpu()            WebGL renderer string
  *   __frameSize()      the frame in canvas units (the film's size), the render scale and the canvas's pixel size
+ *   __covers()         the names of the film's covers (engine/cover.ts)
+ *   __cover(name)      render that cover at its own size (the page's frame size changes: one cover per page load) and
+ *                      return it as a PNG data URL with its text boxes
  *   __cues()           the sound-effect cue sheet (the film's score reads it as cues.json)
  *   __scenes()         name, kind, start/end, fade lengths and caption times (film seconds) of every scene
  *   __narration()      where each narration line plays (film seconds), for the final mix, and the lines no scene placed
@@ -23,7 +26,7 @@
  */
 import { cv, recordText, setCoverage, type TextBox } from './draw';
 import { contrastAt, type ContrastBox } from './inspect';
-import { frame, needsAt, prepare } from './frame';
+import { coverFrame, frame, needsAt, prepare } from './frame';
 import { prefetch, setStrict } from './media';
 import { allNotes, type Note } from './notes';
 import { lap, perfOn, perfReport } from './perf';
@@ -31,7 +34,9 @@ import { narrationReport, type LinePlacement } from './narration';
 import { gpuName } from './gl';
 import { SC, sceneAt } from './scene';
 import { style, styleIds } from './style';
-import { clamp, fmtTime, H, SCALE, setScale, W } from './util';
+import { clamp, fmtTime, H, SCALE, setFrameSize, setScale, W } from './util';
+import { coverNames, getCover } from './cover';
+import { restyle } from './style';
 import { film, FPS, FRAMES, TOTAL } from './film';
 import { assertPlanScenes } from './plan';
 
@@ -52,10 +57,12 @@ declare global {
     __timeline: () => { film: string; style: string; fps: number; bpm: number; frames: number; duration: number; scenes: { name: string; kind: string; f0: number; f1: number; start: number; end: number }[] };
     __gpu: () => string;
     __frameSize: () => { width: number; height: number; scale: number; pixels: [number, number] };
+    __covers: () => string[];
+    __cover: (name: string) => { png: string; boxes: TextBox[]; size: [number, number] };
     /** The film's punctuation rule ('display', or '' when it draws text as written). */
     __punctuation: () => string;
     __cues: () => { t: number; name: string; [k: string]: number | string }[];
-    __scenes: () => { name: string; kind: string; start: number; end: number; fadeIn: number; fadeOut: number; subs: [number, number][] }[];
+    __scenes: () => { name: string; kind: string; start: number; end: number; fadeIn: number; fadeOut: number; subs: [number, number][]; chapter?: number; ch?: [string, string] }[];
     __layout: (t: number, fps?: number) => Promise<TextBox[]>;
     __contrast: (t: number, fps?: number) => Promise<ContrastBox[]>;
     __fonts: () => FontManifest;
@@ -193,6 +200,19 @@ export function boot(o: BootOptions): void {
   };
   window.__gpu = gpuName;
   window.__frameSize = () => ({ width: W, height: H, scale: SCALE, pixels: [cv.width, cv.height] });
+  window.__covers = coverNames;
+  window.__cover = (name) => {
+    const c = getCover(name);
+    setFrameSize(c.size[0], c.size[1]);
+    setScale(1);
+    restyle();
+    cv.width = c.size[0];
+    cv.height = c.size[1];
+    recordText(true);
+    coverFrame(c);
+    const boxes = recordText(false);
+    return { png: cv.toDataURL('image/png'), boxes, size: c.size };
+  };
   window.__punctuation = () => film().punctuation ?? '';
   window.__notes = allNotes;
   window.__narration = narrationReport;
@@ -202,6 +222,7 @@ export function boot(o: BootOptions): void {
     name: s.name, kind: s.kind, start: +s.t0.toFixed(3), end: +(s.t0 + s.d).toFixed(3),
     fadeIn: s.fi ?? style().motion.fadeIn, fadeOut: s.fo ?? style().motion.fadeOut,
     subs: s.subs.map(([a, b]) => [+(s.t0 + a).toFixed(3), +(s.t0 + b).toFixed(3)] as [number, number]),
+    ...(s.chapter ? { chapter: s.chapter, ch: s.ch } : {}),
   }));
 
   const au = document.getElementById('au') as HTMLAudioElement;

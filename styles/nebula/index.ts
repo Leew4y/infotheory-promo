@@ -118,7 +118,7 @@ const nebula: StylePackage = {
   /** Captures in a dark glass panel: a cyan hairline with a faint glow, the title in mono on a slim bar. */
   demo: {
     // the margins of the layout; below the chapter label, above the captions
-    get area() { return portrait() ? { x: M, y: 330, w: W - 2 * M, h: captionY() - 80 - 330 } : { x: 170, y: 190, w: W - 340, h: H - 420 }; },
+    get area() { return portrait() ? { x: M, y: 420, w: W - 2 * M, h: captionY() - 80 - 420 } : { x: 170, y: 190, w: W - 340, h: H - 420 }; },
     rippleDur: 0.6,
     pressDur: 0.15,
     cursorEase: (u) => u * u * (3 - 2 * u),
@@ -199,7 +199,8 @@ const nebula: StylePackage = {
   chapterLabel(lt, d, n, ch, chapters) {
     const a = win(lt, 0.2, d, 0.8, 0.5);
     if (a <= 0) return;
-    const x = W - M, y = portrait() ? 230 : 128, top = portrait() ? 186 : 84;
+    // portrait: below a phone app's top bar (about 260 px)
+    const x = W - M, y = portrait() ? 310 : 128, top = portrait() ? 272 : 84;
     const num = `CH ${String(n).padStart(2, '0')} / ${String(chapters).padStart(2, '0')}`;
     text(num, x, y, { font: F.mono, size: ts(17), color: C.accent, alpha: a, align: 'right', ls: 2 });
     text(ch[0], x, y + ts(40), { size: ts(26), weight: 600, color: C.fg, alpha: a, align: 'right', ls: 2 });

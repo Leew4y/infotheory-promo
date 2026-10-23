@@ -14,3 +14,4 @@ export { useNarration, narratedScene, placeNarration, vo, voParts, type Narratio
 export type { CaptureAsset, CaptureEvent, CamKey, Rect, Segment } from './capture';
 export { BriefSpec, FilmPlanSpec, usePlan, copy, type Brief, type FilmPlan } from './plan';
 export { planScene, type PlanDraw } from './plan-scene';
+export { cover, type CoverDef } from './cover';
