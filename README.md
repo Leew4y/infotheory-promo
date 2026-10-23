@@ -79,6 +79,7 @@ index.html            所有片子共用的页面外壳：一个 1920×1080 的 
 scripts/export.ts     导出：N 个 headless Chrome 各自渲染精确帧时刻，按序写入 ffmpeg；先写临时文件、校验后替换成片；也出检查帧、cue 表和时间轴
 scripts/test-export.ts  导出失败用例（缺音频、音频过短、浏览器启动失败、编码失败、中断、超时、并发）
 scripts/chrome.ts     共享的 Chrome 启动参数（CPU 2D canvas；Windows 用 ANGLE D3D11，其他平台用浏览器默认；或 SwiftShader）
+scripts/browser.ts    固定版本的浏览器（Chrome for Testing，版本与 sha256 在 scripts/lib/browser-pin.ts）：下载、校验、解压到 .cache/chrome/
 scripts/fonts.ts      按字体库下载字体、按片子用字裁剪子集、检查覆盖
 scripts/font-catalog.ts  字体库本身：下载并校验全部字体；--lock 登记新字体（与 GitHub 的文件哈希核对、测出字重）
 scripts/new-film.ts   从模板新建片子
@@ -99,10 +100,11 @@ justfile              一键命令
 接着 `just sheet demo`、`just validate demo` 检查并修正。范围为影片秒数的左闭右开区间，按帧取整。
 `assets/` 内的文件需在 `assets.json` 登记来源、许可证和 sha256；计划的旁白继续使用现有 FLAC、lock 和最终混音流程。
 
-需要 bun、uv、just、Chrome 或 Edge、PATH 上的 ffmpeg。所有片子相关的命令第一个参数是片名（省略时为 `infotheory`）；生成的东西都在 `out/<film>/`。字体来自字体库 `fonts/catalog.json`（OFL），按片子用到的字、每个风格各裁剪一套子集放在 `films/<film>/fonts/<style>/` 并入库；改了文案之后运行 `just fonts <film>`（第一次会下载完整字体到 `.cache/fonts`，需要联网）。渲染时任何一个字没有随仓库字体覆盖都会直接报错。
+需要 bun、uv、just、PATH 上的 ffmpeg；浏览器由 `just browser` 下载固定版本的 Chrome for Testing（`just setup` 会运行它），所有工具优先用它，没装时才退回本机安装的 Chrome 或 Edge 并提示像素可能与基线不同（`CHROME_PATH` 可指定任意浏览器）。所有片子相关的命令第一个参数是片名（省略时为 `infotheory`）；生成的东西都在 `out/<film>/`。字体来自字体库 `fonts/catalog.json`（OFL），按片子用到的字、每个风格各裁剪一套子集放在 `films/<film>/fonts/<style>/` 并入库；改了文案之后运行 `just fonts <film>`（第一次会下载完整字体到 `.cache/fonts`，需要联网）。渲染时任何一个字没有随仓库字体覆盖都会直接报错。
 
 ```
-just setup                    # bun install + uv sync
+just setup                    # bun install + uv sync + just browser
+just browser                  # 下载固定版本的浏览器 Chrome for Testing 到 .cache/chrome/（按 sha256 校验；已装好则跳过）
 just new-film demo nebula     # 从模板新建 films/demo/（风格 nebula），之后 just fonts demo
 just new-style ink-wash       # 从模板新建风格包 styles/ink-wash/（含 STYLE.md 设计说明骨架）
 just import-capture demo app ~/rec/app.mp4   # 把 OBS 等任意录屏导入为片子 demo 的素材 app（帧在 .cache/，清单入库）

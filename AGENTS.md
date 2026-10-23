@@ -42,6 +42,7 @@ Every film command takes the film id first (default `infotheory`); outputs go to
 | `just export <film> [workers crf] [--noaudio] [--style id]` | the video |
 | `just check`, `just check-imports`, `just test-validate`, `just test-export <film>` | type check, boundaries, tests |
 | `just font-catalog` | download and verify the whole font library |
+| `just browser` | the pinned browser (Chrome for Testing, version and sha256 in `scripts/lib/browser-pin.ts`) into `.cache/chrome/`; every tool prefers it (`$CHROME_PATH` first), an installed Chrome only with a warning; `just setup` runs it |
 | `just import-capture <film> <id> <video> [--fps 30] [--crop W:H:X:Y] [--events f.jsonl --sync rec=video]` | a screen recording (OBS, any video) becomes capture `<id>`: manifest `films/<film>/captures/<id>.json`, frames in `.cache/captures/<film>/<id>/` |
 | `just capture <film> <id> <scenario.ts>` | record a web demo with Playwright (`scripts/lib/scenario.ts`), with click and pointer events; the source video goes to `out/<film>/sources/` |
 | `just captures <film> <dir>` | re-derive every capture's frames from its source videos (by name in `<dir>`, checked by sha256) |

@@ -9,10 +9,15 @@ film := "infotheory"
 default:
     @just --list
 
-# Install JS dependencies (bun) and the Python audio environment (uv).
+# Install JS dependencies (bun), the Python audio environment (uv) and the pinned browser.
 setup:
     bun install
     uv sync --project audio
+    bun scripts/browser.ts
+
+# Download the pinned browser (Chrome for Testing, one exact version, sha256-checked) into .cache/chrome/; the tools prefer it to an installed Chrome.
+browser:
+    bun scripts/browser.ts
 
 # Start a new film from templates/film/, e.g. `just new-film demo nebula` (then `just fonts demo`).
 new-film id style *args:

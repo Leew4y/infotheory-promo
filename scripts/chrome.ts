@@ -7,14 +7,26 @@
  */
 import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { CHROME_VERSION, pinnedChrome } from './lib/browser-pin';
 import { confined } from './lib/confine';
 
 export type Gpu = 'platform' | 'swiftshader';
 
-/** Chrome or Edge executable: $CHROME_PATH, then the usual install locations per platform. */
+let warnedUnpinned = false;
+/**
+ * The browser executable: $CHROME_PATH (it must exist), then the pinned Chrome for Testing (scripts/lib/browser-pin.ts,
+ * installed by `just browser`), then an installed Chrome or Edge in the usual places per platform, with a one-line
+ * warning on stderr (once per process): its pixels may not match the regress baselines.
+ */
 export function findChrome(): string {
+  const env = process.env.CHROME_PATH;
+  if (env) {
+    if (!existsSync(env)) throw new Error(`CHROME_PATH=${env} does not exist`);
+    return env;
+  }
+  const pinned = pinnedChrome();
+  if (pinned) return pinned;
   const c = [
-    process.env.CHROME_PATH,
     'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
     'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
     'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
@@ -22,8 +34,12 @@ export function findChrome(): string {
     '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
     '/usr/bin/google-chrome',
     '/usr/bin/chromium',
-  ].find((p) => p && existsSync(p));
-  if (!c) throw new Error('Chrome / Edge not found (set CHROME_PATH)');
+  ].find((p) => existsSync(p));
+  if (!c) throw new Error(`no browser: run \`just browser\` (Chrome for Testing ${CHROME_VERSION}) or set CHROME_PATH`);
+  if (!warnedUnpinned) {
+    warnedUnpinned = true;
+    console.warn(`warning: Chrome for Testing ${CHROME_VERSION} is not installed (run \`just browser\`); using ${c}, whose pixels may not match the regress baselines`);
+  }
   return c;
 }
 

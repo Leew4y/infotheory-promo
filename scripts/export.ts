@@ -45,7 +45,7 @@
  *     the usual convention for screen / web content, and what players and browsers expect for SDR HD video.
  * Exit codes: 0 success, 1 job failed, 2 usage or setup error, 130 interrupted.
  * Test hooks: EXPORT_FFMPEG / EXPORT_FFPROBE replace the binaries (a path or a JSON command array); --abort-after <n>
- * cancels after n frames.
+ * cancels after n frames; EXPORT_PROGRESS_EVERY=<n> also prints the progress line every n written frames.
  */
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, statSync, writeFileSync, writeSync } from 'node:fs';
 import { hostname } from 'node:os';
@@ -88,6 +88,8 @@ const cmdPrefix = (v: string | undefined, d: string): string[] => (v ? (v.starts
 const FFMPEG = cmdPrefix(process.env.EXPORT_FFMPEG, 'ffmpeg');
 const FFPROBE = cmdPrefix(process.env.EXPORT_FFPROBE, 'ffprobe');
 const ABORT_AFTER = opt('abort-after') !== undefined ? +opt('abort-after')! : -1;
+// test hook: also print the progress line every n written frames (test-export signals after a frame count)
+const PROGRESS_EVERY = Math.max(0, Math.floor(+(process.env.EXPORT_PROGRESS_EVERY ?? 0)) || 0);
 
 // ---- job state: everything cancel() and cleanup() act on
 const browsers: Browser[] = [];
@@ -477,7 +479,7 @@ try {
         nextWrite++;
         if (nextWrite === ABORT_AFTER) cancel('interrupted (test hook)');
         const now = performance.now();
-        if (now - lastLog > 10_000 || nextWrite === N) {
+        if (now - lastLog > 10_000 || nextWrite === N || (PROGRESS_EVERY && nextWrite % PROGRESS_EVERY === 0)) {
           lastLog = now;
           const rate = nextWrite / ((now - t0) / 1000);
           console.log(`frame ${nextWrite}/${N}  ${((100 * nextWrite) / N).toFixed(1)}%  ${rate.toFixed(1)} fps  eta ${Math.round((N - nextWrite) / rate)}s`);

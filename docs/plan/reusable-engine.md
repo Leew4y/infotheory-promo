@@ -108,6 +108,15 @@ GPU 路径只用于生产，差异上限按来源 2 记录。
 0d 可与阶段 1 并行，原定阶段 1 合并前必须完成。
 2026-10-07 修订（Develata 决定）：0d 未交回时先合并阶段 0–1，标注为"Windows 已验证、macOS 待验证"；0d 改在 `main` 上运行，
 暴露的问题另开 PR 修复。理由：0d 可能暴露的问题集中在启动参数、GPU 后端与进程清理（`scripts/`），不涉及三层结构。
+2026-10-23 记录：0d 在 Apple M5 Pro（macOS 26.5.1，Chrome 155.0.8059.85）上完成，结果见 `spikes/0d-macos/RESULTS.md`。
+GPU 能力、0a（CPU 2D canvas 下确定）、0c 的帧率与清晰度、validate、导出与各项测试都通过；0b 未单独运行。暴露的问题都在 `scripts/`，已修正：
+- 回归基线按平台各录一份（`regress/<style>.<os-arch>.json`），因为文字栅格化随平台不同。
+- 浏览器固定为 Chrome for Testing 155.0.8059.85（`just browser`，四个平台各记 sha256，见 `scripts/lib/browser-pin.ts`），
+  不再随本机 Chrome 的自动更新变化，也没有品牌版拉起的更新器；darwin-arm64 回归用它逐像素通过。Windows 上未运行，
+  Windows 基线（155.0.8059.40 录制）在固定版本下是否一致待核对。
+- test-export 的真实 SIGINT 用例改为在导出写出 150 帧后发信号（原来按墙钟，这台机器在信号前就导完了）。
+- test-capture 的点击时机检查改为时延本身（原来的"0–2 帧"与本节 0c 的"≤ 66 ms"不等价）；macOS 的 screencast 是 60 Hz，
+  上限 83 ms，其他平台仍是 66 ms。波纹位置检查改用拟合圆的圆心（原来的阈值质心在镜头推近时偏 2–3 px，映射本身误差 < 1 px）。
 
 **决策门。**
 - 0a、0b、0c 全部通过 → 保留自研渲染器，进入阶段 1。
@@ -596,6 +605,6 @@ A1 / A1b 评审修正（Codex，gpt-6-astra max：1 BLOCKER / 8 SHOULD_FIX / 2 N
 
 - 阶段 1 开始前：阶段 0 的数据与决策门结论（0a–0c 已完成，见 `spikes/RESULTS.md`）。
 - 录屏一律用 viewport = 输出分辨率、DPR 1（0c 实测 DPR 2 不提高录制分辨率）。
-- 0d 需要协作者在 macOS 上配合运行。
+- 0d 已在 macOS 上完成（2026-10-23，见 0d 一节的记录）；固定浏览器版本在 Windows 上的运行与基线核对待协作者确认。
 - 字体选择需人眼看样张；字体等素材文件的下载逐项确认。
 - A2 字体目录的候选清单（字体族、用途、体积）需 Develata 确认后一次性下载。

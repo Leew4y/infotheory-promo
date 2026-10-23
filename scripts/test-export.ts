@@ -12,12 +12,18 @@
  * that no temporary or lock file is left. Stand-ins in scripts/test-fixtures replace ffmpeg / ffprobe to stall the
  * encoder or the final probe, or to report unusable probe results.
  * A real SIGINT is sent only on macOS / Linux: on Windows a child cannot be sent SIGINT (Bun's kill() terminates it
- * outright), so there the interrupt is exercised through --abort-after, which takes the same cancel path.
+ * outright), so there the interrupt is exercised through --abort-after, which takes the same cancel path. The signal
+ * goes out when the export reports a given number of written frames (EXPORT_PROGRESS_EVERY makes it report them), so the
+ * case interrupts rendering on a fast machine and a slow one alike.
+ * The leftover-process check counts every process the job started, its browser's included. The branded Chrome on macOS
+ * may start GoogleUpdater processes that outlive it, which the check reports; the pinned Chrome for Testing (just
+ * browser) has no updater, so the run warns when it would use another browser.
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { hostname } from 'node:os';
 import path from 'node:path';
-import { killTree } from './chrome';
+import { findChrome, killTree } from './chrome';
+import { pinnedChrome } from './lib/browser-pin';
 import { requireFilm } from './film-arg';
 
 const ROOT = path.resolve(import.meta.dir, '..');
@@ -31,6 +37,10 @@ const stub = (f: string) => JSON.stringify(['bun', path.join(FIX, f)]);
 if (!existsSync(path.join(ROOT, 'out', FILM, 'music.wav'))) { console.error(`out/${FILM}/music.wav missing: run \`just music ${FILM}\` first`); process.exit(2); }
 rmSync(DIR, { recursive: true, force: true });
 mkdirSync(DIR, { recursive: true });
+let BROWSER = '';
+try { BROWSER = findChrome(); } catch (e) { console.error((e as Error).message); process.exit(2); }
+const PINNED = !process.env.CHROME_PATH && BROWSER === pinnedChrome();
+if (!PINNED) console.log(`note: the exports use ${BROWSER}, not the pinned Chrome for Testing (just browser); a branded Chrome may start updater processes that the leftover check reports`);
 
 type Proc = { pid: number; ppid: number; start: number; cmd: string };
 /** Every process: id, parent id, start (orders starts) and command line. */
@@ -86,7 +96,9 @@ async function probeTarget(): Promise<{ frames: number; audio: number } | null> 
 
 interface Case {
   name: string; args: string[]; env?: Record<string, string>; expect: number | 'nonzero'; within: number;
-  success?: { frames: number; audio: number }; prepare?: () => Promise<void> | void; signal?: { after: number; sig: NodeJS.Signals };
+  success?: { frames: number; audio: number }; prepare?: () => Promise<void> | void;
+  /** Send `sig` once the export reports `afterFrames` written frames; it must then exit within `within` seconds. */
+  signal?: { afterFrames: number; sig: NodeJS.Signals; within: number };
   keepLock?: boolean;
   /** Windows: hold the old target open in another process with this share mode while the job runs (a video player). */
   hold?: 'Read' | 'ReadWrite';
@@ -95,21 +107,53 @@ interface Case {
 }
 type Job = ReturnType<typeof Bun.spawn>;
 const start = (c: Case): Job => Bun.spawn(['bun', path.join(ROOT, 'scripts', 'export.ts'), '--film', FILM, '--out', TARGET, ...c.args], { env: { ...process.env, ...(c.env ?? {}) }, stdout: 'pipe', stderr: 'pipe' });
+/** A stream's whole text; `onLine` sees each complete line as it arrives. */
+async function collect(stream: ReadableStream<Uint8Array>, onLine?: (line: string) => void): Promise<string> {
+  const dec = new TextDecoder();
+  let all = '', rest = '';
+  for await (const chunk of stream) {
+    const s = dec.decode(chunk, { stream: true });
+    all += s;
+    if (!onLine) continue;
+    const lines = (rest + s).split('\n');
+    rest = lines.pop()!;
+    for (const l of lines) onLine(l);
+  }
+  return all;
+}
 async function finish(c: Case, job: Job, t0: number): Promise<{ ok: boolean; notes: string[] }> {
   const fam = family(job.pid!);
   let killed = false;
   const watchdog = setTimeout(async () => { killed = true; await killTree(job.pid); }, (c.within + 30) * 1000);
-  if (c.signal) setTimeout(() => { try { process.kill(job.pid, c.signal!.sig); } catch {} }, c.signal.after * 1000);
-  const [out, err, code] = await Promise.all([new Response(job.stdout as ReadableStream).text(), new Response(job.stderr as ReadableStream).text(), job.exited]);
+  // the signal: once the export's progress line reports enough written frames
+  let signalled: { at: number; frames: number } | null = null;
+  const onLine = c.signal ? (l: string) => {
+    const m = /^frame (\d+)\/\d+/.exec(l);
+    if (!signalled && m && +m[1] >= c.signal!.afterFrames) {
+      signalled = { at: performance.now(), frames: +m[1] };
+      try { process.kill(job.pid, c.signal!.sig); } catch {}
+    }
+  } : undefined;
+  const [out, err, code] = await Promise.all([collect(job.stdout as ReadableStream<Uint8Array>, onLine), collect(job.stderr as ReadableStream<Uint8Array>), job.exited]);
   clearTimeout(watchdog);
-  const secs = (performance.now() - t0) / 1000;
+  const end = performance.now();
+  const secs = (end - t0) / 1000;
   await Bun.sleep(1500); // let the OS reap killed children
-  const notes: string[] = [];
+  const notes: string[] = [], info: string[] = [];
   if (killed) notes.push('watchdog had to kill the job');
   if (c.expect === 'nonzero' ? code === 0 : code !== c.expect) notes.push(`exit ${code}, expected ${c.expect}`);
   if (secs > c.within) notes.push(`took ${secs.toFixed(1)}s, bound ${c.within}s`);
+  if (c.signal) {
+    const s = signalled as { at: number; frames: number } | null;
+    if (!s) notes.push(`the export never reported ${c.signal.afterFrames} written frames, so no ${c.signal.sig} was sent`);
+    else {
+      const after = (end - s.at) / 1000;
+      info.push(`${c.signal.sig} sent at frame ${s.frames}, exit ${after.toFixed(1)}s later`);
+      if (after > c.signal.within) notes.push(`exit ${after.toFixed(1)}s after ${c.signal.sig}, bound ${c.signal.within}s`);
+    }
+  }
   const left = await fam.left();
-  if (left.length) notes.push(`${left.length} process(es) left running: ${left[0].slice(0, 100)}`);
+  if (left.length) notes.push(`${left.length} process(es) left running: ${left.slice(0, 3).map((l) => l.slice(0, 120)).join(' | ')}${PINNED ? '' : ' (not the pinned browser: see the note above)'}`);
   const stray = readdirSync(DIR).filter((f) => /partial|\.lock/.test(f) && !(c.keepLock && f.endsWith('.lock')));
   if (stray.length) notes.push(`left behind: ${stray.join(', ')}`);
   const content = existsSync(TARGET) ? readFileSync(TARGET) : null;
@@ -132,7 +176,7 @@ async function finish(c: Case, job: Job, t0: number): Promise<{ ok: boolean; not
   } else if (keptFiles.length) notes.push(`unexpected kept video: ${keptFiles.join(', ')}`);
   for (const f of keptFiles) rmSync(path.join(DIR, f), { force: true });
   const last = (out + err).trim().split('\n').filter(Boolean).slice(-1)[0] ?? '';
-  return { ok: notes.length === 0, notes: [`exit ${code}, ${secs.toFixed(1)}s: ${last.slice(0, 140)}`, ...notes] };
+  return { ok: notes.length === 0, notes: [`exit ${code}, ${secs.toFixed(1)}s: ${last.slice(0, 140)}`, ...info, ...notes] };
 }
 
 const shortWav = path.join(DIR, 'short.wav');
@@ -164,7 +208,8 @@ if (process.platform === 'win32')
     { name: 'target held without delete sharing: rename retried, verified video kept', args: ['--from', '30', '--to', '31', '--workers', '1'], expect: 1, within: 120, hold: 'ReadWrite', kept: 30 },
   );
 if (process.platform !== 'win32')
-  cases.push({ name: 'real SIGINT during rendering', args: ['--from', '30', '--to', '50'], expect: 130, within: 60, signal: { after: 12, sig: 'SIGINT' } });
+  cases.push({ name: 'real SIGINT during rendering', args: ['--from', '30', '--to', '50'], env: { EXPORT_PROGRESS_EVERY: '10' }, expect: 130, within: 120,
+    signal: { afterFrames: 150, sig: 'SIGINT', within: 15 } });
 
 const results: { name: string; ok: boolean; notes: string[] }[] = [];
 for (const c of cases) {
