@@ -9,8 +9,8 @@
  * its own hard watchdog (kills the whole process tree), and each case checks: the exit code, that it ended within
  * its bound, that no Chrome / ffmpeg / stand-in process started by it is still running, that the old target is
  * untouched (failures) or replaced by a video whose frame count and audio length ffprobe confirms (successes), and
- * that no temporary or lock file is left. Stand-ins in scripts/test-fixtures replace ffmpeg / ffprobe to stall the
- * encoder or the final probe, or to report unusable probe results.
+ * that no temporary or lock file is left. Stand-ins in scripts/test-fixtures replace ffmpeg / ffprobe to stall or fail
+ * the encoder, to stall the final probe, or to report unusable probe results.
  * A real SIGINT is sent only on macOS / Linux: on Windows a child cannot be sent SIGINT (Bun's kill() terminates it
  * outright), so there the interrupt is exercised through --abort-after, which takes the same cancel path. The signal
  * goes out when the export reports a given number of written frames (EXPORT_PROGRESS_EVERY makes it report them), so the
@@ -195,7 +195,12 @@ const cases: Case[] = [
   { name: 'audio shorter than the range', args: ['--from', '0', '--to', '1', '--audio', shortWav], expect: 1, within: 60,
     prepare: async () => { await Bun.spawn(['ffmpeg', '-v', 'error', '-y', '-f', 'lavfi', '-i', 'sine=d=0.5', shortWav]).exited; } },
   { name: 'worker launch failure', args: ['--from', '30', '--to', '31'], env: { CHROME_PATH: Bun.which('ffmpeg') ?? 'ffmpeg' }, expect: 'nonzero', within: 90 },
-  { name: 'encoder failure', args: ['--from', '30', '--to', '33', '--crf', 'not-a-number'], expect: 1, within: 90 },
+  { name: 'encoder failure', args: ['--from', '30', '--to', '33'], env: { EXPORT_FFMPEG: stub('fail.ts') }, expect: 1, within: 90 },
+  // just export <film> [workers crf] [--flags]: a flag written before workers and crf takes their place
+  { name: 'a flag in the place of workers is refused (just export <film> --maxrate 16)', args: ['--workers', '--maxrate', '--crf', '16', '--from', '30', '--to', '31'], expect: 2, within: 30 },
+  { name: 'a flag in the place of crf is refused (just export <film> 4 --maxrate 16)', args: ['--workers', '4', '--crf', '--maxrate', '16', '--from', '30', '--to', '31'], expect: 2, within: 30 },
+  { name: '--workers 0 is refused', args: ['--workers', '0', '--from', '30', '--to', '31'], expect: 2, within: 30 },
+  { name: '--crf outside 0..51 is refused', args: ['--crf', '52', '--from', '30', '--to', '31'], expect: 2, within: 30 },
   { name: 'interrupt (cancel path via --abort-after)', args: ['--from', '30', '--to', '40', '--abort-after', '10'], expect: 130, within: 90 },
   { name: 'interrupt at the last frame cannot publish', args: ['--from', '30', '--to', '31', '--abort-after', '30'], expect: 130, within: 90 },
   { name: 'deadline exceeded while rendering', args: ['--from', '30', '--to', '60', '--deadline', '6'], expect: 1, within: 60 },

@@ -6,6 +6,7 @@
  *     --res: the output resolution, e.g. 1440 or 2160 for a 1920x1080 film (2560x1440, 3840x2160), 2160 for a 1080x1920
  *     one (2160x3840), 720 for a small preview: the page renders at that scale (engine/util.ts SCALE), it is not an
  *     upscale; written to out/<id>/<id>[-<style>]-<res>p.mp4 unless --out. Captures are drawn from their recorded pixels.
+ *     --workers: a positive integer; --crf: x264's constant rate factor, an integer from 0 to 51 (anything else exits 2).
  *     --maxrate: cap the video bitrate (x264 VBV: maxrate, buffer twice that) on top of the CRF.
  *     --for x: a copy for posting on X: maxrate 20 Mbit/s (X's web upload states 25 Mbit/s; recorded in
  *     films/math-lessons/review/09-social-review.md), and a warning when it is longer than 140 s or larger than 512 MB
@@ -75,6 +76,18 @@ const DIST = path.join(ROOT, 'dist', FILM);
 const flag = (k: string): boolean => argv.includes(`--${k}`);
 const fail = (exit: number, message: string): never => { throw Object.assign(new Error(message), { exit }); };
 
+// `just export <film> [workers crf] [--flags]` passes its positional values as --workers and --crf, so a flag written
+// before them takes their place (`just export demo --maxrate 16` runs --workers --maxrate --crf 16, which opt() would
+// read as 4 workers, crf 16 and no maxrate): the value after each must be its number
+const positional = (k: string, ok: (v: string) => boolean, what: string): void => {
+  const i = argv.indexOf(`--${k}`);
+  if (i < 0) return;
+  const v = argv[i + 1];
+  if (v === undefined || v.startsWith('--')) { console.error(`--${k}${v ? ` ${v}: a flag in the place of ${k}` : ': no value'}. Usage: just export <film> [workers crf] [--flags]; flags go after workers and crf, e.g. just export ${FILM} 4 18${v ? ` ${v} ...` : ''}`); process.exit(2); }
+  if (!ok(v)) { console.error(`--${k} ${v}: ${what}`); process.exit(2); }
+};
+positional('workers', (v) => /^[1-9]\d*$/.test(v), 'a positive integer (default 4)');
+positional('crf', (v) => /^\d+$/.test(v) && +v <= 51, 'an integer from 0 to 51 (default 18)');
 const CRF = opt('crf', '18')!;
 const DRAFT = flag('draft');
 const TRANSPORT = opt('transport', 'blob')!;
@@ -85,7 +98,7 @@ let takeFrame: ((n: number, body: Uint8Array) => string | null) | null = null;
 const SINGLE = flag('shots') || flag('cues') || flag('timeline') || flag('scenes') || flag('narration');
 // rendering frames (the video, a range, shots) needs every capture's frames; the cue sheet, timeline and narration do not
 if (!(flag('cues') || flag('timeline') || flag('scenes') || flag('narration'))) await requireCaptureFrames(FILM);
-const WORKERS = SINGLE ? 1 : Math.max(1, +(opt('workers', '4') ?? 4));
+const WORKERS = SINGLE ? 1 : +opt('workers', '4')!;
 const STYLE = opt('style');
 const RES = opt('res');
 if (RES !== undefined && !/^\d+$/.test(RES)) { console.error(`--res ${RES}: pixels on the short side, e.g. 1440 or 2160`); process.exit(2); }
