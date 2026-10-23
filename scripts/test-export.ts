@@ -85,18 +85,18 @@ function family(root: number) {
     },
   };
 }
-async function probeTarget(): Promise<{ frames: number; audio: number } | null> {
-  const p = Bun.spawn(['ffprobe', '-v', 'error', '-count_packets', '-show_entries', 'stream=codec_type,nb_read_packets,duration', '-of', 'json', TARGET], { stdout: 'pipe', stderr: 'ignore' });
+async function probeTarget(): Promise<{ frames: number; audio: number; size: string; color: string } | null> {
+  const p = Bun.spawn(['ffprobe', '-v', 'error', '-count_packets', '-show_entries', 'stream=codec_type,nb_read_packets,duration,width,height,color_space,color_primaries,color_transfer,color_range', '-of', 'json', TARGET], { stdout: 'pipe', stderr: 'ignore' });
   const [out, code] = [await new Response(p.stdout).text(), await p.exited];
   if (code !== 0) return null;
-  const s = JSON.parse(out).streams as { codec_type: string; nb_read_packets: string; duration: string }[];
+  const s = JSON.parse(out).streams as Record<string, string>[];
   const v = s.find((x) => x.codec_type === 'video'), a = s.find((x) => x.codec_type === 'audio');
-  return v && a ? { frames: +v.nb_read_packets, audio: +a.duration } : null;
+  return v && a ? { frames: +v.nb_read_packets, audio: +a.duration, size: `${v.width}x${v.height}`, color: [v.color_space, v.color_primaries, v.color_transfer, v.color_range].join('/') } : null;
 }
 
 interface Case {
   name: string; args: string[]; env?: Record<string, string>; expect: number | 'nonzero'; within: number;
-  success?: { frames: number; audio: number }; prepare?: () => Promise<void> | void;
+  success?: { frames: number; audio: number; size?: string }; prepare?: () => Promise<void> | void;
   /** Send `sig` once the export reports `afterFrames` written frames; it must then exit within `within` seconds. */
   signal?: { afterFrames: number; sig: NodeJS.Signals; within: number };
   keepLock?: boolean;
@@ -163,6 +163,8 @@ async function finish(c: Case, job: Job, t0: number): Promise<{ ok: boolean; not
     else {
       if (p.frames !== c.success.frames) notes.push(`target has ${p.frames} frames, expected ${c.success.frames}`);
       if (Math.abs(p.audio - c.success.audio) > 0.03) notes.push(`target audio ${p.audio.toFixed(3)}s, expected ~${c.success.audio.toFixed(3)}s`);
+      if (p.size !== (c.success.size ?? '1920x1080')) notes.push(`target is ${p.size}, expected ${c.success.size ?? '1920x1080'}`);
+      if (p.color !== 'bt709/bt709/bt709/tv') notes.push(`target colour tags ${p.color}, expected bt709/bt709/bt709/tv`);
     }
   } else if (!content || content.toString() !== SENTINEL) notes.push('old target was not preserved');
   const keptFiles = readdirSync(DIR).filter((f) => /^target\.verified-\d+\.mp4$/.test(f));
@@ -183,6 +185,10 @@ const shortWav = path.join(DIR, 'short.wav');
 const deadPid = 999_999;
 const cases: Case[] = [
   { name: 'success (2 s, with audio)', args: ['--from', '30', '--to', '32', '--workers', '2'], expect: 0, within: 120, success: { frames: 60, audio: 2 } },
+  // --res renders at a higher scale (Issue #10): the pixel size, frame count, audio and colour tags of the output
+  { name: 'success at --res 1440 (2560x1440)', args: ['--from', '30', '--to', '31', '--workers', '2', '--res', '1440'], expect: 0, within: 120, success: { frames: 30, audio: 1, size: '2560x1440' } },
+  { name: 'success at --res 2160 (3840x2160)', args: ['--from', '30', '--to', '31', '--workers', '2', '--res', '2160'], expect: 0, within: 180, success: { frames: 30, audio: 1, size: '3840x2160' } },
+  { name: '--res that is not whole and even pixels is refused', args: ['--from', '30', '--to', '31', '--res', '1000'], expect: 'nonzero', within: 60 },
   { name: 'tiny range snaps to frames (0..0.05 s -> 2 frames)', args: ['--from', '0', '--to', '0.05', '--workers', '1'], expect: 0, within: 90, success: { frames: 2, audio: 2 / 30 } },
   { name: 'negative --from is rejected', args: ['--from', '-1', '--to', '1', '--noaudio'], expect: 2, within: 60 },
   { name: 'missing audio without --noaudio', args: ['--from', '30', '--to', '31', '--audio', path.join(DIR, 'nope.wav')], expect: 2, within: 30 },
