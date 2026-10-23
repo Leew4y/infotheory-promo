@@ -459,7 +459,8 @@ def main():
         stats['instance'] = face.location
         out.append({'id': f['id'], 'checked': {'ideographs': n_ideo, 'punctuation': n_punct}, 'stats': stats,
                     'findings': found + ink_found + punct_found})
-    print(json.dumps({'fonts': out}, ensure_ascii=False))
+    # ASCII JSON: a piped stdout is encoded with the locale code page on Windows (and -I ignores PYTHONUTF8)
+    print(json.dumps({'fonts': out}))
 
 
 if __name__ == '__main__':
