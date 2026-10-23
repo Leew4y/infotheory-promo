@@ -4,7 +4,7 @@
  *   bun scripts/capture.ts --film <film> --id <id> <scenario.ts> [--fps 30] [--quality 92] [--sources <dir> | --store-source]
  *                          [--max-seconds 600] [--no-keep-alive]
  *
- * 1. Opens the scenario's page in headless Chrome (the machine's Chrome, as every tool here), viewport from the
+ * 1. Opens the scenario's page in headless Chrome (findChrome: the pinned build, as every tool here), viewport from the
  *    scenario (default 1920x1080, DPR 1), and records it with page.screencast (JPEG frames with timestamps) while the
  *    scenario runs (scripts/lib/scenario.ts). The page reports pointer moves (at most every 30 ms), presses (with the
  *    target element and its box) and keys with performance.timeOrigin + event.timeStamp, the clock of the frames.

@@ -43,7 +43,10 @@
   window.addEventListener('pointerdown', (e) => {
     clicks++;
     show(clicks);
-    window.__events.push({ i: clicks, t: performance.timeOrigin + e.timeStamp, x: e.clientX, y: e.clientY });
+    // t: the event; h: the handler runs; raf: the start of the frame that draws the change (requestAnimationFrame's time)
+    const rec = { i: clicks, t: performance.timeOrigin + e.timeStamp, h: performance.timeOrigin + performance.now(), x: e.clientX, y: e.clientY };
+    window.__events.push(rec);
+    requestAnimationFrame((ts) => { rec.raf = performance.timeOrigin + ts; });
   });
 </script>
 </body>

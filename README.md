@@ -19,7 +19,9 @@ just mac-setup     # brew bundle（bun、just、ffmpeg、uv、speech）→ bun i
 just doctor        # 只检查不安装：每一项缺什么、用什么命令补
 ```
 
-第一次没有 just 时，先 `brew bundle --no-upgrade`。还需要 Google Chrome（装在 `/Applications`，或设 `CHROME_PATH`）。
+第一次没有 just 时，先 `brew bundle --no-upgrade`。浏览器由 `just browser`（`just setup` 会运行它）下载固定版本的 Chrome for Testing
+（155.0.8059.85，按 sha256 校验）到 `.cache/chrome/`：两台机器用同一个构建，不会因自动更新改变像素，也没有更新程序进程；
+所有工具优先用它（`CHROME_PATH` 最先），没装时才退回本机安装的 Chrome 并提示像素可能与基线不同。
 在 M5 Pro 上实测（2026-10-23）：整部参考片 6060 帧带音频导出 2.0 分钟（约 50 帧/秒）；一句旁白的合成时间约为其时长的 0.2–0.3 倍。
 Windows 上的命令相同（just 在 PowerShell 里运行），旁白走 PyTorch + CUDA；Mac 与 Windows 的实测对照在 `spikes/0d-macos/RESULTS.md`。
 
@@ -71,7 +73,8 @@ just export demo                             # 成片 → out/demo/demo.mp4
 所有片子相关的命令第一个参数是片名（省略时为 `infotheory`）；生成的东西都在 `out/<film>/`（不入库）。
 
 ```
-just mac-setup / just setup / just doctor    # 安装 / 依赖 / 环境检查
+just mac-setup / just setup / just doctor    # 安装 / 依赖（bun install、uv sync、just browser）/ 环境检查
+just browser                  # 固定版本的浏览器 Chrome for Testing → .cache/chrome/（按 sha256 校验；已装好则跳过）
 just new-film demo nebula [--plan] [--portrait]   # 从模板新建片子；films/demo/ 已存在但只有先写的材料（brief.md、research/、script/、review/）时，把模板加进去，原有文件不动
 just new-style ink-wash       # 从模板新建风格包 styles/ink-wash/（含 STYLE.md 设计说明骨架）
 just plan-check demo [--json] / just scaffold demo / just plan-schema
