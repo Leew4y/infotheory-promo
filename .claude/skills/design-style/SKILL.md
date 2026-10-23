@@ -46,6 +46,9 @@ why). Remove the directions that were not chosen.
 - Page ground: quiet enough that thin lines and 15 px labels read; texture at low contrast.
 - Plate shader: `uP` = progress (opening -> close), `uQ` = highlight; deterministic in `uTime`; no visible banding.
 - Layout: `margin` and `column` are the grid scenes use; captions and chapter labels must stay inside the 5 % safe area.
+  Give the style a `layout.portrait` and portrait branches in its overlays (captions above the bottom quarter, chapter
+  label below a phone app's top bar, the style's own type about 1.3 times larger) so portrait films (`size` [1080,
+  1920]) can use it; geometry from `W`, `H`, `M` at draw time, never at the module's top level (see `styles/nebula`).
 - Motion: fades and transitions continuous at both ends (no jump on the first or last frame of a fade).
 - Demo look (`demo`: the window around a screen capture, the cursor, the click ripple, and the default window `area`
   with `rippleDur` / `pressDur`): part of the style, in its palette and spirit; the area stays clear of the style's own
@@ -84,7 +87,8 @@ Give the person the sheet (send the image) and a short note: the direction, what
 and regress results, and anything unverified. Their comments start another round of step 3. When they approve:
 record the new style's baseline with `just regress <film> --update --style <id>` (only then, and only for that
 style; if an existing style's baseline changed too, show its before/after frames first), commit, and record the
-outcome in `review/`.
+outcome in `review/`. Baselines are per platform (`regress/<style>.<os>-<arch>.json`): you record yours; say in the
+hand-over that the other platform's baseline for the new style is still to be recorded there.
 
 ## Don'ts
 

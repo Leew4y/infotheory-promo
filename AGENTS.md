@@ -39,6 +39,7 @@ Every film command takes the film id first (default `infotheory`); outputs go to
 |---|---|
 | `just new-film <id> <style>` / `just new-style <id>` | start from a template; `films/<id>/` may already hold the brief, `research/`, `script/`, `review/` (no film code: no `film.ts`, `main.ts`, `scenes/`, `film-plan.json`): the template is added around them, nothing replaced |
 | `just new-film <id> <style> --plan` | start a plan film (plate, narrated page, captioned page), then narrate and make fonts |
+| `just new-film <id> <style> [--plan] --portrait` | the same with a 1080 × 1920 frame (phones): `size` in `film-plan.json` / `defineFilm` |
 | `just plan-schema` / `just plan-check <film> [--json]` | generate the committed editor schemas; check the plan, modules, copy, references, assets and narration lock |
 | `just scaffold <film>` | create missing plan scene modules and rewrite the ordered index; keep every existing module |
 | `just render-scene <film> <scene-id> [--draft] [--style id]` | silent scene MP4 in `out/<film>/render/`; one JSON summary on stdout |
@@ -51,8 +52,8 @@ Every film command takes the film id first (default `infotheory`); outputs go to
 | `just texts <film> [--style id]` | every displayed and spoken text for fact-checking → `out/<film>/texts.md` + `texts.json`: per scene with film times, plan title/copy/captions, narration lines (`text`, `read`, `en`, lines without a caption marked), then the literals of the film's code (in a hand-written film: its captions and labels) |
 | `just shots <film> 5,20.5 [--style id]` | single frames |
 | `just dev <film>` | preview at http://127.0.0.1:5174 (`?style=<id>`) |
-| `just regress <film>` | pixel regression per style (`--update` only after a person approved the change) |
-| `just export <film> [workers crf] [--noaudio] [--style id]` | the video |
+| `just regress <film>` | pixel regression per style against this platform's baseline `regress/<style>.<os>-<arch>.json` (`--update` only after a person approved the change) |
+| `just export <film> [workers crf] [--noaudio] [--style id] [--res <px>] [--maxrate <Mbit/s>] [--for x]` | the video; `--res` = pixels on the short side (1440, 2160; 720 for a small preview), rendered at that scale, not upscaled, named `<film>[-<style>]-<res>p.mp4`; `--for x` caps the bitrate at 20 Mbit/s and warns past 140 s / 512 MB |
 | `just check`, `just check-imports`, `just test-validate`, `just test-export <film>` | type check, boundaries, tests |
 | `just font-catalog` | download and verify the whole font library |
 | `just import-capture <film> <id> <video> [--fps 30] [--crop W:H:X:Y] [--events f.jsonl --sync rec=video] [--store-source]` | a screen recording (OBS, any video) becomes capture `<id>`: manifest `films/<film>/captures/<id>.json`, frames in `.cache/captures/<film>/<id>/`; `--store-source` also puts the video in `films/<film>/captures/sources/` (at most 25 MB) |
@@ -61,7 +62,9 @@ Every film command takes the film id first (default `infotheory`); outputs go to
 | `just test`, `just test-capture`, `just bench-capture` | unit tests; capture end-to-end cases; capture throughput and memory |
 | `just narrate <film> [--resynth ids\|all]` | synthesize plan lines (otherwise `narration.json`) into `films/<film>/narration/<id>.flac` and the lock (`narration.lock.json`); both committed |
 | `just mix <film> [--music file\|none]` | final mix: music ducked under the narration, mastered to −16 LUFS → `out/<film>/master.wav` (the export uses it and refuses a stale one) |
-| `just tts-setup`, `just test-narration` | local TTS (Fun-CosyVoice3-0.5B, pinned, into `.cache/tts/`); narration end-to-end cases on the fake voice |
+| `just tts-setup`, `just test-narration` | local TTS into `.cache/tts/`: on Apple silicon the `speech` tool and Fun-CosyVoice3-0.5B in MLX (2.3 GB, pinned, backend `cosyvoice3-mlx`), elsewhere the PyTorch model (5.4 GB, backend `cosyvoice3`); narration end-to-end cases on the fake voice |
+| `just voice-design <voice> --describe "A=<text>" [...]` / `--pick A` | Apple silicon: design voice prompts from descriptions (Qwen3-TTS VoiceDesign, pinned), check them (transcribed back, pitch), audition each read by CosyVoice3 (`out/voice-design/<voice>/*-sample.mp3`), keep one as `voices/<voice>/` with its provenance |
+| `just doctor`, `just mac-setup` | what this machine has and the command for each gap (read-only); macOS from scratch (`Brewfile`, setup, tts-setup, doctor) |
 
 ## Rules
 
@@ -88,6 +91,15 @@ Every film command takes the film id first (default `infotheory`); outputs go to
 - Fonts come only from `fonts/catalog.json`; a style lists the ids it uses in `fonts.json`. Adding a font to the
   catalog (a download) needs the person's confirmation.
 - Text on a full-frame plate goes over `backdrop(...)` so it stays readable.
+- Frame and resolution: a film's frame is `size` in `film-plan.json` / `defineFilm` (default [1920, 1080], both even;
+  [1080, 1920] for phones). `W`, `H`, `M`, `COL` and `portrait()` are live values set when the film is defined: scenes
+  and style functions read them at draw time; a style module never computes geometry from them at its top level (it
+  loads before the film is defined; use a getter, as the styles' `demo.area`). A style supports portrait with
+  `layout.portrait` and portrait branches in its overlays (captions above the bottom quarter, where phone apps put their
+  own text; its own type larger); landscape geometry must stay as it was (regress). Everything is drawn in frame units;
+  the export's `--res` scales the canvas (`SCALE`): an offscreen canvas a style draws at frame size and then copies
+  with an identity transform must have `W·SCALE × H·SCALE` pixels, and a shader effect sized in pixels uses
+  `gl_FragCoord.xy / uScale`. validate, regress, sheet and shots render at scale 1.
 - Display punctuation (Chinese, Develata 2026-10-13; a film opts in with `defineFilm({ ..., punctuation: 'display' })`,
   as the templates, math-lessons, raa-demo and infotheory do): on screen a line break is the pause. A large display line (>= 32
   px) does not end in ，、；：。; ？！, a dash and an ellipsis stay; a block that also ends a line in ？ or ！ keeps its 。
@@ -117,13 +129,19 @@ Every film command takes the film id first (default `infotheory`); outputs go to
   from where it is spoken (Netflix-style timing); `shown: [ids] | true` gives lines displayed verbatim (quotes,
   refrains, plates) no caption; `voParts(id, parts)` gives where each part of a line is spoken, for animations that land
   on a phrase; `sfx` may be a function of `at(id)`. `placeNarration` retimes the scene's own captions to the speech the
-  same way. Synthesis samples:
-  a line's audio cannot be made again identically, so it is committed and a re-synthesis (`--resynth`) changes the
-  timeline. Run `just fonts <film>` after changing captions. With narration, `demoScene`'s `dur` is a minimum (footage
+  same way. A line's audio is committed and a re-synthesis (`--resynth`) changes the timeline: another machine or
+  backend gives other audio (on Apple silicon the same seed repeats exactly, on CUDA it is not guaranteed). Each lock
+  line records its backend (`cosyvoice3` PyTorch, `cosyvoice3-mlx` Apple silicon) and is kept as long as its reading,
+  voice and seed are unchanged, whichever machine runs `just narrate`; new or changed lines use this machine's backend
+  (`--backend` to choose). New plan films use the voice `zh-female-warm` (chosen by The-Walls, 2026-10-23); a voice is
+  a designed or licensed prompt clip, never a clone of a real person without their consent. Run `just fonts <film>` after changing captions. With narration, `demoScene`'s `dur` is a minimum (footage
   is never cut). A film with narration exports only with a current final mix (`just mix`; `just all` runs music → mix →
   export); write numbers, versions and amounts out in `read` (the voice has no text normaliser).
 - Done means: `just check`, `just check-imports`, `just validate <film>` (0 errors in every style) and `just regress
-  <film>` (every style with a baseline) pass, and the sheet has been looked at. The layout checks sample five frames
+  <film>` (every style with a baseline for this platform) pass, and the sheet has been looked at. Baselines are per
+  platform because text rasterises differently on macOS and Windows; record a missing one for your platform from a
+  known-good commit (`scripts/regress.ts` header: a worktree build and `--dist ... --update`), never from your change,
+  and say which platform's baselines you could not run. The layout checks sample five frames
   per scene and judge axis-aligned boxes: a strong heuristic, not a proof. Report what was verified, what was not, and
   anything only inferred.
 
