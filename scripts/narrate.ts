@@ -1,12 +1,18 @@
 /**
  * Synthesize a film's narration and write its lock:
  *
- *   bun scripts/narrate.ts --film <film> [--backend cosyvoice3|fake] [--resynth <id,id,...>|all]     (just narrate)
+ *   bun scripts/narrate.ts --film <film> [--backend cosyvoice3|cosyvoice3-mlx|fake] [--resynth <id,id,...>|all]     (just narrate)
  *
  * Reads film-plan.json's lines/voice when present, otherwise films/<film>/narration.json (NarrationScript), and voices/<voice>/voice.json
  * (prompt transcript, prompt file, source, licence). Each line is identified by a key: the hash of the adapter version,
  * backend, model (with its pinned revision), the voice prompt's sha256 and transcript, the reading, speed and seed
  * (from the line id). The caption text is not in the key: changing only the text updates the lock, not the audio.
+ *
+ * Backends: cosyvoice3 (PyTorch; Windows, Linux) and cosyvoice3-mlx (the same model converted to MLX; Apple silicon)
+ * read the same voice prompt; fake is for tests. Without --backend new lines use this machine's default (cosyvoice3-mlx
+ * on Apple silicon, cosyvoice3 elsewhere). Each lock line records the backend that made it, and its key is checked with
+ * that backend, so opening a film on the other machine keeps every committed line; only lines that must be synthesized
+ * use the current backend (a film can then mix the two: --resynth all makes it uniform).
  *
  * Per line:
  *   - lock entry with the same key, audio file present with the lock's sha256: kept (text updated if it changed);
@@ -21,8 +27,8 @@
  * Lines no longer in the script leave the lock and their audio is removed.
  *
  * The adapter, audio/tts.py, runs in the TTS environment for cosyvoice3 (.cache/tts/venv, made by just tts-setup;
- * TTS_PYTHON overrides) and in the audio project for fake (uv run --project audio). Exit code 1 on failure, 2 on
- * bad arguments.
+ * TTS_PYTHON overrides) and in the audio project for fake and cosyvoice3-mlx (uv run --project audio; the latter calls
+ * the speech tool). Exit code 1 on failure, 2 on bad arguments.
  */
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
@@ -52,13 +58,19 @@ export const narrationPaths = (film: string) => ({
 
 /** The adapter's version (audio/tts.py ADAPTER_VERSION) and the models: id, pinned revision, files, where they go. */
 const ADAPTER_VERSION = 3;
-const MODELS: Record<string, { model: string; dir?: string }> = {
+const MODELS: Record<string, { model: string; dir?: string; marker?: string }> = {
   fake: { model: 'fake-v1' },
   cosyvoice3: {
     model: 'FunAudioLLM/Fun-CosyVoice3-0.5B-2512@29e01c4e8d000f4bcd70751be16fa94bf3d85a18',
-    dir: path.join(ROOT, '.cache', 'tts', 'models', 'Fun-CosyVoice3-0.5B'),
+    dir: path.join(ROOT, '.cache', 'tts', 'models', 'Fun-CosyVoice3-0.5B'), marker: 'cosyvoice3.yaml',
+  },
+  'cosyvoice3-mlx': {
+    model: 'aufklarer/CosyVoice3-0.5B-MLX-bf16@9b210b2381280b3af1c631d474a250e3e46d7017',
+    dir: path.join(ROOT, '.cache', 'tts', 'models', 'CosyVoice3-0.5B-MLX-bf16'), marker: 'speech_tokenizer.safetensors',
   },
 };
+/** The backend new lines use on this machine when --backend is not given. */
+const defaultBackend = () => (process.platform === 'darwin' && process.arch === 'arm64' ? 'cosyvoice3-mlx' : 'cosyvoice3');
 const COSYVOICE_SRC = path.join(ROOT, '.cache', 'tts', 'cosyvoice-src');
 
 const sha256 = (b: Uint8Array | string) => createHash('sha256').update(b).digest('hex');
@@ -116,7 +128,7 @@ function speechSpans(file: string): [number, number][] {
 }
 
 function python(backend: string): string[] {
-  if (backend === 'fake') return ['uv', 'run', '--project', path.join(ROOT, 'audio'), 'python'];
+  if (backend === 'fake' || backend === 'cosyvoice3-mlx') return ['uv', 'run', '--project', path.join(ROOT, 'audio'), 'python'];
   const venv = path.join(ROOT, '.cache', 'tts', 'venv');
   const py = process.env.TTS_PYTHON ?? (process.platform === 'win32' ? path.join(venv, 'Scripts', 'python.exe') : path.join(venv, 'bin', 'python'));
   if (!existsSync(py)) fail(`no TTS environment (${py}): run just tts-setup`);
@@ -146,12 +158,11 @@ try {
     if (typeof l.text !== 'string' || !l.text.trim() || typeof (l.read ?? l.text) !== 'string' || !(l.read ?? l.text).trim()) fail(`narration line "${l.id}": text (and read, if given) must be non-empty`);
   }
   const old: NarrationLock | null = existsSync(P.lock) ? readJson<NarrationLock>(P.lock, 'lock') : null;
-  const backend = o.backend ?? old?.backend ?? 'cosyvoice3';
+  const backend = o.backend ?? defaultBackend();
   const M = MODELS[backend] ?? usage(`--backend ${backend}: one of ${Object.keys(MODELS).join(', ')}`);
-  if (M.dir && !existsSync(path.join(M.dir, 'cosyvoice3.yaml'))) fail(`model not found in ${path.relative(ROOT, M.dir)}: run just tts-setup`);
 
   const voiceDir = path.join(ROOT, 'voices', script.voice);
-  const voice = readJson<{ text: string; file: string }>(path.join(voiceDir, 'voice.json'), `voice "${script.voice}"`);
+  const voice = readJson<{ text: string; file: string; language?: string }>(path.join(voiceDir, 'voice.json'), `voice "${script.voice}"`);
   if (typeof voice.text !== 'string' || typeof voice.file !== 'string' || voice.file !== path.basename(voice.file)) fail(`voices/${script.voice}/voice.json: needs text and a plain file name`);
   const voiceWav = path.join(voiceDir, voice.file);
   const voiceSha = sha256(readFileSync(voiceWav));
@@ -162,18 +173,22 @@ try {
 
   const lines: Record<string, LockLine> = {};
   const todo: { id: string; read: string; seed: number; key: string }[] = [];
+  const keyOf = (b: string, read: string, seed: number) =>
+    sha256(JSON.stringify({ adapter: ADAPTER_VERSION, backend: b, model: MODELS[b]?.model ?? b, voice: voiceSha, prompt: voice.text, read, speed: 1, seed }));
   for (const l of script.lines) {
     const read = l.read ?? l.text;
     const seed = parseInt(sha256(`${FILM}/${l.id}`).slice(0, 8), 16);
-    const key = sha256(JSON.stringify({ adapter: ADAPTER_VERSION, backend, model: M.model, voice: voiceSha, prompt: voice.text, read, speed: 1, seed }));
     const e = old?.lines[l.id];
+    // an existing line is checked against the backend that made it (older locks name one backend for all lines)
+    const made = e?.backend ?? old?.backend ?? backend;
     const file = P.audio(l.id);
     const intact = e && existsSync(file) && sha256(readFileSync(file)) === e.sha256;
-    if (e && e.key === key && !resynth.has(l.id)) {
+    if (e && e.key === keyOf(made, read, seed) && !resynth.has(l.id)) {
       if (!intact) fail(`line "${l.id}": its audio ${path.relative(ROOT, file)} is missing or not the one in the lock; restore it, or make it again with --resynth ${l.id} (the timing will change)`);
-      lines[l.id] = { ...e, text: l.text, spans: speechSpans(file) };
-    } else todo.push({ id: l.id, read, seed, key });
+      lines[l.id] = { ...e, backend: made, text: l.text, spans: speechSpans(file) };
+    } else todo.push({ id: l.id, read, seed, key: keyOf(backend, read, seed) });
   }
+  if (todo.length && M.dir && !existsSync(path.join(M.dir, M.marker!))) fail(`model not found in ${path.relative(ROOT, M.dir)}: run just tts-setup`);
 
   // a private work directory
   const work = path.join(workRoot, `${FILM}-${process.pid}`);
@@ -184,7 +199,7 @@ try {
       mkdirSync(work, { recursive: true });
       const job = path.join(work, 'job.json');
       writeFileSync(job, JSON.stringify({
-        backend, model_dir: M.dir ?? '', src_dir: COSYVOICE_SRC, voice: { wav: voiceWav, text: voice.text },
+        backend, model_dir: M.dir ?? '', src_dir: COSYVOICE_SRC, voice: { wav: voiceWav, text: voice.text, language: voice.language ?? 'chinese' },
         lines: todo.map((t) => ({ id: t.id, read: t.read, seed: t.seed, out: path.join(work, `${t.id}.wav`) })),
       }, null, 1));
       console.log(`synthesizing ${todo.length} line(s) with ${backend}...`);
@@ -204,7 +219,7 @@ try {
         const l = script.lines.find((x) => x.id === t.id)!;
         const duration = samples / rate;
         const was = old?.lines[t.id]?.duration;
-        lines[t.id] = { text: l.text, read: t.read, duration, sha256: sha256(readFileSync(tmp)), key: t.key, spans: speechSpans(tmp) };
+        lines[t.id] = { text: l.text, read: t.read, duration, sha256: sha256(readFileSync(tmp)), key: t.key, backend, spans: speechSpans(tmp) };
         console.log(`  ${t.id}: ${duration.toFixed(3)}s${was !== undefined ? ` (was ${was.toFixed(3)}s)` : ''}`);
       }
     }
@@ -218,7 +233,12 @@ try {
         aside.push({ file, old: keep });
         renameSync(st.tmp, file);
       }
-      const lock: NarrationLock = { film: FILM, backend, model: M.model, voice: script.voice, lines: Object.fromEntries(script.lines.map((l) => [l.id, lines[l.id]])) };
+      // the lock-level backend and model: the ones most lines were made with (kept for older readers of the lock)
+      const counts = new Map<string, number>();
+      for (const l of Object.values(lines)) counts.set(l.backend!, (counts.get(l.backend!) ?? 0) + 1);
+      const main = [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? backend;
+      const lock: NarrationLock = { film: FILM, backend: main, model: MODELS[main]?.model ?? main, voice: script.voice, lines: Object.fromEntries(script.lines.map((l) => [l.id, lines[l.id]])) };
+      if (counts.size > 1) console.log(`note: this film's lines come from ${[...counts].map(([b, n]) => `${b} (${n})`).join(' and ')}; --resynth all makes them one backend (and moves the timeline)`);
       writeAtomic(P.lock, JSON.stringify(lock, null, 1) + '\n');
       const total = Object.values(lock.lines).reduce((x, l) => x + l.duration, 0);
       console.log(`${script.lines.length} line(s), ${total.toFixed(2)}s of speech, ${todo.length} synthesized -> ${path.relative(ROOT, P.lock)}`);

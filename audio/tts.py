@@ -2,8 +2,8 @@
 
     python audio/tts.py <job.json>
 
-job.json: { "backend": "fake" | "cosyvoice3", "model_dir": ..., "src_dir": ... (cosyvoice3),
-            "voice": { "wav": <prompt wav>, "text": <its transcript> },
+job.json: { "backend": "fake" | "cosyvoice3" | "cosyvoice3-mlx", "model_dir": ..., "src_dir": ... (cosyvoice3),
+            "voice": { "wav": <prompt wav>, "text": <its transcript>, "language": <e.g. chinese> },
             "lines": [ { "id", "read", "seed", "out" } ] }
 
 Each line's reading is synthesized and written to `out` as a 16-bit mono WAV at the backend's sample rate, with the
@@ -21,14 +21,21 @@ Backends:
               run time without a pinned revision (and silently falls back to none when that fails). Both are blocked,
               so only the pinned CosyVoice code shapes the text; numbers, versions and amounts are written out in each
               line's reading (narration.json "read").
+  cosyvoice3-mlx  the same model (Fun-CosyVoice3-0.5B, converted to MLX: aufklarer/CosyVoice3-0.5B-MLX-bf16) on Apple
+              silicon, through the `speech` command-line tool (Homebrew formula speech, soniqo/speech-swift); one
+              process per line. Full zero-shot conditioning (prompt tokens and features from the speech tokenizer, as
+              upstream), seeded per line: the same seed gives the same samples on the same machine. Made by
+              just tts-setup on macOS (the pinned bundle in model_dir). Needs only the standard library here.
 
-The top level imports only the standard library, so the fake backend runs anywhere.
+The top level imports only the standard library, so the fake and cosyvoice3-mlx backends run under any Python.
 """
 import json
 import math
 import os
 import random
+import shutil
 import struct
+import subprocess
 import sys
 import wave
 
@@ -129,7 +136,44 @@ def cosyvoice3_backend(job):
     return synth
 
 
-BACKENDS = {'fake': fake_backend, 'cosyvoice3': cosyvoice3_backend}
+def read_wav(path):
+    """Float samples and rate of a 16-bit mono PCM WAV."""
+    with wave.open(path, 'rb') as w:
+        if w.getsampwidth() != 2 or w.getnchannels() != 1:
+            raise SystemExit(f'tts: {path} is not 16-bit mono PCM')
+        rate, raw = w.getframerate(), w.readframes(w.getnframes())
+    return [s / 32768 for s in struct.unpack(f'<{len(raw) // 2}h', raw)], rate
+
+
+def cosyvoice3_mlx_backend(job):
+    exe = shutil.which('speech')
+    if not exe:
+        raise SystemExit('tts: the speech command is not on PATH (macOS: just tts-setup, or brew install speech)')
+    bundle = job['model_dir']
+    tokenizer = os.path.join(bundle, 'speech_tokenizer.safetensors')
+    if not os.path.isfile(tokenizer):
+        raise SystemExit(f'tts: {tokenizer} missing: run just tts-setup')
+    voice = job['voice']
+
+    def synth(read, seed):
+        out = f"{job['lines_dir']}/{seed}.speech.wav"
+        cmd = [exe, 'speak', read, '--engine', 'cosyvoice', '--language', voice.get('language', 'chinese'),
+               '--cosy-bundle-dir', bundle, '--cosy-speech-tokenizer', tokenizer,
+               '--voice-sample', voice['wav'], '--cosy-reference-transcript', voice['text'],
+               '--seed', str(seed), '-o', out]
+        p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        log = p.stdout or ''
+        # without the tokenizer the tool falls back to speaker-embedding-only cloning (lower fidelity): refuse that
+        if p.returncode != 0 or 'prompt_token + prompt_feat' not in log:
+            sys.stderr.write(log)
+            raise SystemExit(f'tts: speech failed for "{read}" (exit {p.returncode})')
+        samples, rate = read_wav(out)
+        os.remove(out)
+        return samples, rate
+    return synth
+
+
+BACKENDS = {'fake': fake_backend, 'cosyvoice3': cosyvoice3_backend, 'cosyvoice3-mlx': cosyvoice3_mlx_backend}
 
 
 def main():
@@ -139,6 +183,7 @@ def main():
         job = json.load(f)
     if job.get('backend') not in BACKENDS:
         raise SystemExit(f"tts: unknown backend {job.get('backend')!r} (one of {', '.join(BACKENDS)})")
+    job.setdefault('lines_dir', os.path.dirname(os.path.abspath(sys.argv[1])))
     synth = BACKENDS[job['backend']](job)
     for line in job['lines']:
         samples, rate = synth(line['read'], int(line['seed']))

@@ -1,0 +1,24 @@
+{
+ "id": "zh-female-warm",
+ "description": "Mandarin; a mature, warm and composed female voice (asked for as 御姐音, chosen as 温柔知性), median F0 about 194 Hz (normalised autocorrelation, voiced 10 ms frames; the same method gives 120 Hz for zh-male-professor). A designed clip: Qwen3-TTS VoiceDesign made it from a text description; the narration clones it zero-shot. Chosen by The-Walls (2026-10-23) from four designed candidates read by CosyVoice3 (audition below)",
+ "file": "prompt.wav",
+ "text": "我们从最简单的问题出发，一步一步，走到它的深处。",
+ "language": "chinese",
+ "source": "generated with Qwen3-TTS-12Hz-1.7B-VoiceDesign in MLX (mlx-community/Qwen3-TTS-12Hz-1.7B-VoiceDesign-bf16 at revision 7d3824abff87e49756bb0f83fb5411de75d160c4), mlx-audio 0.6.1, mlx 0.32.4, transformers 5.20.2, on Apple M5 Pro; 24 kHz, 16-bit mono, 4.40 s",
+ "generator": {
+  "call": "load_model(model).generate_voice_design(text, language='Chinese', instruct) after mx.random.seed(7)",
+  "instruct": "温柔知性的成熟女声，中低音，音色温润饱满，语速舒缓，带一点笑意和亲切感。",
+  "seed": 7
+ },
+ "audition": {
+  "A": "成熟自信的御姐女声，音色偏低、带一点磁性，咬字清晰，语速从容平稳，语气冷静笃定，像在娓娓讲述一个道理。",
+  "B": "三十岁左右的干练女性，声音清冷，中低音域，吐字利落，语调克制，略带疏离感但不冷漠。",
+  "C (chosen)": "温柔知性的成熟女声，中低音，音色温润饱满，语速舒缓，带一点笑意和亲切感。",
+  "D": "低沉、略带沙哑、富有磁性的成熟女声，气息稳定，语调起伏小，带一点慵懒和神秘感。",
+  "checks": "each candidate's clip transcribed back to its text (speech transcribe, Qwen3-ASR); CosyVoice3 clones of the clips had WeSpeaker cosine 0.81-0.88 to their clip and 0.50-0.75 to each other"
+ },
+ "transcriptSource": "the text the clip was generated from (transcribed back identically, 它 heard as 他)",
+ "license": "Apache-2.0 (Qwen3-TTS model licence); a designed voice, not a recording or clone of a person",
+ "sha256": "5138b8facc3a8e75a260f094983c97674d6c36b7d4bc7d5748fcd941672f6f1f",
+ "reproduce": "just voice-design zh-female-warm --describe \"C=<generator.instruct>\" regenerates prompt.wav byte for byte (same sha256, checked 2026-10-23 on an M5 Pro)"
+}

@@ -160,3 +160,9 @@ export film=film workers="4" crf="18" *args: (build film)
 
 # Everything for a film with a score: cues -> music -> final mix (with the narration, if any) -> video.
 all film=film: (music film) (mix film) (export film)
+
+# Find a narration voice by description (Apple silicon): `just voice-design my-voice --describe "A=<description>" --describe "B=..."`,
+# listen to out/voice-design/my-voice/*-sample.mp3, then `just voice-design my-voice --pick A` writes voices/my-voice/.
+[positional-arguments]
+voice-design id *args:
+    bun scripts/voice-design.ts "$@"
