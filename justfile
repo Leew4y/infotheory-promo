@@ -76,6 +76,14 @@ fonts film=film *args:
 font-catalog *args:
     bun scripts/font-catalog.ts {{args}}
 
+# Glyph proof for review: the film's characters in every font of each style, from the committed subsets, 48 px with code points -> out/<film>/glyphs/<style>/; --style <id> for one.
+glyphs film=film *args:
+    bun scripts/glyphs.ts --film {{film}} {{args}}
+
+# Glyph check of catalog CJK fonts (the one `just fonts` runs) on --text <chars> or on a film's characters (--film <id>), e.g. `just glyph-check zcool-xiaowei --text 回己受`.
+glyph-check fonts *args:
+    bun scripts/glyph-check.ts {{fonts}} {{args}}
+
 # Type-check the engine, styles, films, templates and scripts.
 check:
     bunx tsc --noEmit

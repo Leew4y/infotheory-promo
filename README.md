@@ -123,6 +123,8 @@ just validate <film>          # 所有风格：声明、时间轴、渲染、文
 just sheet <film>             # 对照拼图：同一批代表时刻、每个风格一列 → out/<film>/sheet/sheet.jpg（--style a,b；--times t1,t2）
 just test-validate            # 版面检查的故意出错用例（用模板临时建一部片子，结束后删除）
 just fonts <film>             # 文案改动后重新生成所有风格的字体子集（--style <id> 只生成一个）
+just glyphs <film>            # 字形校样：用随仓库的字体子集把片中每个字逐字画出（48 px，标码位，旁边是系统字体的同一个字）→ out/<film>/glyphs/<style>/；换字体后要逐格看过
+just glyph-check <字体 id> --film <film>   # just fonts 里的中文字形检查单独跑（不生成子集）：两个字画成一样、字腔被填实、标点按西文排；--text <字> 指定字符。字体库里记了 defects 的字体（just font-catalog 标 DEFECTS，如 ZCOOL XiaoWei）只有风格的 fonts.json 写明 acceptDefects 理由（须经本人同意）才能用
 just font-catalog             # 下载并校验字体库里的全部字体（约 80 MB 缓存）；新增字体需 Develata 确认后用 --lock 登记
 just test-export <film>       # 导出失败用例（需要一部有配乐的片子）
 just regress <film>           # 所有风格的像素回归，每个风格一份基线（--update 重写，--style <id> 只跑一个）。基线只在录制它的平台上可比较（目前是 Windows x64），其他平台会直接退出并提示
