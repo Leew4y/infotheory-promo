@@ -157,16 +157,22 @@ def cosyvoice3_mlx_backend(job):
 
     def synth(read, seed):
         out = f"{job['lines_dir']}/{seed}.speech.wav"
-        cmd = [exe, 'speak', read, '--engine', 'cosyvoice', '--language', voice.get('language', 'chinese'),
+        cmd = [exe, 'speak', '--engine', 'cosyvoice', '--language', voice.get('language', 'chinese'),
                '--cosy-bundle-dir', bundle, '--cosy-speech-tokenizer', tokenizer,
                '--voice-sample', voice['wav'], '--cosy-reference-transcript', voice['text'],
-               '--seed', str(seed), '-o', out]
+               '--seed', str(seed), '-o', out, '--', read]
         p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         log = p.stdout or ''
-        # without the tokenizer the tool falls back to speaker-embedding-only cloning (lower fidelity): refuse that
-        if p.returncode != 0 or 'prompt_token + prompt_feat' not in log:
+        # without the tokenizer the tool falls back to speaker-embedding-only cloning (lower fidelity): refuse that.
+        # The check reads the tool's log line (verified with speech 0.0.28); if a newer version words it otherwise,
+        # this fails loudly rather than accepting a lower-fidelity clone.
+        if p.returncode != 0:
             sys.stderr.write(log)
             raise SystemExit(f'tts: speech failed for "{read}" (exit {p.returncode})')
+        if 'prompt_token + prompt_feat' not in log:
+            sys.stderr.write(log)
+            raise SystemExit('tts: speech did not report full zero-shot cloning ("prompt_token + prompt_feat"): the speech '
+                             'tool may have changed its output (verified with 0.0.28; brew list --versions speech)')
         samples, rate = read_wav(out)
         os.remove(out)
         return samples, rate

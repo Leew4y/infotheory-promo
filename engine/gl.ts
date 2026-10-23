@@ -6,7 +6,9 @@
  * The 2D canvas is then overwritten with the graded result; overlays (captions) are drawn on top, sharp.
  * Every target has the canvas's pixel size, W·SCALE × H·SCALE (allocated on first use, once the film has set its
  * frame and the page its render scale). Shaders get uRes in pixels and uScale, so effects sized in pixels (grain, a
- * style's dot grid) divide gl_FragCoord by uScale and look the same at every resolution.
+ * style's dot grid) divide gl_FragCoord by uScale and look the same at every resolution. Grain does so at whole scales
+ * only: at 4/3 a cell of one frame pixel would be 1, 1 or 2 pixels in a fixed pattern, so it stays per pixel there.
+ * The bloom chain gains a level per doubling (rounded), so at 4/3 its halo is about a quarter smaller in frame units.
  */
 import { cv, ctx } from './draw';
 import { W, H, SCALE } from './util';
@@ -56,7 +58,8 @@ void main(){
   c=mix(c, c*mix(uTintS,uTintH,smoothstep(.04,.7,l)), uSplit);
   c=mix(vec3(l),c,uSat);
   c*=1.-uVig*smoothstep(.45,1.15,length(d*vec2(1.,.7))*1.5);
-  float g=hash(gl_FragCoord.xy/uScale+vec2(uSeed*37.,uSeed*17.))-.5;
+  float gs=fract(uScale)==0.?uScale:1.;
+  float g=hash(gl_FragCoord.xy/gs+vec2(uSeed*37.,uSeed*17.))-.5;
   c+=g*uGrain*(.6+.4*(1.-l));
   o=vec4(clamp(c,0.,1.),1.);
 }`;

@@ -214,7 +214,7 @@ function busyReport(): string {
   const [l1] = loadavg();
   const others: string[] = [];
   try {
-    for (const f of new Bun.Glob('out/*/*.mp4.lock').scanSync({ cwd: ROOT })) {
+    for (const f of new Bun.Glob('out/**/*.mp4.lock').scanSync({ cwd: ROOT })) {
       const pid = Number(readFileSync(path.join(ROOT, f), 'utf8').split('\n')[0]);
       if (pid !== process.pid && pidAlive(pid)) others.push(`${f.replace(/\.lock$/, '')} (pid ${pid})`);
     }
@@ -386,6 +386,9 @@ try {
   const gpu = await workers[0].evaluate(() => window.__gpu());
   // the canvas's pixel size: the film's frame times the render scale (--res)
   const size = await workers[0].evaluate(() => window.__frameSize?.() ?? { width: 1920, height: 1080, scale: 1, pixels: [1920, 1080] as [number, number] });
+  const hasSize = await workers[0].evaluate(() => typeof window.__frameSize === 'function');
+  if (RES && !SINGLE && (!hasSize || Math.min(...size.pixels) !== Number(RES)))
+    fail(2, hasSize ? `--res ${RES}: the page renders ${size.pixels[0]}x${size.pixels[1]}` : `--res needs a page built with frame-size support: run just build ${FILM}`);
   console.log(`${WORKERS} worker${WORKERS > 1 ? 's' : ''} ready in ${((performance.now() - tLoad) / 1000).toFixed(1)}s   renderer: ${gpu}   ${size.pixels[0]}x${size.pixels[1]}${size.scale !== 1 ? ` (frame ${size.width}x${size.height} at scale ${+size.scale.toFixed(4)})` : ''}`);
   if (/swiftshader|llvmpipe|software/i.test(gpu)) console.error('!!! WebGL is on a software renderer');
   if (!SINGLE && !NOAUDIO) {

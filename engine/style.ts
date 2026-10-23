@@ -10,6 +10,7 @@
 import type { Grade } from './gl';
 import type { Rect } from './capture';
 import { check, GradeSpec } from './schema';
+import { note } from './notes';
 import { displayText, portrait } from './util';
 import { film } from './film';
 
@@ -139,6 +140,7 @@ export function useStyle(s: StylePackage): void {
   active = s;
   Object.assign(C, s.palette);
   Object.assign(F, s.fonts);
+  if (portrait() && !s.layout.portrait) note('style-no-portrait', `style:${s.id}`, `style "${s.id}" has no portrait layout (layout.portrait): its margins, captions and labels are placed for a landscape frame`);
   const L = portrait() && s.layout.portrait ? s.layout.portrait : s.layout;
   M = L.margin;
   COL = L.column;

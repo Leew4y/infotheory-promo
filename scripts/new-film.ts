@@ -59,6 +59,8 @@ const filmTs = readFileSync(path.join(TPL, 'film.ts'), 'utf8');
 const count = (s: string, sub: string) => s.split(sub).length - 1;
 if (!planned && (count(filmTs, IMPORT) !== 1 || count(filmTs, ID) !== 1)) die(`templates/film/film.ts must contain each of these lines exactly once; update scripts/new-film.ts with the template:\n  ${IMPORT}\n  ${ID} ...`);
 const PORTRAIT = argv.includes('--portrait');
+if (PORTRAIT && !/\bportrait:\s*\{/.test(readFileSync(path.join(ROOT, 'styles', style, 'index.ts'), 'utf8')))
+  console.warn(`warning: style ${style} has no portrait layout (layout.portrait): its captions and labels are placed for landscape; paper-dawn, nebula, keynote have one`);
 const out = filmTs.replace(IMPORT, `import style from '../../styles/${style}';`).replace(ID, `export default defineFilm({ id: '${id}',${PORTRAIT ? ' size: [1080, 1920],' : ''}`);
 
 /**

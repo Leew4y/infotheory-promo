@@ -70,7 +70,7 @@ const MODELS: Record<string, { model: string; dir?: string; marker?: string }> =
   },
 };
 /** The backend new lines use on this machine when --backend is not given. */
-const defaultBackend = () => (process.platform === 'darwin' && process.arch === 'arm64' ? 'cosyvoice3-mlx' : 'cosyvoice3');
+const defaultBackend = () => (process.platform === 'darwin' && process.arch === 'arm64' && process.env.TTS_TORCH !== '1' ? 'cosyvoice3-mlx' : 'cosyvoice3');
 const COSYVOICE_SRC = path.join(ROOT, '.cache', 'tts', 'cosyvoice-src');
 
 const sha256 = (b: Uint8Array | string) => createHash('sha256').update(b).digest('hex');
@@ -174,7 +174,9 @@ try {
   const lines: Record<string, LockLine> = {};
   const todo: { id: string; read: string; seed: number; key: string }[] = [];
   const keyOf = (b: string, read: string, seed: number) =>
-    sha256(JSON.stringify({ adapter: ADAPTER_VERSION, backend: b, model: MODELS[b]?.model ?? b, voice: voiceSha, prompt: voice.text, read, speed: 1, seed }));
+    sha256(JSON.stringify({ adapter: ADAPTER_VERSION, backend: b, model: MODELS[b]?.model ?? b, voice: voiceSha, prompt: voice.text, read, speed: 1, seed,
+      // only a non-default language is part of the key, so the keys of every line made before it existed stay the same
+      ...(voice.language && voice.language !== 'chinese' ? { language: voice.language } : {}) }));
   for (const l of script.lines) {
     const read = l.read ?? l.text;
     const seed = parseInt(sha256(`${FILM}/${l.id}`).slice(0, 8), 16);

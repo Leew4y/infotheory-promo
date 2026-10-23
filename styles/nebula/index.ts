@@ -125,7 +125,8 @@ const nebula: StylePackage = {
       ctx.save();
       ctx.globalAlpha = a;
       ctx.shadowColor = 'rgba(95,212,232,0.25)';
-      ctx.shadowBlur = 30;
+      // canvas shadows are in pixels whatever the transform: scaled to stay in frame units at any --res
+      ctx.shadowBlur = 30 * SCALE;
       ctx.fillStyle = C.bg2;
       ctx.beginPath();
       ctx.roundRect(r.x, r.y - bar, r.w, r.h + bar, 10);
@@ -148,7 +149,7 @@ const nebula: StylePackage = {
       ctx.save();
       ctx.globalAlpha = a;
       ctx.shadowColor = rgba(C.accent, 0.8);
-      ctx.shadowBlur = 10;
+      ctx.shadowBlur = 10 * SCALE;
       arrowPath(x, y, 1.25 - 0.1 * press);
       ctx.fillStyle = C.fg;
       ctx.fill();
@@ -159,7 +160,7 @@ const nebula: StylePackage = {
       ctx.globalAlpha = a * (1 - k);
       ctx.strokeStyle = C.accent;
       ctx.shadowColor = C.accent;
-      ctx.shadowBlur = 12;
+      ctx.shadowBlur = 12 * SCALE;
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(x, y, 6 + 40 * eout(k), 0, Math.PI * 2);

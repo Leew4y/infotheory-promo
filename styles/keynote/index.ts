@@ -7,7 +7,7 @@
 import { ctx, text, rgba } from '../../engine/draw';
 import { glPlate } from '../../engine/gl';
 import { C, F, M, type StylePackage, type SubLine } from '../../engine/style';
-import { clamp, eout, portrait, sstep, win, W, H } from '../../engine/util';
+import { clamp, eout, portrait, sstep, win, W, H, SCALE } from '../../engine/util';
 import { PLATE_FS } from './shader';
 
 const PAL = {
@@ -112,8 +112,9 @@ const keynote: StylePackage = {
       ctx.save();
       ctx.globalAlpha = a;
       ctx.shadowColor = 'rgba(20,20,40,0.22)';
-      ctx.shadowBlur = 60;
-      ctx.shadowOffsetY = 24;
+      // canvas shadows are in pixels whatever the transform: scaled to stay in frame units at any --res
+      ctx.shadowBlur = 60 * SCALE;
+      ctx.shadowOffsetY = 24 * SCALE;
       roundRect(r.x, r.y - bar, r.w, r.h + bar, rad);
       ctx.fillStyle = '#FFFFFF';
       ctx.fill();
@@ -134,8 +135,8 @@ const keynote: StylePackage = {
       ctx.save();
       ctx.globalAlpha = a;
       ctx.shadowColor = 'rgba(0,0,0,0.25)';
-      ctx.shadowBlur = 6;
-      ctx.shadowOffsetY = 2;
+      ctx.shadowBlur = 6 * SCALE;
+      ctx.shadowOffsetY = 2 * SCALE;
       arrowPath(x, y, 1.35 - 0.12 * press);
       ctx.fillStyle = '#000000';
       ctx.fill();

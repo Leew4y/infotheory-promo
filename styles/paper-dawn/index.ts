@@ -5,7 +5,7 @@
 import { ctx, text, rule, label, measure, rgba } from '../../engine/draw';
 import { glPlate } from '../../engine/gl';
 import { C, F, M, type StylePackage, type SubLine } from '../../engine/style';
-import { clamp, eout, mulberry, portrait, sstep, win, W, H } from '../../engine/util';
+import { clamp, eout, mulberry, portrait, sstep, win, W, H, SCALE } from '../../engine/util';
 import { PLATE_FS } from './plate';
 
 // ---- paper: a fixed fibre tile, then a soft edge fall-off
@@ -141,8 +141,9 @@ const paperDawn: StylePackage = {
       ctx.save();
       ctx.globalAlpha = a;
       ctx.shadowColor = 'rgba(60,40,20,0.22)';
-      ctx.shadowBlur = 28;
-      ctx.shadowOffsetY = 10;
+      // canvas shadows are in pixels whatever the transform: scaled to stay in frame units at any --res
+      ctx.shadowBlur = 28 * SCALE;
+      ctx.shadowOffsetY = 10 * SCALE;
       ctx.fillStyle = C.bg;
       ctx.fillRect(r.x, r.y, r.w, r.h);
       ctx.restore();
