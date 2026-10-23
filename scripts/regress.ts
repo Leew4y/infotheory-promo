@@ -34,6 +34,7 @@ import path from 'node:path';
 import puppeteer, { type Browser, type Page } from 'puppeteer-core';
 import { chromeArgs, findChrome, loadFilm, serveDist } from './chrome';
 import { mediaDir, requireFilm } from './film-arg';
+import { requireCaptureFrames } from './lib/captures';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const argv = Bun.argv.slice(2);
@@ -46,6 +47,7 @@ for (let i = 0; i < argv.length; i++) {
 const opt = (k: string, d: string) => (argv.includes(`--${k}`) ? argv[argv.indexOf(`--${k}`) + 1] : d);
 const flag = (k: string) => argv.includes(`--${k}`);
 const FILM = requireFilm(argv);
+await requireCaptureFrames(FILM);
 const DIST = path.resolve(ROOT, opt('dist', `dist/${FILM}`));
 const WORKERS = +opt('workers', '4');
 /** The film's frame rate, read from the page's timeline for each style run. */

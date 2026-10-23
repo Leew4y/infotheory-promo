@@ -103,11 +103,13 @@ justfile              一键命令
 
 ```
 just setup                    # bun install + uv sync
-just new-film demo nebula     # 从模板新建 films/demo/（风格 nebula），之后 just fonts demo
+just new-film demo nebula     # 从模板新建 films/demo/（风格 nebula），之后 just fonts demo；films/demo/ 已经存在、只有先写的材料（brief.md、research/、script/、review/，还没有 film.ts、main.ts、scenes/、film-plan.json）时，把模板文件加进去，原有文件一个不动
 just new-style ink-wash       # 从模板新建风格包 styles/ink-wash/（含 STYLE.md 设计说明骨架）
 just import-capture demo app ~/rec/app.mp4   # 把 OBS 等任意录屏导入为片子 demo 的素材 app（帧在 .cache/，清单入库）
-just capture demo web demo-scenario.ts       # 用 Playwright 按脚本录制网页演示，同时记录点击
-just captures demo ~/rec      # 换机器或清了缓存后，从源视频重建全部素材帧（按 sha256 校验）
+just import-capture demo app ~/rec/app.mp4 --store-source   # 同上，并把源视频（不超过 25 MB）放进 films/demo/captures/sources/ 一起入库，换一台机器也能重建素材帧
+just capture demo web demo-scenario.ts       # 用 Playwright 按脚本录制网页演示，同时记录点击（源视频在 out/demo/sources/；加 --store-source 则放进 films/demo/captures/sources/）
+just captures demo            # 换机器或清了缓存后，从源视频重建全部素材帧（按 sha256 校验）；源视频默认在 films/demo/captures/sources/，在别处就写上目录：just captures demo ~/rec
+                              # 渲染前（validate、export、shots、render-scene、sheet、regress）先检查每个素材的帧是否齐全；缺了就停下，说明是哪个素材、源视频的文件名和 sha256，以及重建命令或"源视频不在本机"
 just tts-setup                # 安装本地 TTS（CosyVoice 源码、Python 3.10 环境、模型约 5.4 GB，全部固定版本）
 just narrate demo             # 合成旁白（每句一个 FLAC，连同 lock 一起提交）
 just mix demo                 # 最终混音：配乐在旁白处自动压低，母版 −16 LUFS；导出自动使用
@@ -121,6 +123,8 @@ just check                    # 类型检查
 just check-imports            # 依赖方向
 just validate <film>          # 所有风格：声明、时间轴、渲染、文字版面（出画面、出 5% 安全区、文字互相重叠、对比度低于 WCAG AA 都是错误）；--style <id> 只查一个
 just sheet <film>             # 对照拼图：同一批代表时刻、每个风格一列 → out/<film>/sheet/sheet.jpg（--style a,b；--times t1,t2）
+just sheet-compare <film> paper-dawn,nebula   # 拼图里再加上片子没用的风格（不用手改 film.ts）：只在一次构建期间临时生成这些风格的字体、把它们加进 film.ts 或 film-plan.json，构建完逐字节恢复（Ctrl+C 也恢复；进程被强杀则下次运行时恢复）→ out/<film>/sheet-compare/
+just texts <film>             # 导出片中全部画面文字与旁白，供核对事实：逐场景列出时间、计划里的标题/文案/字幕、每句旁白（字幕原文、读法 read、英文 en；没有字幕的句子会标出），以及场景代码里的全部字符串 → out/<film>/texts.md 与 texts.json
 just test-validate            # 版面检查的故意出错用例（用模板临时建一部片子，结束后删除）
 just fonts <film>             # 文案改动后重新生成所有风格的字体子集（--style <id> 只生成一个）
 just font-catalog             # 下载并校验字体库里的全部字体（约 80 MB 缓存）；新增字体需 Develata 确认后用 --lock 登记

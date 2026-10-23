@@ -3,6 +3,7 @@ import { mkdirSync, readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { requireFilm } from './film-arg';
+import { requireCaptureFrames } from './lib/captures';
 import { ROOT } from './plan-schema';
 
 const argv = Bun.argv.slice(2);
@@ -17,6 +18,7 @@ try {
 const opts = o!, id = requireFilm(argv);
 if (opts.scene ? opts.from !== undefined || opts.to !== undefined : opts.from === undefined || opts.to === undefined)
   usage('render: give --scene <id> or --from <seconds> --to <seconds>');
+await requireCaptureFrames(id);
 const dir = path.join(ROOT, 'out', id, 'render');
 mkdirSync(dir, { recursive: true });
 const timeline = path.join(dir, `.timeline-${process.pid}-${crypto.randomUUID()}.json`);

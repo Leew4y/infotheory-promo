@@ -56,9 +56,9 @@ import-capture film id video *args:
 capture film id scenario *args:
     bun scripts/capture.ts --film {{film}} --id {{id}} {{quote(scenario)}} {{args}}
 
-# Re-derive every capture of a film from its source videos (found by name in <dir>, checked by sha256).
-captures film dir:
-    bun scripts/import-capture.ts --film {{film}} --rebuild --from {{quote(dir)}}
+# Re-derive every capture of a film from its source videos (found by name in <dir>, default films/<film>/captures/sources/, checked by sha256).
+captures film dir="":
+    bun scripts/import-capture.ts --film {{film}} --rebuild {{ if dir == "" { "" } else { "--from " + quote(dir) } }}
 
 # Live preview at http://127.0.0.1:5174 (space play/pause, arrows seek, [ ] scenes, , . frame step); ?style=<id> picks a style.
 dev $FILM=film:
@@ -119,6 +119,14 @@ test-validate:
 # Contact sheet: the same representative moments in every style of the film (out/<film>/sheet/sheet.jpg + sheet.json); --style a,b, --times t1,t2.
 sheet film=film *args: (build film)
     bun scripts/sheet.ts --film {{film}} {{args}}
+
+# Contact sheet of a film in its styles and in other styles (comma-separated) it does not use: a temporary edit for one build, always undone -> out/<film>/sheet-compare/; --times t1,t2.
+sheet-compare film styles *args:
+    bun scripts/sheet-compare.ts --film {{film}} --with {{styles}} {{args}}
+
+# Every displayed and spoken text of a film for fact-checking (plan text, narration with times, the scene code's literals) -> out/<film>/texts.md and texts.json.
+texts film=film *args: (build film)
+    bun scripts/texts.ts --film {{film}} {{args}}
 
 # Print the scene list with times.
 scenes film=film: (build film)
