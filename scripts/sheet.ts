@@ -1,7 +1,7 @@
 /**
  * Contact sheet of a film in its styles, for reviewing a look (agent self-review and people):
  *
- *   bun scripts/sheet.ts --film <id> [--style a,b] [--times 4,39.5] [--out out/<id>/sheet]     (just sheet <film> ...)
+ *   bun scripts/sheet.ts --film <id> [--style a,b] [--times 4,39.5] [--out out/<id>/sheet] [--dist dist/<id>]     (just sheet <film> ...)
  *
  * The same moments in every style, chosen from the film (unless --times): the middle of the first full-frame plate,
  * of the first three page scenes and of the last scene; a frame with a caption on screen; the middle of the fade-out
@@ -19,14 +19,16 @@ import path from 'node:path';
 import puppeteer from 'puppeteer-core';
 import { chromeArgs, findChrome, loadFilm, serveDist } from './chrome';
 import { mediaDir, requireFilm } from './film-arg';
+import { requireCaptureFrames } from './lib/captures';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const argv = Bun.argv.slice(2);
 const opt = (k: string) => (argv.includes(`--${k}`) ? argv[argv.indexOf(`--${k}`) + 1] : undefined);
 const usage = (msg: string): never => { console.error(msg); process.exit(2); };
 const FILM = requireFilm(argv);
+await requireCaptureFrames(FILM);
 const OUT = path.resolve(ROOT, opt('out') ?? `out/${FILM}/sheet`);
-const DIST = path.join(ROOT, 'dist', FILM);
+const DIST = path.resolve(ROOT, opt('dist') ?? `dist/${FILM}`);
 if (existsSync(OUT) && !existsSync(path.join(OUT, 'sheet.json')) && readdirSync(OUT).length)
   usage(`--out ${OUT} exists and is not a previous sheet (no sheet.json): refusing to replace it`);
 const STYLES = opt('style')?.split(',').filter(Boolean);

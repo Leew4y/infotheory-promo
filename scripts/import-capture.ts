@@ -2,8 +2,8 @@
  * Turn a screen recording (OBS or any video file) into a capture asset of a film:
  *
  *   bun scripts/import-capture.ts --film <film> --id <id> <video> [--fps 30] [--crop W:H:X:Y] [--quality 2]
- *                                 [--viewport WxH] [--dpr 1] [--events <file.jsonl> --sync <rec>=<video>]
- *   bun scripts/import-capture.ts --film <film> --rebuild --from <dir>      re-derive every asset's frames from its source
+ *                                 [--viewport WxH] [--dpr 1] [--events <file.jsonl> --sync <rec>=<video>] [--store-source]
+ *   bun scripts/import-capture.ts --film <film> --rebuild [--from <dir>]    re-derive every asset's frames from its source
  *
  * - The frames, a fixed-rate JPEG sequence of the first video stream (ffmpeg crop with exact=1, then the fps filter,
  *   -q:v <quality>), go to .cache/captures/<film>/<id>/ (derived, not committed). The frame count is what the fps filter
@@ -13,25 +13,30 @@
  *   frame size, viewport (CSS pixels the source video shows; default the source size) and device pixel ratio (default
  *   1), the crop in source pixels, the source's name, sha256, size, duration and format, how the frames were made
  *   (fps, quality, ffmpeg version), and the events.
- * - The source video stays outside the repository (Develata's decision, 2026-10-09): only its sha256 is recorded.
- *   --rebuild finds each source by file name in --from, checks the sha256, and re-derives the frames (another machine,
- *   a cleared cache). Every manifest is checked first (id, file names, numbers), so no path comes from an unchecked value.
+ * - The source video: its name and sha256 are recorded. By default it stays outside the repository (Develata's
+ *   decision, 2026-10-09); since 2026-10-23 a source of at most 25 MB may be committed under
+ *   films/<film>/captures/sources/ (scripts/lib/captures.ts): --store-source copies it there, as part of the import
+ *   (a larger file is refused before anything is done; a name another capture's source already uses with other
+ *   content is refused). --rebuild finds each source by file name in --from (default films/<film>/captures/sources/),
+ *   checks the sha256, and re-derives the frames (another machine, a cleared cache). Every manifest is checked first
+ *   (id, file names, numbers), so no path comes from an unchecked value.
  * - Events: a JSON-lines file, one { t, type: click|move|key|mark, x, y, label, target, box } per line, on its own
  *   clock; --sync <rec>=<video> says that recording-clock time <rec> is video time <video>. Times keep full precision.
  *   Events outside the video are dropped.
- * - Nothing is replaced until everything is checked: frames are made in a staging directory; the old frames are moved
- *   aside, the new ones moved in, the manifest written (the commit point), and only then the old frames deleted (before
- *   the commit point a failure puts them back). Cleaning up after the commit point never fails the import: a leftover
+ * - Nothing is replaced until everything is checked: frames are made in a staging directory (and a stored source copied
+ *   under a temporary name and checked); the old frames are moved aside, the new ones moved in, likewise the stored
+ *   source, the manifest written (the commit point), and only then the old ones deleted (before the commit point a
+ *   failure puts them back). Cleaning up after the commit point never fails the import: a leftover
  *   is reported as a warning. One import per asset at a time (a lock directory .cache/captures/<film>/.<id>.lock);
  *   --rebuild reads each manifest again under its lock and does all its work there.
  * Exit code 0: committed (every asset, for --rebuild); 1: nothing committed for the failing asset; 2: bad arguments.
  */
-import { createReadStream, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { createHash } from 'node:crypto';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import type { CaptureAsset, CaptureEvent } from '../engine/capture';
 import { FILM_ID, mediaDir, requireFilm } from './film-arg';
+import { manifestNames, mb, readManifest, sha256, SOURCE_LIMIT, sourcesDir } from './lib/captures';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const argv = Bun.argv.slice(2);
@@ -45,7 +50,7 @@ function parse() {
     options: {
       film: { type: 'string' }, id: { type: 'string' }, fps: { type: 'string' }, crop: { type: 'string' }, quality: { type: 'string' },
       viewport: { type: 'string' }, dpr: { type: 'string' }, events: { type: 'string' }, sync: { type: 'string' },
-      rebuild: { type: 'boolean' }, from: { type: 'string' },
+      rebuild: { type: 'boolean' }, from: { type: 'string' }, 'store-source': { type: 'boolean' },
     },
   });
 }
@@ -53,6 +58,7 @@ try { args = parse(); } catch (e) { usage(e instanceof Error ? e.message : Strin
 const o = args!.values;
 const CAPTURES = path.join(ROOT, 'films', FILM, 'captures');
 const MEDIA = path.resolve(mediaDir(FILM));
+const SOURCES = sourcesDir(FILM);
 
 /** A path directly inside the film's media directory (the only place this tool creates, replaces or deletes). */
 function inMedia(name: string): string {
@@ -66,11 +72,6 @@ async function run(cmd: string[]): Promise<string> {
   const [out, err, code] = await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text(), p.exited]);
   if (code !== 0) fail(`${cmd[0]} failed (${code}): ${err.trim().split('\n').slice(-3).join(' ')}`);
   return out;
-}
-async function sha256(file: string): Promise<string> {
-  const h = createHash('sha256');
-  for await (const chunk of createReadStream(file)) h.update(chunk as Buffer);
-  return h.digest('hex');
 }
 /** The first video stream (the one extract() maps): size, rate, and its duration if the container states it. */
 async function probe(file: string) {
@@ -108,22 +109,65 @@ async function stage(id: string, src: string, mk: Make): Promise<Staged> {
   }
 }
 
+/** A source video copied under a temporary name into films/<film>/captures/sources/, to be moved to `dst` at commit. */
+interface StagedSource { tmp: string; dst: string }
+
 /**
- * Put staged frames in place of the asset's (and write its manifest, if given). The old frames are moved aside first
- * and deleted only after everything succeeded; on a failure they are put back.
+ * --store-source: copy `src` (sha256 `hash`) next to its final place in films/<film>/captures/sources/ and check the
+ * copy; null when that file is already there. Refuses a file name that another capture's source has with other content.
  */
-function commit(id: string, s: Staged, manifest?: CaptureAsset): void {
+async function stageSource(id: string, src: string, hash: string): Promise<StagedSource | null> {
+  const name = path.basename(src), dst = path.join(SOURCES, name);
+  for (const n of manifestNames(FILM)) {
+    if (n === `${id}.json`) continue;
+    let other: CaptureAsset;
+    try { other = readManifest(FILM, n); } catch { continue; }
+    if (other.source.file === name && other.source.sha256 !== hash)
+      fail(`${id}: films/${FILM}/captures/sources/${name} is the source of capture "${other.id}" (another file of that name): rename the video before importing it with --store-source`);
+  }
+  if (existsSync(dst) && realpathSync(dst) === realpathSync(src)) return null;
+  if (existsSync(dst) && (await sha256(dst)) === hash) return null;
+  mkdirSync(SOURCES, { recursive: true });
+  const tmp = path.join(SOURCES, `.${name}.${process.pid}.tmp`);
+  try {
+    copyFileSync(src, tmp);
+    const h = await sha256(tmp);
+    if (h !== hash) fail(`${id}: the copy of ${src} in ${SOURCES} has sha256 ${h}, not ${hash}`);
+  } catch (e) {
+    rmSync(tmp, { force: true });
+    throw e;
+  }
+  return { tmp, dst };
+}
+
+/**
+ * Put staged frames in place of the asset's (and a stored source in place of its previous version, and write its
+ * manifest, if given). The old frames and source are moved aside first and deleted only after everything succeeded;
+ * on a failure they are put back.
+ */
+function commit(id: string, s: Staged, manifest?: CaptureAsset, source?: StagedSource | null): void {
   const dir = inMedia(id), bak = inMedia(`.${id}.${process.pid}.bak`);
+  const srcBak = source ? path.join(SOURCES, `.${path.basename(source.dst)}.${process.pid}.bak`) : '';
   rmSync(bak, { recursive: true, force: true });
   const had = existsSync(dir);
-  let moved = false;
+  let moved = false, srcHad = false, srcMoved = false;
   if (had) renameSync(dir, bak);
   try {
     renameSync(s.tmp, dir);
     moved = true;
+    if (source) {
+      if (existsSync(source.dst)) { renameSync(source.dst, srcBak); srcHad = true; }
+      renameSync(source.tmp, source.dst);
+      srcMoved = true;
+    }
     if (manifest) writeManifest(manifest);
   } catch (e) {
-    // before the commit point: the new frames out, the old ones back
+    // before the commit point: the new frames and source out, the old ones back
+    if (source) {
+      if (srcMoved) rmSync(source.dst, { force: true });
+      if (srcHad) renameSync(srcBak, source.dst);
+      rmSync(source.tmp, { force: true });
+    }
     if (moved) rmSync(dir, { recursive: true, force: true });
     if (had) renameSync(bak, dir);
     rmSync(s.tmp, { recursive: true, force: true });
@@ -131,6 +175,7 @@ function commit(id: string, s: Staged, manifest?: CaptureAsset): void {
   }
   // committed: what follows is cleanup only
   tidy(bak);
+  if (srcHad) tidy(srcBak);
 }
 
 /** Remove a leftover after the commit point; a failure is a warning, never a failed import. */
@@ -169,21 +214,6 @@ function writeManifest(a: CaptureAsset): void {
   renameSync(tmp, f);
 }
 
-const posInt = (v: unknown, max = Infinity) => Number.isInteger(v) && (v as number) > 0 && (v as number) <= max;
-/** A committed manifest, checked before anything is derived from it. */
-function checkManifest(n: string, a: CaptureAsset): string[] {
-  const p: string[] = [];
-  if (typeof a.id !== 'string' || !FILM_ID.test(a.id) || `${a.id}.json` !== n) p.push(`id "${a.id}" must be the file name's and lowercase letters, digits, hyphens`);
-  const f = a.source?.file;
-  if (typeof f !== 'string' || !f || f !== path.basename(f) || f !== path.win32.basename(f) || f === '.' || f === '..') p.push(`source.file "${f}" must be a plain file name`);
-  if (typeof a.source?.sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(a.source.sha256)) p.push('source.sha256 must be 64 hex digits');
-  if (!posInt(a.fps, 120) || !posInt(a.frames) || !posInt(a.width) || !posInt(a.height)) p.push('fps (1–120), frames, width and height must be positive integers');
-  const c = a.crop;
-  if (c !== null && !(c && [c.x, c.y].every((v) => Number.isInteger(v) && v >= 0) && posInt(c.w) && posInt(c.h))) p.push('crop must be null or integers { x, y >= 0, w, h > 0 }');
-  if (!posInt(+a.made?.quality, 31)) p.push('made.quality must be an integer 1–31');
-  return p;
-}
-
 function parseCrop(s: string, src: { width: number; height: number }): Crop {
   const m = /^(\d+):(\d+):(\d+):(\d+)$/.exec(s) ?? usage(`--crop ${s}: W:H:X:Y in pixels`);
   const [w, h, x, y] = m.slice(1).map(Number);
@@ -193,25 +223,21 @@ function parseCrop(s: string, src: { width: number; height: number }): Crop {
 
 try {
   if (o.rebuild) {
-    const from = o.from ?? usage('--rebuild needs --from <dir> with the source videos');
+    // the committed sources by default (an empty --from too)
+    const from = o.from || SOURCES;
     if (!existsSync(CAPTURES)) usage(`films/${FILM} has no captures`);
-    const read = (n: string): CaptureAsset => {
-      let a: CaptureAsset;
-      try { a = JSON.parse(readFileSync(path.join(CAPTURES, n), 'utf8')); } catch { return fail(`films/${FILM}/captures/${n}: not JSON`); }
-      const p = checkManifest(n, a);
-      if (p.length) fail(`films/${FILM}/captures/${n}: ${p.join('; ')}`);
-      return a;
-    };
+    const read = (n: string): CaptureAsset => readManifest(FILM, n);
     // every manifest checked before anything is touched; each read again under its lock (another import may commit
     // meanwhile), and the source check, extraction and commit done under that lock
-    const names = readdirSync(CAPTURES).filter((n) => n.endsWith('.json'));
+    const names = manifestNames(FILM);
     for (const n of names) read(n);
     for (const n of names) {
       const release = lock(n.slice(0, -'.json'.length));
       try {
         const a = read(n);
         const src = path.join(from, a.source.file);
-        if (!existsSync(src)) fail(`${a.id}: source ${a.source.file} not found in ${from}`);
+        if (!existsSync(src))
+          fail(`${a.id}: source ${a.source.file} (sha256 ${a.source.sha256}) not found in ${from}${from === SOURCES ? ` (the committed sources); if it is elsewhere: just captures ${FILM} <dir>` : ''}`);
         const h = await sha256(src);
         if (h !== a.source.sha256) fail(`${a.id}: ${src} has sha256 ${h}, the manifest says ${a.source.sha256}`);
         const s = await stage(a.id, src, { fps: a.fps, crop: a.crop, quality: +a.made.quality });
@@ -231,6 +257,10 @@ try {
     if (args!.positionals.length !== 1) usage(`one video file is required (got ${args!.positionals.length})`);
     const src = args!.positionals[0];
     if (!existsSync(src) || !statSync(src).isFile()) usage(`${src}: not a file`);
+    const store = !!o['store-source'];
+    if (store && statSync(src).size > SOURCE_LIMIT)
+      usage(`--store-source: ${src} is ${mb(statSync(src).size)}, over the ${mb(SOURCE_LIMIT)} limit for films/${FILM}/captures/sources/; import it without --store-source and keep the video outside the repository`);
+    if (store && /\.json$/i.test(src)) usage('--store-source: a .json file under captures/ would be read as a manifest');
     const fps = +(o.fps ?? 30);
     if (!(Number.isInteger(fps) && fps > 0 && fps <= 120)) usage(`--fps ${o.fps}: an integer 1–120`);
     const quality = +(o.quality ?? 2);
@@ -249,21 +279,25 @@ try {
     const release = lock(id);
     try {
       const s = await stage(id, src, { fps, crop, quality });
+      let stored: StagedSource | null = null;
       try {
         if (info.streamDuration !== null && Math.abs(s.frames - info.streamDuration * fps) > 1 + 1e-6)
           fail(`${id}: ${s.frames} frames extracted, but the video stream lasts ${info.streamDuration}s (${(info.streamDuration * fps).toFixed(2)} frames at ${fps} fps)`);
         const events = o.events ? readEvents(o.events, sync![1] - sync![0], s.frames / fps) : [];
+        const hash = await sha256(src);
         const asset: CaptureAsset = {
           id, fps, frames: s.frames, width: s.width, height: s.height,
           viewport: vp ? { width: vp[0], height: vp[1] } : { width: info.width, height: info.height }, dpr, crop,
-          source: { file: path.basename(src), sha256: await sha256(src), bytes: statSync(src).size, duration: info.duration, width: info.width, height: info.height, fps: +info.fps.toFixed(3) },
+          source: { file: path.basename(src), sha256: hash, bytes: statSync(src).size, duration: info.duration, width: info.width, height: info.height, fps: +info.fps.toFixed(3) },
           events,
           made: { tool: 'import-capture', fps, quality, ffmpeg: s.ffmpeg },
         };
-        commit(id, s, asset);
-        console.log(`${id}: ${s.frames} frames ${s.width}x${s.height} @ ${fps} fps, ${events.length} events -> films/${FILM}/captures/${id}.json, frames in ${inMedia(id)}`);
+        if (store) stored = await stageSource(id, src, hash);
+        commit(id, s, asset, stored);
+        console.log(`${id}: ${s.frames} frames ${s.width}x${s.height} @ ${fps} fps, ${events.length} events -> films/${FILM}/captures/${id}.json, frames in ${inMedia(id)}${store ? `, source in films/${FILM}/captures/sources/${asset.source.file} (commit it)` : ''}`);
       } finally {
         tidy(s.tmp);
+        if (stored) tidy(stored.tmp);
       }
     } finally {
       release();

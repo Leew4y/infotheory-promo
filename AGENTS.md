@@ -14,7 +14,18 @@ checks, and revises. The plan and its records: `docs/plan/reusable-engine.md`.
   look), `fonts/catalog.json` (the font library), `audio/synth.py` (synthesizer), `templates/` (new film / new style).
 - A film is `films/<id>/`: `film.ts` (grid and its styles), `main.ts`, `scenes/` (one scene per file, order in
   `scenes/index.ts`), optional `score.py` (music placed by scene and bar), its font subsets `fonts/<style>/`, its
-  regress baselines `regress/<style>.json`. Scenes and music belong to the film; only the look is shared.
+  regress baselines `regress/<style>.<os-arch>.json`. Scenes and music belong to the film; only the look is shared.
+  Around the code, all committed (the film's history is part of its deliverable; `films/math-lessons` is the example):
+  - `brief.json` (schema `schemas/brief.schema.json`) and/or `brief.md`: product, audience, length, tone, what to show;
+  - `research/`: sources and their excerpts, the fact table, the argument map, with versions kept (`facts.v2.md`);
+  - `script/`: narration, captions and storyboard drafts, versioned (`narration.v3.md`);
+  - `review/`: `NN-<topic>.md` review rounds and audits (with their sheets and frames), `workflow-notes.md`;
+  - a plan film's `film-plan.json`; narration `narration.json` (hand-written films), `narration/<id>.flac` and
+    `narration.lock.json`; `assets/` with `assets.json`;
+  - screen captures: manifests `captures/<id>.json`, scenario scripts `capture/<name>.ts`, and source videos of at
+    most 25 MB in `captures/sources/` (larger ones stay outside the repository; see Rules). No `.json` file goes under
+    `captures/sources/` (a plan film's glob would read it as a manifest).
+  Research and brief may come first: `just new-film` adds the template to a `films/<id>/` that has no film code yet.
 - Imports (enforced by `just check-imports`): films use `engine/index.ts` and `styles/<id>/index.ts` only; styles
   use `engine/` and themselves; nothing imports another film, another style, or a template.
 - `films/infotheory` is the reference film. Do not change its content; style or engine changes that alter its pixels
@@ -26,7 +37,7 @@ Every film command takes the film id first (default `infotheory`); outputs go to
 
 | Command | What |
 |---|---|
-| `just new-film <id> <style>` / `just new-style <id>` | start from a template |
+| `just new-film <id> <style>` / `just new-style <id>` | start from a template; `films/<id>/` may already hold the brief, `research/`, `script/`, `review/` (no film code: no `film.ts`, `main.ts`, `scenes/`, `film-plan.json`): the template is added around them, nothing replaced |
 | `just new-film <id> <style> --plan` | start a plan film (plate, narrated page, captioned page), then narrate and make fonts |
 | `just plan-schema` / `just plan-check <film> [--json]` | generate the committed editor schemas; check the plan, modules, copy, references, assets and narration lock |
 | `just scaffold <film>` | create missing plan scene modules and rewrite the ordered index; keep every existing module |
@@ -36,15 +47,17 @@ Every film command takes the film id first (default `infotheory`); outputs go to
 | `just fonts <film>` | font subsets for the film's text, per style (run after changing any text) |
 | `just validate <film> [--style id]` | schema, timeline, rendering, text inside the 5 % safe area, no overlapping text, WCAG AA contrast (as exported, glyph by glyph, on sampled frames), display punctuation (warning); `--json` gives the diagnostics list |
 | `just sheet <film> [--style a,b]` | contact sheet of representative moments in every style: `out/<film>/sheet/sheet.jpg` + `sheet.json` |
+| `just sheet-compare <film> <style>[,<style>] [--times t1,t2]` | the same sheet with styles the film does not use (its styles first) → `out/<film>/sheet-compare/`: for one build it writes their font bundles and adds them to `film.ts` / `film-plan.json`, then restores both byte for byte (also after Ctrl+C; a killed run is undone by the next one) |
+| `just texts <film> [--style id]` | every displayed and spoken text for fact-checking → `out/<film>/texts.md` + `texts.json`: per scene with film times, plan title/copy/captions, narration lines (`text`, `read`, `en`, lines without a caption marked), then the literals of the film's code (in a hand-written film: its captions and labels) |
 | `just shots <film> 5,20.5 [--style id]` | single frames |
 | `just dev <film>` | preview at http://127.0.0.1:5174 (`?style=<id>`) |
 | `just regress <film>` | pixel regression per style (`--update` only after a person approved the change) |
 | `just export <film> [workers crf] [--noaudio] [--style id]` | the video |
 | `just check`, `just check-imports`, `just test-validate`, `just test-export <film>` | type check, boundaries, tests |
 | `just font-catalog` | download and verify the whole font library |
-| `just import-capture <film> <id> <video> [--fps 30] [--crop W:H:X:Y] [--events f.jsonl --sync rec=video]` | a screen recording (OBS, any video) becomes capture `<id>`: manifest `films/<film>/captures/<id>.json`, frames in `.cache/captures/<film>/<id>/` |
-| `just capture <film> <id> <scenario.ts>` | record a web demo with Playwright (`scripts/lib/scenario.ts`), with click and pointer events; the source video goes to `out/<film>/sources/` |
-| `just captures <film> <dir>` | re-derive every capture's frames from its source videos (by name in `<dir>`, checked by sha256) |
+| `just import-capture <film> <id> <video> [--fps 30] [--crop W:H:X:Y] [--events f.jsonl --sync rec=video] [--store-source]` | a screen recording (OBS, any video) becomes capture `<id>`: manifest `films/<film>/captures/<id>.json`, frames in `.cache/captures/<film>/<id>/`; `--store-source` also puts the video in `films/<film>/captures/sources/` (at most 25 MB) |
+| `just capture <film> <id> <scenario.ts> [--store-source]` | record a web demo with Playwright (`scripts/lib/scenario.ts`), with click and pointer events; the source video goes to `out/<film>/sources/`, with `--store-source` to `films/<film>/captures/sources/` (at most 25 MB) |
+| `just captures <film> [dir]` | re-derive every capture's frames from its source videos (by name in `dir`, default `films/<film>/captures/sources/`, checked by sha256) |
 | `just test`, `just test-capture`, `just bench-capture` | unit tests; capture end-to-end cases; capture throughput and memory |
 | `just narrate <film> [--resynth ids\|all]` | synthesize plan lines (otherwise `narration.json`) into `films/<film>/narration/<id>.flac` and the lock (`narration.lock.json`); both committed |
 | `just mix <film> [--music file\|none]` | final mix: music ducked under the narration, mastered to −16 LUFS → `out/<film>/master.wav` (the export uses it and refuses a stale one) |
@@ -87,8 +100,14 @@ Every film command takes the film id first (default `infotheory`); outputs go to
   without overlap (cuts between them; no reordering or repeats);
   the camera is keyframes `{ t, x, y, zoom }` in frame pixels on the scene's clock; cursor and clicks come from the
   recorded events, or keyframes for a recording without events; a click shows from the frame its time falls in. Invalid
-  edits, camera or cursor keys fail at registration. Capture sources (videos) stay outside the repository; only
-  manifests are committed. A failed import or recording leaves the previous asset and source as they were.
+  edits, camera or cursor keys fail at registration. Manifests are committed; frames are derived and are not. A
+  source video of at most 25 MB may be committed in `captures/sources/` (`--store-source`; this replaces the earlier
+  rule that every source stays outside, so that a demo renders on another machine); a larger one stays outside the
+  repository, and whoever recorded it says where it is. Before rendering (validate, export, shots, render-scene,
+  render-range, sheet, regress), every capture manifest of the film must have all its frames in
+  `.cache/captures/<film>/<id>/`; otherwise the tool stops (exit 2) naming the capture, its source and sha256 and the
+  command that rebuilds the frames (`just captures <film> [dir]`), or saying that the source is not on this machine.
+  A failed import or recording leaves the previous asset and source as they were.
 - Narration: lines in `film-plan.json` for a plan film, otherwise `films/<film>/narration.json` (`id`, `scene`, `text` for the captions, `en`, `read` for how the
   voice says numbers, versions, amounts, `pause`); `useNarration(script, lock)` in film.ts after `defineFilm`. Time a
   scene by its lines with `narratedScene({ name, kind, draw, lead, gap, tail, minDur })` or `demoScene({ ..., narration: {} })`

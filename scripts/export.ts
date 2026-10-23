@@ -62,6 +62,7 @@ import puppeteer, { type Browser, type Page } from 'puppeteer-core';
 import { chromeArgs, findChrome, loadFilm, killTree, serveDist } from './chrome';
 import { mediaDir, requireFilm } from './film-arg';
 import { createHash } from 'node:crypto';
+import { requireCaptureFrames } from './lib/captures';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const argv = Bun.argv.slice(2);
@@ -82,6 +83,8 @@ if (!['blob', 'dataurl'].includes(TRANSPORT)) { console.error('--transport blob|
 const TOKEN = crypto.randomUUID().replace(/-/g, '');
 let takeFrame: ((n: number, body: Uint8Array) => string | null) | null = null;
 const SINGLE = flag('shots') || flag('cues') || flag('timeline') || flag('scenes') || flag('narration');
+// rendering frames (the video, a range, shots) needs every capture's frames; the cue sheet, timeline and narration do not
+if (!(flag('cues') || flag('timeline') || flag('scenes') || flag('narration'))) await requireCaptureFrames(FILM);
 const WORKERS = SINGLE ? 1 : Math.max(1, +(opt('workers', '4') ?? 4));
 const STYLE = opt('style');
 const RES = opt('res');

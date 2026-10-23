@@ -31,6 +31,7 @@ import puppeteer, { type Browser } from 'puppeteer-core';
 import { chromeArgs, findChrome, loadFilm, serveDist } from './chrome';
 import { filmArg, mediaDir } from './film-arg';
 import { checkPlan } from './plan-check';
+import { requireCaptureFrames } from './lib/captures';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const argv = Bun.argv.slice(2);
@@ -80,6 +81,8 @@ if (existsSync(path.join(ROOT, 'films', FILM, 'film-plan.json'))) {
   }
 }
 
+// every capture's frames must be derived before anything renders (exit 2, with how to rebuild them)
+await requireCaptureFrames(FILM, { json: JSON_OUT });
 let CHROME = '';
 try { CHROME = findChrome(); } catch (e) { console.error((e as Error).message); process.exit(2); }
 if (!existsSync(path.join(DIST, 'index.html'))) { console.error(`${DIST}/index.html missing: run \`just build ${FILM}\``); process.exit(2); }
