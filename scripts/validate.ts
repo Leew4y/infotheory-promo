@@ -25,12 +25,14 @@
  * Diagnostics: { level, code, path, message }, also written to out/<film>/validate.json. With --json, stdout is only
  * the JSON list and the summary goes to stderr. Exit code 1 on any error, 2 if the tool itself could not run.
  */
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { filmChars } from './lib/charset';
 import puppeteer, { type Browser } from 'puppeteer-core';
 import { chromeArgs, findChrome, loadFilm, serveDist } from './chrome';
 import { filmArg, mediaDir } from './film-arg';
 import { checkPlan } from './plan-check';
+import { requireCaptureFrames } from './lib/captures';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const argv = Bun.argv.slice(2);
@@ -54,7 +56,9 @@ const FILM = filmR.film;
 /** One of the film's styles (?style=<id>); omitted: all of them. */
 const STYLE = opt('style', '');
 const DIST = path.resolve(ROOT, opt('dist', `dist/${FILM}`));
-const W = 1920, H = 1080, SAFE = 0.05, MIN_ALPHA = 0.02;
+const SAFE = 0.05, MIN_ALPHA = 0.02;
+/** The film's frame in canvas units (read from the page: defineFilm size), for the frame and safe-area checks. */
+let W = 1920, H = 1080;
 /** Text at least this opaque counts as fully shown (overlap and contrast checks); WCAG large text: 24 px, or 18.66 px bold. */
 const FULL_ALPHA = 0.9, HALF_ALPHA = 0.5, LARGE_PX = 24, LARGE_BOLD_PX = 18.66, DISPLAY_PX = 32;
 const OUT = path.join(ROOT, 'out', FILM, 'validate.json');
@@ -78,6 +82,8 @@ if (existsSync(path.join(ROOT, 'films', FILM, 'film-plan.json'))) {
   }
 }
 
+// every capture's frames must be derived before anything renders (exit 2, with how to rebuild them)
+await requireCaptureFrames(FILM, { json: JSON_OUT });
 let CHROME = '';
 try { CHROME = findChrome(); } catch (e) { console.error((e as Error).message); process.exit(2); }
 if (!existsSync(path.join(DIST, 'index.html'))) { console.error(`${DIST}/index.html missing: run \`just build ${FILM}\``); process.exit(2); }
@@ -89,7 +95,7 @@ const checked: string[] = [];
 const noted = new Set<string>();
 try {
   browser = await puppeteer.launch({
-    executablePath: CHROME, headless: true, defaultViewport: { width: W, height: H, deviceScaleFactor: 1 },
+    executablePath: CHROME, headless: true, defaultViewport: { width: 1920, height: 1080, deviceScaleFactor: 1 },
     args: chromeArgs('platform'),
   });
   const page = await browser.newPage();
@@ -110,9 +116,17 @@ try {
     if (!ready) return null;
     const pageStyle: string = await page.evaluate(() => window.__style);
     const styles: string[] = await page.evaluate(() => window.__styles);
+    ({ width: W, height: H } = await page.evaluate(() => window.__frameSize?.() ?? { width: 1920, height: 1080 }));
     for (const d of diags) if (d.style === cur) d.style = pageStyle;
     cur = pageStyle;
     checked.push(pageStyle);
+    // the committed subsets must cover every character the film's sources can draw, not only those on sampled frames
+    const manifestFile = path.join(ROOT, 'films', FILM, 'fonts', pageStyle, 'manifest.json');
+    if (existsSync(manifestFile)) {
+      const have = new Set<string>(JSON.parse(readFileSync(manifestFile, 'utf8')).charset ?? '');
+      const missing = [...filmChars(FILM, pageStyle)].filter((ch) => !have.has(ch));
+      if (missing.length) err('fonts-stale', `fonts/${pageStyle}`, `the font subsets do not cover ${missing.length} character(s) the film's text uses: ${missing.slice(0, 20).join(' ')}${missing.length > 20 ? ' …' : ''} (run just fonts ${FILM})`);
+    }
     const { unplaced } = await page.evaluate(() => window.__narration());
     for (const id of unplaced) if (!noted.has(`unplaced|${id}`)) { noted.add(`unplaced|${id}`); err('narration-unplaced', `narration:${id}`, `narration line "${id}" is placed in no scene (narratedScene / demoScene narration)`); }
     // notes the film recorded while registering (engine/notes.ts) are warnings, once (they recur in every style)

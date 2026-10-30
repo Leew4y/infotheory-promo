@@ -37,7 +37,7 @@ vec3 plate(vec2 uv, vec2 px){
 }
 void main(){
   vec2 uv = (gl_FragCoord.xy - .5 * uRes) / (.5 * uRes.y);
-  vec2 px = gl_FragCoord.xy;
+  vec2 px = gl_FragCoord.xy / uScale; // frame units: the dot grid keeps its size at any render scale
   vec3 c = uMode == 1 ? page(uv, px) : plate(uv, px);
   o = vec4(c * uAmp, 1.);
 }`;

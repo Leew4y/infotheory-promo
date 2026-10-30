@@ -8,3 +8,4 @@ audio/music.wav
 audio/music.mp3
 audio/.venv/
 audio/*.mix.wav
+.claude/worktrees/

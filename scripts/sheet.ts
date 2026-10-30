@@ -1,7 +1,7 @@
 /**
  * Contact sheet of a film in its styles, for reviewing a look (agent self-review and people):
  *
- *   bun scripts/sheet.ts --film <id> [--style a,b] [--times 4,39.5] [--out out/<id>/sheet]     (just sheet <film> ...)
+ *   bun scripts/sheet.ts --film <id> [--style a,b] [--times 4,39.5] [--out out/<id>/sheet] [--dist dist/<id>]     (just sheet <film> ...)
  *
  * The same moments in every style, chosen from the film (unless --times): the middle of the first full-frame plate,
  * of the first three page scenes and of the last scene; a frame with a caption on screen; the middle of the fade-out
@@ -19,14 +19,16 @@ import path from 'node:path';
 import puppeteer from 'puppeteer-core';
 import { chromeArgs, findChrome, loadFilm, serveDist } from './chrome';
 import { mediaDir, requireFilm } from './film-arg';
+import { requireCaptureFrames } from './lib/captures';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const argv = Bun.argv.slice(2);
 const opt = (k: string) => (argv.includes(`--${k}`) ? argv[argv.indexOf(`--${k}`) + 1] : undefined);
 const usage = (msg: string): never => { console.error(msg); process.exit(2); };
 const FILM = requireFilm(argv);
+await requireCaptureFrames(FILM);
 const OUT = path.resolve(ROOT, opt('out') ?? `out/${FILM}/sheet`);
-const DIST = path.join(ROOT, 'dist', FILM);
+const DIST = path.resolve(ROOT, opt('dist') ?? `dist/${FILM}`);
 if (existsSync(OUT) && !existsSync(path.join(OUT, 'sheet.json')) && readdirSync(OUT).length)
   usage(`--out ${OUT} exists and is not a previous sheet (no sheet.json): refusing to replace it`);
 const STYLES = opt('style')?.split(',').filter(Boolean);
@@ -67,6 +69,9 @@ try {
   const styles = STYLES ?? first.styles;
   for (const s of styles) if (!first.styles.includes(s)) usage(`--style ${s} is not one of the film's styles (${first.styles.join(', ')})`);
   const fps: number = await page.evaluate(() => window.__timeline().fps);
+  // a cell is half the film's frame: 960 x 540 for 1920 x 1080, 540 x 960 for a portrait 1080 x 1920
+  const frame = await page.evaluate(() => window.__frameSize?.() ?? { width: 1920, height: 1080 });
+  const CW = 2 * Math.round(frame.width / 4), CH = 2 * Math.round(frame.height / 4);
   const duration: number = await page.evaluate(() => window.__duration);
   // the moments, over all selected styles
   let ms: Moment[] = [];
@@ -96,12 +101,12 @@ try {
   // the grid: rows = moments, columns = styles
   const n = cells.length;
   const inputs = cells.flatMap((c) => ['-i', path.join(TMP, c.file)]);
-  const scale = cells.map((_, i) => `[${i}:v]scale=960:540[s${i}]`).join(';');
-  const layout = cells.map((c) => `${c.col * 960}_${c.row * 540}`).join('|');
-  const filter = n === 1 ? '[0:v]scale=960:540[o]' : `${scale};${cells.map((_, i) => `[s${i}]`).join('')}xstack=inputs=${n}:layout=${layout}[o]`;
+  const scale = cells.map((_, i) => `[${i}:v]scale=${CW}:${CH}[s${i}]`).join(';');
+  const layout = cells.map((c) => `${c.col * CW}_${c.row * CH}`).join('|');
+  const filter = n === 1 ? `[0:v]scale=${CW}:${CH}[o]` : `${scale};${cells.map((_, i) => `[s${i}]`).join('')}xstack=inputs=${n}:layout=${layout}[o]`;
   const p = Bun.spawnSync(['ffmpeg', '-v', 'error', '-y', ...inputs, '-filter_complex', filter, '-map', '[o]', '-q:v', '3', path.join(TMP, 'sheet.jpg')], { stderr: 'pipe' });
   if (p.exitCode !== 0) throw new Error(`ffmpeg: ${p.stderr.toString().trim()}`);
-  writeFileSync(path.join(TMP, 'sheet.json'), JSON.stringify({ film: FILM, fps, styles, moments: ms, sheet: 'sheet.jpg', cell: [960, 540], cells }, null, 1));
+  writeFileSync(path.join(TMP, 'sheet.json'), JSON.stringify({ film: FILM, fps, styles, moments: ms, sheet: 'sheet.jpg', cell: [CW, CH], cells }, null, 1));
   // publish: replace the previous sheet (checked above) as a whole
   if (existsSync(OUT)) rmSync(OUT, { recursive: true, force: true });
   mkdirSync(path.dirname(OUT), { recursive: true });

@@ -1,10 +1,10 @@
 /**
  * Record a web demo with Playwright and make it a capture asset of a film:
  *
- *   bun scripts/capture.ts --film <film> --id <id> <scenario.ts> [--fps 30] [--quality 92] [--sources <dir>]
+ *   bun scripts/capture.ts --film <film> --id <id> <scenario.ts> [--fps 30] [--quality 92] [--sources <dir> | --store-source]
  *                          [--max-seconds 600] [--no-keep-alive]
  *
- * 1. Opens the scenario's page in headless Chrome (the machine's Chrome, as every tool here), viewport from the
+ * 1. Opens the scenario's page in headless Chrome (findChrome: the pinned build, as every tool here), viewport from the
  *    scenario (default 1920x1080, DPR 1), and records it with page.screencast (JPEG frames with timestamps) while the
  *    scenario runs (scripts/lib/scenario.ts). The page reports pointer moves (at most every 30 ms), presses (with the
  *    target element and its box) and keys with performance.timeOrigin + event.timeStamp, the clock of the frames.
@@ -16,8 +16,9 @@
  *    t0 + i / fps, until the recording was stopped: a still page sends no frames) and streams them into the encoder
  *    (H.264 CRF 12), so memory stays bounded: at most 300 recorded frames wait for the encoder (a repeated frame is one
  *    entry with a count); more fails the recording at once, as does the encoder exiting, and its drain has a deadline.
- *    The source video <sources>/<id>.mp4 (default out/<film>/sources/, outside the repository like every capture
- *    source) gets <id>.events.jsonl beside it (seconds from the first output frame, full precision). The page's clock
+ *    The source video <sources>/<id>.mp4 (default out/<film>/sources/, outside the repository; with --store-source
+ *    films/<film>/captures/sources/, to be committed, which refuses a video over 25 MB: scripts/lib/captures.ts) gets
+ *    <id>.events.jsonl beside it (seconds from the first output frame, full precision). The page's clock
  *    and this process's are compared every second; a jump of more than 50 ms (clock adjusted, machine slept) fails the
  *    recording.
  * 3. Runs scripts/import-capture.ts on that video with the events, the viewport and DPR 1: the asset's frames and
@@ -25,7 +26,7 @@
  * The new video and events are written under temporary names; the previous ones are kept aside until the import
  * committed (exit 0) and put back on any failure before that. Exit code 1 on failure, 2 on bad arguments.
  */
-import { existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -33,6 +34,7 @@ import { chromium, type Browser, type Page } from 'playwright-core';
 import type { CaptureEvent } from '../engine/capture';
 import { findChrome } from './chrome';
 import { FILM_ID, requireFilm } from './film-arg';
+import { mb, SOURCE_LIMIT, sourcesDir } from './lib/captures';
 import type { Act, Scenario } from './lib/scenario';
 
 const ROOT = path.resolve(import.meta.dir, '..');
@@ -45,7 +47,7 @@ try {
     args: argv, allowPositionals: true, strict: true,
     options: {
       film: { type: 'string' }, id: { type: 'string' }, fps: { type: 'string' }, quality: { type: 'string' }, sources: { type: 'string' },
-      'max-seconds': { type: 'string' }, 'no-keep-alive': { type: 'boolean' },
+      'max-seconds': { type: 'string' }, 'no-keep-alive': { type: 'boolean' }, 'store-source': { type: 'boolean' },
     },
   });
 } catch (e) { usage(e instanceof Error ? e.message : String(e)); }
@@ -61,7 +63,10 @@ const QUALITY = +(o.quality ?? 92);
 if (!(Number.isInteger(QUALITY) && QUALITY >= 1 && QUALITY <= 100)) usage(`--quality ${o.quality}: an integer 1–100`);
 const MAX_SECONDS = +(o['max-seconds'] ?? 600);
 if (!(Number.isFinite(MAX_SECONDS) && MAX_SECONDS > 0)) usage(`--max-seconds ${o['max-seconds']}: a number > 0`);
-const SOURCES = path.resolve(ROOT, o.sources ?? `out/${FILM}/sources`);
+if (parsed.values['store-source'] && o.sources !== undefined) usage('give --store-source or --sources <dir>, not both');
+const SOURCES = parsed.values['store-source'] ? sourcesDir(FILM) : path.resolve(ROOT, o.sources ?? `out/${FILM}/sources`);
+/** A source in the film's committed sources directory is held to the size limit. */
+const IN_FILM = SOURCES === path.resolve(sourcesDir(FILM));
 const KEEP_ALIVE = !parsed.values['no-keep-alive'];
 /** How many recorded frames may wait for the encoder before the recording fails (memory bound). */
 const BACKLOG = 300;
@@ -272,6 +277,9 @@ try {
   if (st.err) throw st.err;
   const exit = await Promise.race([enc.exited, deadline(60, 'the encoder')]);
   if (exit !== 0) throw new Error(`ffmpeg (source video): ${(await new Response(enc.stderr as ReadableStream).text()).trim()}`);
+  const bytes = statSync(tmpVideo).size;
+  if (IN_FILM && bytes > SOURCE_LIMIT)
+    throw new Error(`the recording is ${mb(bytes)}, over the ${mb(SOURCE_LIMIT)} limit for films/${FILM}/captures/sources/: record again without --store-source (the source then stays in out/${FILM}/sources/) or shorten the scenario; nothing was changed`);
   const events = raw.map((e) => ({ ...e, t: (e.t - t0) / 1000 })).filter((e) => e.t >= 0 && e.t < n / FPS).sort((a, b) => a.t - b.t);
   writeFileSync(tmpEvents, events.map((e) => JSON.stringify(e)).join('\n') + (events.length ? '\n' : ''));
   const skipped = dropped.popup + dropped.frame;

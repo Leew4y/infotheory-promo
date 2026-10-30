@@ -7,14 +7,26 @@
  */
 import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { CHROME_VERSION, pinnedChrome } from './lib/browser-pin';
 import { confined } from './lib/confine';
 
 export type Gpu = 'platform' | 'swiftshader';
 
-/** Chrome or Edge executable: $CHROME_PATH, then the usual install locations per platform. */
+let warnedUnpinned = false;
+/**
+ * The browser executable: $CHROME_PATH (it must exist), then the pinned Chrome for Testing (scripts/lib/browser-pin.ts,
+ * installed by `just browser`), then an installed Chrome or Edge in the usual places per platform, with a one-line
+ * warning on stderr (once per process): its pixels may not match the regress baselines.
+ */
 export function findChrome(): string {
+  const env = process.env.CHROME_PATH;
+  if (env) {
+    if (!existsSync(env)) throw new Error(`CHROME_PATH=${env} does not exist`);
+    return env;
+  }
+  const pinned = pinnedChrome();
+  if (pinned) return pinned;
   const c = [
-    process.env.CHROME_PATH,
     'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
     'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
     'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
@@ -22,8 +34,12 @@ export function findChrome(): string {
     '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
     '/usr/bin/google-chrome',
     '/usr/bin/chromium',
-  ].find((p) => p && existsSync(p));
-  if (!c) throw new Error('Chrome / Edge not found (set CHROME_PATH)');
+  ].find((p) => existsSync(p));
+  if (!c) throw new Error(`no browser: run \`just browser\` (Chrome for Testing ${CHROME_VERSION}) or set CHROME_PATH`);
+  if (!warnedUnpinned) {
+    warnedUnpinned = true;
+    console.warn(`warning: Chrome for Testing ${CHROME_VERSION} is not installed (run \`just browser\`); using ${c}, whose pixels may not match the regress baselines`);
+  }
   return c;
 }
 
@@ -90,10 +106,10 @@ export function serveDist(dist: string, o: { media?: string; frames?: FrameSink 
  * renders another film or names no style or another style than requested (a stale dist/), or when __ready() throws
  * (e.g. a missing font bundle).
  */
-export async function loadFilm(page: import('puppeteer-core').Page, url: string, film: string, style: string, timeout = 60_000): Promise<{ style: string; styles: string[] }> {
+export async function loadFilm(page: import('puppeteer-core').Page, url: string, film: string, style: string, timeout = 60_000, query = ''): Promise<{ style: string; styles: string[] }> {
   const thrown = new Promise<never>((_, reject) => page.once('pageerror', (e) => reject(new Error(`page threw while loading: ${e instanceof Error ? e.message : String(e)}`))));
   thrown.catch(() => {});
-  await Promise.race([page.goto(`${url}/?export=1${style ? `&style=${encodeURIComponent(style)}` : ''}`, { waitUntil: 'load' }), thrown]);
+  await Promise.race([page.goto(`${url}/?export=1${style ? `&style=${encodeURIComponent(style)}` : ''}${query ? `&${query}` : ''}`, { waitUntil: 'load' }), thrown]);
   await Promise.race([page.waitForFunction(() => typeof window.__frame === 'function', { timeout }), thrown]);
   const got = await page.evaluate(() => ({ film: window.__film, style: window.__style, styles: window.__styles }));
   if (got.film !== film) throw new Error(`the page renders film "${got.film}", not "${film}" (stale dist/? run just build ${film})`);
