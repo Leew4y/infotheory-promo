@@ -1,6 +1,6 @@
 ---
 name: make-film
-description: Make a demo or explainer film in this repo from a brief — plan (film-plan.json), scenes, screen captures, narration, music, renders, self-checks and revisions — with the person approving the direction and the final cut. Use when asked to make a new film, a hackathon demo video, or to revise one end to end.
+description: Make a knowledge short, demo or explainer film in this repo from a brief — reference films, plan (film-plan.json) or hand-written scenes, captions or narration, screen captures, music, renders, self-checks and revisions — with the person approving the direction and the final cut. Use when asked to make a new film, a hackathon demo video, or to revise one end to end.
 ---
 
 # Making a film
@@ -16,6 +16,41 @@ the film's directory — the film's history is part of its deliverable (`films/m
 - `review/`: one `NN-<topic>.md` per review round or audit, with the sheets and frames it refers to, and
   `workflow-notes.md` for what in the tools or these instructions was unclear or failed.
 
+## Knowledge shorts (read first)
+
+A knowledge explainer is a Vibe 知识大赏 film unless the person asks otherwise: rendered by code, read from captions,
+one story acted out over the film's own score. Narration over charts was rejected for this (The-Walls, 2026-10-30).
+A product or hackathon demo stays narrated and follows the sections below as written; a knowledge short follows them
+except where this section differs. Worked example: `films/renao` on the branch `film/renao` (local to The-Walls's
+Mac, not on this branch; teardown in its `research/references.md`). The rules here do not depend on it.
+
+- Watch first. Before designing, open real films of the genre in the browser pane and look at frames at set times;
+  search summaries and other people's breakdowns are not watching. Bilibili plays logged out at 360p, Douyin needs a
+  login. Start with 比特新语《剃刀》(BV1WkJk6VEqA) and《银牌的眼泪》(BV12DHQ61EhT). In `research/references.md` mark
+  what you watched, read or only saw reported; other people's frames stay out of the repository.
+- No narration by default: the captions are the script. `just new-film <id> <style>` without `--plan` (plan scenes
+  take no `sfx`; `--portrait` for phones, as The-Walls has preferred, though most reference films are 16:9), then
+  hand-written scenes, `scene({ name, kind, dur: bars(n), subs, sfx, draw })`, with captions and moves placed in bars
+  of `defineFilm({ bpm })` so that cuts land on the music. Skip section 1, `just narrate` and `just plan-check`;
+  `just mix` then mixes the music alone.
+- One recognisable world and one metaphor. The whole film happens in a place the viewer knows (renao: one block of
+  flats at night) and turns on one image (people counted many times: names on paper slips). One idea per film; the
+  end returns to the opening picture with one thing changed.
+- Title 6–24 s in (renao: 21 s). The first frame already has a picture and a line; the viewer meets the question
+  before the name.
+- Every line acted by something nameable. What a caption says happens on screen to a thing you can name (a slip flies
+  to a window, a stroke is added to a tally). If someone covering the captions could not say what the picture is,
+  redraw it: dots, curves and bars as the subject fail this. Numbers are computed and can be counted on screen.
+- Pitched sound effects in the score's key. `tone`, `chime` and `low` are cues in the scenes' `sfx`, and the library's
+  defaults are E and A (`audio/synth.py`): give each a `midi` from the score's key, and shorten the decay in `score.py`
+  (`synth.FX.update`) so a cue ends before the chord changes. renao had 14 cues out of key and tails that clashed with
+  the next chord.
+- Nobody has heard it. You cannot hear audio, and neither can Codex: its audits measure spectra, loudness and the
+  schedule. Say so in the hand-over, with what only an ear can settle, and offer an effects-only track: give the
+  film's `score.py` a `SCORE` variable (`full` renders the music and the cues, `sfx` skips the music and still calls
+  `synth.place_cues(cues)`), then `SCORE=sfx just music <id>`, `just mix <id>`, an export with `--out`, and render the
+  full score again.
+
 ## 0. Brief (with the person)
 
 `films/<id>/brief.json` (schema: `schemas/brief.schema.json`) and, for anything longer, `brief.md`: the product, who
@@ -26,7 +61,7 @@ written into `films/<id>/` before there is any film code: `just new-film` adds t
 hackathon demo: 60–120 s; problem → what the product does (live screens) → how it works → result with a number → one
 closing line.
 
-## 1. Plan
+## 1. Plan (narrated films and demos)
 
 `just new-film <id> <style> --plan` (add `--portrait` for a 1080 × 1920 film watched on phones; also into a
 `films/<id>/` that holds only the brief and research; or keep an existing film), then write `films/<id>/film-plan.json`
