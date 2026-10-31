@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>bills</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #FFFFFF; }
+  body { font: 22px/1.55 "Cascadia Mono", Consolas, "Microsoft YaHei UI", "Microsoft YaHei", monospace; color: #1D1D1F;
+         padding: 26px 40px; box-sizing: border-box; overflow: hidden; }
+  #log { white-space: pre-wrap; word-break: break-all; }
+  .line { min-height: 1.55em; }
+  .cmd::before { content: "$ "; color: #1F5BE0; font-weight: 700; }
+  .cmd { font-weight: 600; }
+  .head { font-weight: 700; margin-top: .35em; }
+  .hl { color: #1F5BE0; font-weight: 600; }
+  .ok { color: #1F7A35; font-weight: 700; }
+  .bad { color: #C4281C; font-weight: 700; }
+  .dim { color: #6E6E73; }
+  .tbl { color: #3A3A3C; }
+  .caret { display: inline-block; width: .6em; background: #1D1D1F; animation: b 1s steps(1) infinite; }
+  @keyframes b { 50% { opacity: 0; } }
+  #tag { position: fixed; right: 0; top: 0; padding: 12px 24px 8px 16px; background: #FFFFFF; font-size: 17px; color: #6E6E73; }
+</style></head>
+<body><div id="tag">已加速 · 实际约 65 秒 · 模拟数据</div><div id="log"></div>
+<script>
+const STEPS = [[300, "cmd", "make owner-bills LLM=1"], [1000, "out", "实例 1（30 家门店，货主 4 家）：各自单独配送合计 6066 元，拼单总成本 3678 元（分摊额取整到元，各家之和等于总成本）。"], [1400, "dim", "…"], [1800, "head", "## 连锁药店"], [1920, "out", "- 门店：11、14、17、19、20、22、23、24 号店（8 家），385 箱"], [2040, "out", "- 单独配送：1327 元（3 辆车）"], [2160, "out", "- 拼单后分摊：804 元（拼单方案中 5 个车次装了您的货）"], [2280, "out", "- 节省 523 元（39.4%）"], [2400, "out", "- 同车：全部 8 家门店的普通类货品都与快消食品、日化、酒水的普通类货品同车"], [2800, "hl", "说明（大模型）：连锁药店账单涉及门店11、14、17、19、20、22、23、24号店（共8家）。单独配送的运费1327元，拼单后分摊的运费804元，与单独配送相比节省523元（39.4%）。拼单方案中装本货主货物的车次为5。同车拼单按相容类别，全部8家门店的普通类货品都与快消食品、日化、酒水的普通类货品同车；未全部送达的门店无。"]];
+const log = document.getElementById('log');
+const t0 = performance.now();
+let i = 0, typing = null;
+function add(cls, text) { const d = document.createElement('div'); d.className = 'line ' + cls; d.textContent = text; log.appendChild(d); return d; }
+function frame() {
+  const t = performance.now() - t0;
+  while (i < STEPS.length && STEPS[i][0] <= t) {
+    const [at, cls, text] = STEPS[i++];
+    if (cls === 'cmd') typing = { el: add('cmd', ''), text, at };
+    else add(cls, text);
+  }
+  if (typing) {
+    const n = Math.min(typing.text.length, Math.floor((t - typing.at) / 14));
+    typing.el.textContent = typing.text.slice(0, n);
+    if (n >= typing.text.length) typing = null;
+  }
+  const over = log.scrollHeight - (window.innerHeight - 52);
+  log.style.transform = over > 0 ? `translateY(${-over}px)` : '';
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script></body></html>

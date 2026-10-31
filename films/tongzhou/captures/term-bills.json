@@ -1,0 +1,29 @@
+{
+ "id": "term-bills",
+ "fps": 30,
+ "frames": 244,
+ "width": 1600,
+ "height": 672,
+ "viewport": {
+  "width": 1600,
+  "height": 672
+ },
+ "dpr": 1,
+ "crop": null,
+ "source": {
+  "file": "term-bills.mp4",
+  "sha256": "39d1648e4934284f0ab21d57adcec568967c2951dd8501915b62e3461aef05df",
+  "bytes": 194600,
+  "duration": 8.133333,
+  "width": 1600,
+  "height": 672,
+  "fps": 30
+ },
+ "events": [],
+ "made": {
+  "tool": "import-capture",
+  "fps": 30,
+  "quality": 2,
+  "ffmpeg": "ffmpeg version 9.0.2-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers"
+ }
+}
