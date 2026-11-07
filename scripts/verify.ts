@@ -1,10 +1,10 @@
 /**
  * Checks of the delivered file itself: what `just export` wrote, measured from the MP4 and not from what went into it.
  *
- *   just build <id> && bun scripts/verify.ts --film <id> [--style <id>] [--res <px>] [--file <video>] [--audio <file>]
+ *   just build <id> && bun scripts/verify.ts --film <id> [--style <id>] [--res <px>] [--for x] [--file <video>] [--audio <file>]
  *                                            [--noaudio] [--out out/<id>/verify] [--dist dist/<id>] [--json]
  *
- * The file defaults to the export's own name for these options (out/<id>/<id>[-<style>][-<res>p].mp4). Export checks
+ * The file defaults to the export's own name for these options (out/<id>/<id>[-<style>][-<res>p][-x].mp4). Export checks
  * its output before publishing it (frame count, durations, colour tags); this runs afterwards and asks another
  * question: is this file the film as it is now, and does it still measure right after encoding? It keeps a render
  * whatever it finds, so it can be run on any file at any time.
@@ -18,13 +18,16 @@
  *                    crf 18, 8 capped at 20 Mbit/s (--for x), 15 re-encoded at crf 30, which fails: pass such a copy
  *                    through verify before compressing it, not after; one character changed for another at 28-40 px
  *                    60-100, but near twins (己 and 已, 10) and small low-contrast digits (8) stay under PICTURE_LIMIT.
- *                    One frame per scene is a sample: a change away from the middle of a scene is not seen.
+ *                    One frame per scene is a sample: a change away from the middle of a scene is not seen. Not measured
+ *                    at --res: the file is scaled down to the render, whose text rasterises differently at 2160.
  * - verify-audio     an audio stream as long as the video, unless --noaudio.
  * - verify-loudness, verify-true-peak   integrated loudness and true peak of the encoded audio (EBU R128), which the
- *                    mix checked only before AAC. The limits leave room for what the codec does to a master in spec.
+ *                    mix checked only before AAC. The limits leave room for what the codec does to a master in spec:
+ *                    a master of math-lessons' voice alone went from -1.8 to -1.6 dBTP at the same -16.0 LUFS.
  * - verify-audio-stale   the encoded audio against the file it should have been made from (--audio, else the final mix
  *                    out/<id>/master.wav, else out/<id>/music.wav, as the export picks): signal to difference in 2 s
- *                    windows; the worst window must clear SNR_LIMIT. Without such a file: warning verify-audio-unchecked.
+ *                    windows; the worst window must clear SNR_LIMIT (measured 39 dB on music, 40 on the voice alone).
+ *                    Without such a file: warning verify-audio-unchecked.
  *
  * Writes to <out>, as a whole and only over a previous verify (it has a verify.json): verify.json (the file's sha256,
  * the measurements and the diagnostics, a record of exactly what was checked), sheet.jpg and phone.jpg (the decoded
@@ -51,7 +54,7 @@ const LOUDNESS = -16, LOUDNESS_TOL = 1, MAX_TRUE_PEAK = -1;
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const argv = Bun.argv.slice(2);
-const VALUED = ['film', 'style', 'res', 'file', 'audio', 'out', 'dist'], FLAGS = ['noaudio', 'json'];
+const VALUED = ['film', 'style', 'res', 'for', 'file', 'audio', 'out', 'dist'], FLAGS = ['noaudio', 'json'];
 const JSON_OUT = argv.includes('--json');
 type Diag = { level: 'error' | 'warning'; code: string; path: string; message: string };
 const diags: Diag[] = [];
@@ -72,9 +75,10 @@ const opt = (k: string) => (argv.includes(`--${k}`) ? argv[argv.indexOf(`--${k}`
 const filmR = filmArg(argv);
 if (filmR.error !== undefined) stop('usage', filmR.error);
 const FILM = filmR.film!;
-const STYLE = opt('style') ?? '', RES = opt('res'), NOAUDIO = argv.includes('--noaudio');
+const STYLE = opt('style') ?? '', RES = opt('res'), FOR = opt('for'), NOAUDIO = argv.includes('--noaudio');
+if (FOR !== undefined && FOR !== 'x') stop('usage', `--for ${FOR}: x is the only preset`);
 if (RES !== undefined && !/^\d+$/.test(RES)) stop('usage', `--res ${RES}: pixels on the short side, e.g. 1440 or 2160`);
-const FILE = path.resolve(ROOT, opt('file') ?? `out/${FILM}/${FILM}${STYLE ? `-${STYLE}` : ''}${RES ? `-${RES}p` : ''}.mp4`);
+const FILE = path.resolve(ROOT, opt('file') ?? `out/${FILM}/${FILM}${STYLE ? `-${STYLE}` : ''}${RES ? `-${RES}p` : ''}${FOR ? `-${FOR}` : ''}.mp4`);
 const OUT = path.resolve(ROOT, opt('out') ?? `out/${FILM}/verify`);
 const DIST = path.resolve(ROOT, opt('dist') ?? `dist/${FILM}`);
 if (!existsSync(FILE)) stop('verify-file', `${FILE} not found: run just export ${FILM}, or name a file with --file`);

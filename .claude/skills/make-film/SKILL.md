@@ -138,7 +138,7 @@ its scene and time, exactly as the sources hold them; it is also what to hand an
 `just export <id>` (final: about 50 frames/s on an M5 Pro with 4 workers, about 9 on the Windows laptop of the plan;
 check that no other export runs — a timeout prints the load and other exports). `--res 2160` for a 4K master
 (rendered at that resolution), `--for x` for an X post (bitrate cap and length/size warnings).
-Then `just verify <id>` (same `--style` / `--res` as the export): the file against the current build and its mix, and
+Then `just verify <id>` (same `--style` / `--res` / `--for` as the export): the file against the current build and its mix, and
 the loudness after encoding. An error means the MP4 is not the film that passed the checks: fix or re-export, do not
 hand it over. Look at `out/<id>/verify/sheet.jpg` and `phone.jpg`: those are the delivered frames, a scene each.
 Hand the person the MP4, `sheet.jpg` and a short note: what was verified, what was not, what you chose for them.
