@@ -1,0 +1,121 @@
+{
+ "comment": "Every defect found while making a film and what stops it coming back (scripts/lib/defects.ts; checked by just defects). A new defect goes here when it is found, open if nothing guards it yet. Preventive entries were not seen here: their source says so.",
+ "defects": [
+  {
+   "id": "D01",
+   "symptom": "Wrong glyphs on screen: 回 a solid block, 己 drawn as 巳, 受 drawn as 要; every check passed and the delivered film carried them",
+   "cause": "The upstream ZCOOL XiaoWei file is wrong; coverage (cmap) cannot see a glyph drawn badly",
+   "source": { "file": "films/math-lessons/review/08-post-acceptance.md" },
+   "status": "guarded",
+   "guard": { "file": "scripts/fonts.ts", "marker": "glyphCheck(text, cjk)" }
+  },
+  {
+   "id": "D02",
+   "symptom": "A character on screen missing from the font subset (Ó after a style upper-cased Córdoba; text added after just fonts)",
+   "cause": "The subset follows the literals in the sources, not text changed at run time or after the last just fonts",
+   "source": { "file": "films/math-lessons/review/workflow-notes.md", "note": "item 11" },
+   "status": "guarded",
+   "guard": { "file": "scripts/validate.ts", "marker": "fonts-stale" }
+  },
+  {
+   "id": "D03",
+   "symptom": "Text too close to the edge of the frame",
+   "cause": "A style's margin plus a scene's offset crossed the 5 % line",
+   "source": { "file": "films/math-lessons/review/workflow-notes.md", "note": "item 7" },
+   "status": "guarded",
+   "guard": { "file": "scripts/validate.ts", "marker": "text-safe-area" }
+  },
+  {
+   "id": "D04",
+   "symptom": "Captions one to two seconds behind the voice",
+   "cause": "Captions were timed by length, not where the phrase is spoken",
+   "source": { "file": "films/math-lessons/review/09-social-review.md", "note": "conclusion 4" },
+   "status": "guarded",
+   "guard": { "file": "tests/narration.test.ts", "marker": "captions follow the voice" }
+  },
+  {
+   "id": "D05",
+   "symptom": "The same sentence three times at once: large on the page, in the caption, in the voice",
+   "cause": "No check compares a page's text with its captions; `shown` only helps where someone uses it",
+   "source": { "file": "films/math-lessons/review/09-social-review.md", "note": "conclusion 3" },
+   "status": "open"
+  },
+  {
+   "id": "D06",
+   "symptom": "A bright part of a plate pulls the eye from the text",
+   "cause": "Contrast is judged behind the glyphs only: a bright patch beside the text passes",
+   "source": { "file": "films/math-lessons/review/workflow-notes.md", "note": "item 10" },
+   "status": "open"
+  },
+  {
+   "id": "D07",
+   "symptom": "An export timed out with a message that looked like a fault of the film",
+   "cause": "Another session was rendering on the same machine",
+   "source": { "file": "films/math-lessons/review/workflow-notes.md", "note": "item 16" },
+   "status": "assisted",
+   "guard": { "file": "scripts/export.ts", "marker": "loadavg" }
+  },
+  {
+   "id": "D08",
+   "symptom": "Pixels that depended on the order frames were rendered in",
+   "cause": "The hardware-accelerated 2D canvas",
+   "source": { "file": "spikes/RESULTS.md" },
+   "status": "guarded",
+   "guard": { "file": "scripts/chrome.ts", "marker": "--disable-accelerated-2d-canvas" }
+  },
+  {
+   "id": "D09",
+   "symptom": "A narration line said more than its source (a passive sentence given a subject it does not have)",
+   "cause": "A fact table's wording was written from memory of the source and then copied into the voice",
+   "source": { "file": "films/math-lessons/review/workflow-notes.md", "note": "item 14" },
+   "status": "assisted",
+   "guard": { "file": "scripts/texts.ts", "marker": "Every text of a film" }
+  },
+  {
+   "id": "D10",
+   "symptom": "A commit that does not build",
+   "cause": "git add failed on a stale path and the commit went on with what was staged",
+   "source": { "file": "films/math-lessons/review/workflow-notes.md", "note": "item 8" },
+   "status": "open"
+  },
+  {
+   "id": "D11",
+   "symptom": "A film exported with a final mix made for an earlier cut",
+   "cause": "Nothing tied master.wav to the narration and timeline it was made for",
+   "source": { "note": "preventive: a rule of the plan, not an incident" },
+   "status": "guarded",
+   "guard": { "file": "scripts/export.ts", "marker": "masterStale" }
+  },
+  {
+   "id": "D12",
+   "symptom": "Text too small on a phone, a landscape film in a portrait feed above all",
+   "cause": "Frames were only ever judged at desktop size",
+   "source": { "file": "films/math-lessons/review/09-social-review.md", "note": "conclusion 6; the size in the feed is not documented by the platform" },
+   "status": "assisted",
+   "guard": { "file": "scripts/lib/grid.ts", "marker": "phoneCell" }
+  },
+  {
+   "id": "D13",
+   "symptom": "Loudness or true peak off target after encoding, with the master in spec",
+   "cause": "Loudness was measured on the WAV, before AAC",
+   "source": { "note": "preventive: not seen here; the idea is shuyuvideo's defect D08" },
+   "status": "guarded",
+   "guard": { "file": "scripts/verify.ts", "marker": "verify-loudness" }
+  },
+  {
+   "id": "D14",
+   "symptom": "The MP4 handed over is older than the cut that passed the checks, in picture or in sound",
+   "cause": "validate, regress and the sheet render the page; nothing compared the delivered file with it",
+   "source": { "note": "preventive: not seen here" },
+   "status": "guarded",
+   "guard": { "file": "scripts/verify.ts", "marker": "verify-picture" }
+  },
+  {
+   "id": "D15",
+   "symptom": "A frame that depends on frames before it, or on the wall clock",
+   "cause": "frame(t) being pure is a rule in AGENTS.md; nothing runs frames out of order on a film, and the determinism spike ran once, on the engine",
+   "source": { "note": "a gap found comparing with shuyuvideo's reverse-seek probe; no incident here" },
+   "status": "open"
+  }
+ ]
+}

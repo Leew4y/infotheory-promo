@@ -149,6 +149,19 @@ covers film=film *args: (build film)
 chapters film=film *args: (build film)
     bun scripts/chapters.ts --film {{film}} {{args}}
 
+# The exported file itself: frames, decoding, every scene against the current build, encoded loudness, the mix it was
+# made from -> out/<film>/verify/ (verify.json, sheet.jpg, phone.jpg); --style, --res, --file for another export.
+verify film=film *args: (build film)
+    bun scripts/verify.ts --film {{film}} {{args}}
+
+# Cases for verify: a real short export, then damaged copies of it.
+test-verify:
+    bun scripts/test-verify.ts
+
+# Check the defect ledger docs/defects.json (every guard still there) and list the open defects.
+defects:
+    bun scripts/defects.ts
+
 # Print the scene list with times.
 scenes film=film: (build film)
     bun scripts/export.ts --film {{film}} --scenes
@@ -188,8 +201,8 @@ test-narration:
 export film=film workers="4" crf="18" *args: (build film)
     bun scripts/export.ts --film {{film}} --workers {{workers}} --crf {{crf}} {{args}}
 
-# Everything for a film with a score: cues -> music -> final mix (with the narration, if any) -> video.
-all film=film: (music film) (mix film) (export film)
+# Everything for a film with a score: cues -> music -> final mix (with the narration, if any) -> video -> its checks.
+all film=film: (music film) (mix film) (export film) (verify film)
 
 # Find a narration voice by description (Apple silicon): `just voice-design my-voice --describe "A=<description>" --describe "B=..."`,
 # listen to out/voice-design/my-voice/*-sample.mp3, then `just voice-design my-voice --pick A` writes voices/my-voice/.

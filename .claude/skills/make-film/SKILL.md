@@ -112,6 +112,7 @@ in a block whose other line ends in ？ or ！; use `displayText`. Then `just fo
 - Look at the frames yourself (read the images) before showing anyone: legibility, what the eye goes to, whether the
   demo screen is readable at its size, whether a number on screen matches the narration. For a portrait film judge
   legibility at phone size: a 1080-wide frame is about 390-430 points wide on a phone, so text under ~28 px reads as small print.
+  Any film that may be watched on a phone: look at the sheet's `phone.jpg` unscaled (a landscape film in a portrait feed gets the same width).
 - The same sentence should not be both large on the page and a caption (math-lessons review 09): show a keyword,
   number or diagram, or mark the line `shown`.
 
@@ -125,7 +126,8 @@ just mix <id>               # final mix: every line >= 6 dB over the music, -16 
 
 ## 6. Revise (at least one full round on your own)
 
-Write down what is wrong (in `films/<id>/review/NN-*.md`): accuracy of every claim and number, clarity of the
+A defect that a check should have caught goes into `docs/defects.json` as well (AGENTS.md): the note says what
+happened, the ledger what stops it next time. Write down what is wrong (in `films/<id>/review/NN-*.md`): accuracy of every claim and number, clarity of the
 argument in 60–120 s, pacing (no scene longer than its content), legibility, consistency of terms. Fix in the plan
 first, then the scenes; re-narrate only changed lines. For anything factual, keep sources in `films/<id>/research/`.
 Check the facts against `just texts <id>` (`out/<id>/texts.md`): every displayed string and every spoken line with
@@ -136,5 +138,8 @@ its scene and time, exactly as the sources hold them; it is also what to hand an
 `just export <id>` (final: about 50 frames/s on an M5 Pro with 4 workers, about 9 on the Windows laptop of the plan;
 check that no other export runs — a timeout prints the load and other exports). `--res 2160` for a 4K master
 (rendered at that resolution), `--for x` for an X post (bitrate cap and length/size warnings).
-Hand the person the MP4, the sheet and a short note: what was verified, what was not, what you chose for them.
+Then `just verify <id>` (same `--style` / `--res` as the export): the file against the current build and its mix, and
+the loudness after encoding. An error means the MP4 is not the film that passed the checks: fix or re-export, do not
+hand it over. Look at `out/<id>/verify/sheet.jpg` and `phone.jpg`: those are the delivered frames, a scene each.
+Hand the person the MP4, `sheet.jpg` and a short note: what was verified, what was not, what you chose for them.
 The person approves the film; do not publish it. No credit line on screen unless the person asks for one.

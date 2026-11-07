@@ -8,7 +8,8 @@
  * of the first page scene that has one. Moments are kept inside their scene's frames, one per frame (a short scene
  * still gets its own), and taken over all selected styles (their fade lengths may differ). Requested times must be
  * finite and inside the film. Each frame is rendered as exported (motion blur) to <out>/<style>/r<row>-t<time>.jpg;
- * <out>/sheet.jpg puts moments in rows and styles in columns (cells 960x540); <out>/sheet.json lists the cells.
+ * <out>/sheet.jpg puts moments in rows and styles in columns (cells half the frame, 960x540); <out>/phone.jpg is the
+ * same grid at the width a phone shows (scripts/lib/grid.ts), to be looked at unscaled; <out>/sheet.json lists the cells.
  * Everything is written to a temporary directory first and then replaces <out> as a whole, and only if <out> is a
  * previous sheet (it has a sheet.json) or does not exist: any other directory is refused, never emptied.
  * Styles default to all of the film's; with --style the first one listed loads the film. Needs ffmpeg.
@@ -20,6 +21,7 @@ import puppeteer from 'puppeteer-core';
 import { chromeArgs, findChrome, loadFilm, serveDist } from './chrome';
 import { mediaDir, requireFilm } from './film-arg';
 import { requireCaptureFrames } from './lib/captures';
+import { grid, phoneCell } from './lib/grid';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const argv = Bun.argv.slice(2);
@@ -98,20 +100,17 @@ try {
       cells.push({ row, col, t: m.t, scene: m.scene, what: m.what, style, file: `${style}/${name}` });
     }
   }
-  // the grid: rows = moments, columns = styles
-  const n = cells.length;
-  const inputs = cells.flatMap((c) => ['-i', path.join(TMP, c.file)]);
-  const scale = cells.map((_, i) => `[${i}:v]scale=${CW}:${CH}[s${i}]`).join(';');
-  const layout = cells.map((c) => `${c.col * CW}_${c.row * CH}`).join('|');
-  const filter = n === 1 ? `[0:v]scale=${CW}:${CH}[o]` : `${scale};${cells.map((_, i) => `[s${i}]`).join('')}xstack=inputs=${n}:layout=${layout}[o]`;
-  const p = Bun.spawnSync(['ffmpeg', '-v', 'error', '-y', ...inputs, '-filter_complex', filter, '-map', '[o]', '-q:v', '3', path.join(TMP, 'sheet.jpg')], { stderr: 'pipe' });
-  if (p.exitCode !== 0) throw new Error(`ffmpeg: ${p.stderr.toString().trim()}`);
-  writeFileSync(path.join(TMP, 'sheet.json'), JSON.stringify({ film: FILM, fps, styles, moments: ms, sheet: 'sheet.jpg', cell: [CW, CH], cells }, null, 1));
+  // the grids: rows = moments, columns = styles; once at half size, once at the size a phone shows
+  const placed = cells.map((c) => ({ ...c, file: path.join(TMP, c.file) }));
+  const PHONE = phoneCell(frame);
+  grid(placed, [CW, CH], path.join(TMP, 'sheet.jpg'));
+  grid(placed, PHONE, path.join(TMP, 'phone.jpg'));
+  writeFileSync(path.join(TMP, 'sheet.json'), JSON.stringify({ film: FILM, fps, styles, moments: ms, sheet: 'sheet.jpg', cell: [CW, CH], phone: 'phone.jpg', phoneCell: PHONE, cells }, null, 1));
   // publish: replace the previous sheet (checked above) as a whole
   if (existsSync(OUT)) rmSync(OUT, { recursive: true, force: true });
   mkdirSync(path.dirname(OUT), { recursive: true });
   renameSync(TMP, OUT);
-  console.log(`${ms.length} moments x ${styles.length} style(s) -> ${path.join(OUT, 'sheet.jpg')}`);
+  console.log(`${ms.length} moments x ${styles.length} style(s) -> ${path.join(OUT, 'sheet.jpg')}, ${path.join(OUT, 'phone.jpg')}`);
   for (const m of ms) console.log(`  ${m.t.toFixed(2).padStart(7)}s  ${m.scene.padEnd(14)} ${m.what}`);
 } catch (e) {
   console.error(`sheet failed: ${e instanceof Error ? e.message : String(e)}`);
