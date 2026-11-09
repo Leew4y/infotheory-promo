@@ -117,6 +117,14 @@
    "source": { "note": "a gap found comparing with shuyuvideo's reverse-seek probe; no incident here" },
    "status": "guarded",
    "guard": { "file": "scripts/regress.ts", "marker": "order-dependent" }
+  },
+  {
+   "id": "D16",
+   "symptom": "A narration line misread by the voice, and nobody hears it before the film goes out",
+   "cause": "Neither an agent nor an audit can listen; the checks measure loudness and timing, not what is said",
+   "source": { "file": ".claude/skills/make-film/SKILL.md", "note": "the section on knowledge shorts: nobody has heard it" },
+   "status": "assisted",
+   "guard": { "file": "scripts/hear.ts", "marker": "hear.md" }
   }
  ]
 }

@@ -100,7 +100,7 @@ Films do not import each other: something two films need belongs in `engine/` or
 
 | Do not | Do instead |
 |---|---|
-| Keep a variable that `draw` changes, at module level or anywhere else | Compute it from `lt` |
+| Keep a variable that `draw` changes, at module level or anywhere else (`just regress` reports the frame as order-dependent) | Compute it from `lt` |
 | Use `Math.random` or the clock | `mulberry`, `hash1`, `noise1` with a fixed seed |
 | Put text straight on a full-frame plate | `backdrop(...)` under it |
 | Show the same sentence large and as a caption | A keyword, a number or a diagram; or `shown` for a line displayed verbatim |
