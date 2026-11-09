@@ -54,7 +54,7 @@ Every film command takes the film id first (default `infotheory`); outputs go to
 | `just shots <film> 5,20.5 [--style id]` | single frames |
 | `just covers <film> [--only a,b]` | the film's covers (`cover({ name, size, kind, draw, overlay })` from the engine, in a module main.ts imports; each at its own size, e.g. 1080 × 1920 and 1920 × 1080) → `out/<film>/covers/<name>.png` + `.jpg`; text outside the image is an error, in the outer 5 % a warning |
 | `just chapters <film>` | chapter timestamps for a video description (`MM:SS 中文 · English`, from scenes' `chapter` / `ch`; a hook before chapter 1 joins it at 00:00), checked against YouTube's rules (00:00 first, at least 3, each at least 10 s) → `out/<film>/chapters.txt` |
-| `just dev <film>` | preview at http://127.0.0.1:5174 (`?style=<id>`) |
+| `just dev <film>` | preview at http://127.0.0.1:5174: opens paused, a reload (every edit) returns to the same moment of the same scene; `?style=<id>`, `?scene=<name>`, `?t=<s>`, `?loop=1` (key L: loop the scene) |
 | `just regress <film>` | pixel regression per style against this platform's baseline `regress/<style>.<os>-<arch>.json` (`--update` only after a person approved the change) |
 | `just export <film> [workers crf] [--noaudio] [--style id] [--res <px>] [--maxrate <Mbit/s>] [--for x]` | the video; `--res` = pixels on the short side (1440, 2160; 720 for a small preview), rendered at that scale, not upscaled, named `<film>[-<style>]-<res>p.mp4`; `--for x` caps the bitrate at 20 Mbit/s and warns past 140 s / 512 MB |
 | `just check`, `just check-imports`, `just test-validate`, `just test-export <film>` | type check, boundaries, tests |

@@ -86,7 +86,7 @@ just captures demo [dir]      # 换机器或清了缓存后，从源视频重建
 just fonts demo               # 字体子集（每个风格一套）；生成前检查中文字形（两个字画成一样、字腔被填实、标点按西文排），有错就停，旧子集不动
 just glyphs demo              # 字形校样：用随仓库的字体子集把片中每个字逐字画出（48 px，标码位，旁边是系统字体的同一个字）→ out/demo/glyphs/<style>/；换字体后要逐格看过
 just glyph-check <字体 id> --film demo   # 字形检查单独跑（不生成子集），选字体前先查；字体库里记了 defects 的字体（如 ZCOOL XiaoWei）只有风格的 fonts.json 写明 acceptDefects 理由（须经本人同意）才能用
-just dev demo                 # 预览 http://127.0.0.1:5174：空格播放/暂停，←/→ 5 秒，, . 单帧，[ ] 跳场景，F 全屏；?style=<id> 切换风格
+just dev demo                 # 预览 http://127.0.0.1:5174：空格播放/暂停，←/→ 5 秒，, . 单帧，[ ] 跳场景，L 循环当前场景，F 全屏；改代码后停在原场景原时刻；?style=<id> ?scene=<名> ?t=<秒> ?loop=1
 just render-scene demo idea --draft / just render-range demo 1 3 --draft   # 无声局部，stdout 一行 JSON 摘要
 just shots demo 5,20.5        # 检查帧 → out/demo/shots/
 just sheet demo               # 拼图：代表时刻 × 每个风格 → out/demo/sheet/sheet.jpg（--style a,b；--times t1,t2）
