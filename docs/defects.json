@@ -113,9 +113,10 @@
   {
    "id": "D15",
    "symptom": "A frame that depends on frames before it, or on the wall clock",
-   "cause": "frame(t) being pure is a rule in AGENTS.md; nothing runs frames out of order on a film, and the determinism spike ran once, on the engine",
+   "cause": "frame(t) being pure was only a rule in AGENTS.md; nothing ran frames out of order on a film",
    "source": { "note": "a gap found comparing with shuyuvideo's reverse-seek probe; no incident here" },
-   "status": "open"
+   "status": "guarded",
+   "guard": { "file": "scripts/regress.ts", "marker": "order-dependent" }
   }
  ]
 }

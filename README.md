@@ -102,7 +102,7 @@ just all demo                 # cues → music → mix → export → verify
 just check / just check-imports / just test   # 类型检查 / 依赖方向 / 单元测试
 just defects                  # 缺陷台账 docs/defects.json：每条的检查还在不在，列出还没人防的
 just regress demo [--update]  # 像素回归，每个风格、每个平台一份基线
-just test-validate / just test-plan / just test-narration / just test-capture / just test-verify / just test-export infotheory
+just test-validate / just test-plan / just test-narration / just test-capture / just test-verify / just test-regress / just test-export infotheory
 just font-catalog             # 下载并校验字体库（约 80 MB）；新增字体须经确认后用 --lock 登记
 ```
 

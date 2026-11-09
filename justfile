@@ -158,6 +158,10 @@ verify film=film *args: (build film)
 test-verify:
     bun scripts/test-verify.ts
 
+# The order check of regress on a throwaway film: state between frames and Math.random are caught, an ordinary change is not called one.
+test-regress:
+    bun scripts/test-regress.ts
+
 # Check the defect ledger docs/defects.json (every guard still there) and list the open defects.
 defects:
     bun scripts/defects.ts

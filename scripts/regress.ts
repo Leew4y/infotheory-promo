@@ -16,9 +16,13 @@
  * --no-cpu2d-flag drops the launch flag to check that the page itself selects the CPU 2D canvas.
  * Frame set: first/last, one frame either side of every scene boundary, and one frame per second; comparison also
  * renders every frame the baseline has.
+ * Order: frame(t) must be a pure function of t. A baseline is recorded in frame order, then the frames are rendered again
+ * in a fixed shuffled order on fresh pages, and a frame that comes out differently refuses the baseline; a comparison
+ * renders out of order, and a mismatch is rendered in order on fresh pages to tell its cause (a frame that then matches
+ * the baseline is order-dependent: it keeps state between frames).
  * Verdicts:
  *   PASS        every baseline frame matches, and the film's duration and fps equal the baseline's
- *   FAIL        a frame differs, a baseline frame is gone, or duration / fps changed
+ *   FAIL        a frame differs or is order-dependent, a baseline frame is gone, or duration / fps changed
  *   INCOMPLETE  all baseline frames match, but today's frame set has frames the baseline lacks (e.g. a moved scene
  *               boundary); those were not compared. Exit 1 unless --allow-new.
  * A baseline is only comparable on the platform that recorded it and for the film the page actually renders;
@@ -35,6 +39,7 @@ import puppeteer, { type Browser, type Page } from 'puppeteer-core';
 import { chromeArgs, findChrome, loadFilm, serveDist } from './chrome';
 import { mediaDir, requireFilm } from './film-arg';
 import { requireCaptureFrames } from './lib/captures';
+import { shuffled } from './lib/order';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const argv = Bun.argv.slice(2);
@@ -135,13 +140,25 @@ try {
     if (base) for (const k of Object.keys(base.hashes)) if (+k <= last) set.add(+k);
     const frames = [...set].sort((a, b) => a - b);
 
-    const hashes: Record<number, string> = {};
-    let next = 0;
-    await Promise.all(ws.map(async (w) => { while (next < frames.length) { const f = frames[next++]; hashes[f] = await hashFrame(w, f); } }));
+    /** Hash the frames of `order`, in that order, every worker taking the next one from one queue. */
+    const render = async (order: number[]): Promise<Record<number, string>> => {
+      const out: Record<number, string> = {};
+      let next = 0;
+      await Promise.all(ws.map(async (w) => { while (next < order.length) { const f = order[next++]; out[f] = await hashFrame(w, f); } }));
+      return out;
+    };
+    const hashes = await render(flag('update') ? frames : shuffled(frames));
     const seconds = +((performance.now() - t0) / 1000).toFixed(1);
     const meta = { film: FILM, style: pageStyle, platform: PLATFORM, chrome, gpu, args: ARGS, fps: FPS, duration, frames: frames.length };
 
     if (flag('update')) {
+      await load(id);
+      const again = await render(shuffled(frames));
+      const unstable = frames.filter((f) => again[f] !== hashes[f]);
+      if (unstable.length) {
+        console.log(`FAIL regress ${FILM} [${pageStyle}]: ${unstable.length} of ${frames.length} frames are order-dependent (they differ when rendered out of order; frame(t) must be a pure function of t), no baseline written. First: ${unstable.slice(0, 12).map((f) => `${f}/${(f / FPS).toFixed(2)}`).join(' ')}`);
+        return 1;
+      }
       mkdirSync(path.dirname(BASELINE), { recursive: true });
       const commit = (await Bun.$`git -C ${path.dirname(DIST)} rev-parse HEAD`.nothrow().text()).trim();
       writeFileSync(BASELINE, JSON.stringify({ ...meta, commit, hashes }, null, 1));
@@ -156,10 +173,18 @@ try {
       const mismatched = baseFrames.filter((f) => hashes[f] !== undefined && base.hashes[f] !== hashes[f]);
       const missing = baseFrames.filter((f) => hashes[f] === undefined);
       const uncompared = frames.filter((f) => base.hashes[f] === undefined);
-      if (mismatched.length) failures.push(`${mismatched.length} frame(s) differ`);
+      let orderDependent: number[] = [];
+      if (mismatched.length) {
+        await load(id);
+        const inOrder = await render(frames);
+        orderDependent = mismatched.filter((f) => inOrder[f] === base.hashes[f]);
+      }
+      const differ = mismatched.length - orderDependent.length;
+      if (differ) failures.push(`${differ} frame(s) differ`);
+      if (orderDependent.length) failures.push(`${orderDependent.length} frame(s) are order-dependent: they match the baseline in order but not out of order, so frame(t) keeps state between frames`);
       if (missing.length) failures.push(`${missing.length} baseline frame(s) no longer exist`);
       const verdict = failures.length ? 'FAIL' : uncompared.length ? 'INCOMPLETE' : 'PASS';
-      const report = { ...meta, baselineCommit: base.commit, verdict, pass: verdict === 'PASS', seconds, compared: baseFrames.length - missing.length, mismatched, missing, uncompared, failures, warnings };
+      const report = { ...meta, baselineCommit: base.commit, verdict, pass: verdict === 'PASS', seconds, compared: baseFrames.length - missing.length, mismatched, orderDependent, missing, uncompared, failures, warnings };
       mkdirSync(path.dirname(REPORT), { recursive: true });
       writeFileSync(REPORT, JSON.stringify(report, null, 1));
       for (const w of warnings) console.warn('warning:', w);

@@ -90,7 +90,8 @@ Every film command takes the film id first (default `infotheory`); outputs go to
   `source` and `license`, and matching lowercase `sha256`; optional `generator`, `seed`, `notes` record provenance.
   Captures, narration FLACs and fonts retain their own manifests/locks. No general asset loader is needed for this phase.
 - `frame(t)` is a pure function of `t`: no `Math.random`, no wall clock, no state carried between frames; use
-  `mulberry`, `hash1`, `noise1` with fixed seeds.
+  `mulberry`, `hash1`, `noise1` with fixed seeds. `just regress` compares frames out of order and names an
+  order-dependent frame; `--update` refuses to record one (`just test-regress`).
 - Text only through `text()` / `label()` / the style's blocks, in the style's font roles (`F.body`, `F.latin`, `F.math`,
   `F.mono`) and palette roles (`C.fg`, `C.muted`, `C.accent`, ...). No hex colours, font names or pixel margins that
   belong to a style inside scenes; geometry from `M`, `COL`, `W`, `H`.
