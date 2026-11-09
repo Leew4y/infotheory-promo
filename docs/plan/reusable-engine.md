@@ -111,7 +111,7 @@ GPU 路径只用于生产，差异上限按来源 2 记录。
 2026-10-23 记录：0d 在 Apple M5 Pro（macOS 26.5.1，Chrome 155.0.8059.85）上完成，结果见 `spikes/0d-macos/RESULTS.md`。
 GPU 能力、0a（CPU 2D canvas 下确定）、0c 的帧率与清晰度、validate、导出与各项测试都通过；0b 未单独运行。暴露的问题都在 `scripts/`，已修正：
 - 回归基线按平台各录一份（`regress/<style>.<os-arch>.json`），因为文字栅格化随平台不同。
-- 浏览器固定为 Chrome for Testing 155.0.8059.85（`just browser`，四个平台各记 sha256，见 `scripts/lib/browser-pin.ts`），
+- 浏览器固定为 Chrome for Testing（2026-11-09 升到 157.0.8103.38；最初为 155.0.8059.85）（`just browser`，四个平台各记 sha256，见 `scripts/lib/browser-pin.ts`），
   不再随本机 Chrome 的自动更新变化，也没有品牌版拉起的更新器；darwin-arm64 回归用它逐像素通过。Windows 上未运行，
   Windows 基线（155.0.8059.40 录制）在固定版本下是否一致待核对。
 - test-export 的真实 SIGINT 用例改为在导出写出 150 帧后发信号（原来按墙钟，这台机器在信号前就导完了）。
@@ -603,7 +603,7 @@ A1 / A1b 评审修正（Codex，gpt-6-astra max：1 BLOCKER / 8 SHOULD_FIX / 2 N
   2160 导出缩回 1080 与 1080 导出的 PSNR 为 38–40 dB（差异主要是逐帧颗粒）。导出速度（infotheory 30–40 s，300 帧，4 worker，无音频，M5 Pro）：
   1080 为 59.9 帧/秒、50.9 MB；1440 为 32.8 帧/秒、78.4 MB；2160 为 14.3 帧/秒、113.9 MB。test-export 加了 1440、2160 与非法 `--res` 三个用例（21/21）。
 - 工作流（math-lessons 的 workflow-notes 中未处理的条目）：new-film 可加到已有资料的目录；`just texts`；`just sheet-compare`；
-  录屏源视频（≤ 25 MB）可入库，渲染前检查素材帧并给出重建命令（这改变了 2026-10-09"源视频不入库"的决定，需 Develata 知悉）；
+  渲染前检查素材帧并给出重建命令（源视频仍不入库：2026-11-09 Develata 否决了 ≤ 25 MB 入库的提议，仓库只放文本和代码）；
   导出超时报告系统负载与其他导出。
 - 其他：合并 `style/keynote` 并加竖屏版式；`Brewfile`、`just mac-setup`、`just doctor`；Vite 配置导入带扩展名；README 改写为引擎说明。
 - 未验证：Windows 上的全部改动（没有 Windows 机器；分平台基线、导出、TTS 后端选择的 Windows 路径只经代码审读）；raa-demo 的渲染（源视频在 Develata 机器上）。

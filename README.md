@@ -20,7 +20,7 @@ just doctor        # 只检查不安装：每一项缺什么、用什么命令�
 ```
 
 第一次没有 just 时，先 `brew bundle --no-upgrade`。浏览器由 `just browser`（`just setup` 会运行它）下载固定版本的 Chrome for Testing
-（155.0.8059.85，按 sha256 校验）到 `.cache/chrome/`：两台机器用同一个构建，不会因自动更新改变像素，也没有更新程序进程；
+（157.0.8103.38，按 sha256 校验）到 `.cache/chrome/`：两台机器用同一个构建，不会因自动更新改变像素，也没有更新程序进程；
 所有工具优先用它（`CHROME_PATH` 最先），没装时才退回本机安装的 Chrome 并提示像素可能与基线不同。
 在 M5 Pro 上实测（2026-10-23）：整部参考片 6060 帧带音频导出 2.0 分钟（约 50 帧/秒）；一句旁白的合成时间约为其时长的 0.2–0.3 倍。
 Windows 上的命令相同（just 在 PowerShell 里运行），旁白走 PyTorch + CUDA；Mac 与 Windows 的实测对照在 `spikes/0d-macos/RESULTS.md`。
@@ -80,9 +80,9 @@ just new-style ink-wash       # 从模板新建风格包 styles/ink-wash/（含 
 just plan-check demo [--json] / just scaffold demo / just plan-schema
 just narrate demo [--resynth ids|all]        # 合成旁白；just tts-setup 安装旁白模型（Mac：MLX 版约 2.3 GB；Windows：PyTorch 版约 5.4 GB）
 just voice-design my-voice --describe "A=..." | --pick A      # 按描述设计音色、试听、入库（Apple 芯片）
-just import-capture demo app ~/rec/app.mp4 [--store-source]   # 把录屏导入为素材 app；--store-source 把源视频（≤ 25 MB）放进 films/demo/captures/sources/ 一起入库
+just import-capture demo app ~/rec/app.mp4   # 把录屏导入为素材 app（源视频不入库，只提交清单）
 just capture demo web demo-scenario.ts       # 用 Playwright 按脚本录制网页演示，同时记录点击
-just captures demo [dir]      # 换机器或清了缓存后，从源视频重建素材帧（按 sha256 校验；默认目录 films/demo/captures/sources/）
+just captures demo [dir]      # 换机器或清了缓存后，从源视频重建素材帧（按 sha256 校验；默认目录 out/demo/sources/）
 just fonts demo               # 字体子集（每个风格一套）；生成前检查中文字形（两个字画成一样、字腔被填实、标点按西文排），有错就停，旧子集不动
 just glyphs demo              # 字形校样：用随仓库的字体子集把片中每个字逐字画出（48 px，标码位，旁边是系统字体的同一个字）→ out/demo/glyphs/<style>/；换字体后要逐格看过
 just glyph-check <字体 id> --film demo   # 字形检查单独跑（不生成子集），选字体前先查；字体库里记了 defects 的字体（如 ZCOOL XiaoWei）只有风格的 fonts.json 写明 acceptDefects 理由（须经本人同意）才能用
