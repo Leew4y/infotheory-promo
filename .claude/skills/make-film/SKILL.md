@@ -45,7 +45,7 @@ Mac, not on this branch; teardown in its `research/references.md`). The rules he
   defaults are E and A (`audio/synth.py`): give each a `midi` from the score's key, and shorten the decay in `score.py`
   (`synth.FX.update`) so a cue ends before the chord changes. renao had 14 cues out of key and tails that clashed with
   the next chord.
-- Nobody has heard it. You cannot hear audio, and neither can Codex: its audits measure spectra, loudness and the
+- Nobody has heard it. `just hear <id>` transcribes the narration back and lists the lines to listen to; it is a machine's ear, and hand-over names them. Beyond that you cannot hear audio, and neither can Codex: its audits measure spectra, loudness and the
   schedule. Say so in the hand-over, with what only an ear can settle, and offer an effects-only track: give the
   film's `score.py` a `SCORE` variable (`full` renders the music and the cues, `sfx` skips the music and still calls
   `synth.place_cues(cues)`), then `SCORE=sfx just music <id>`, `just mix <id>`, an export with `--out`, and render the
@@ -120,6 +120,7 @@ in a block whose other line ends in ？ or ！; use `displayText`. Then `just fo
 ```bash
 just plan-check <id>        # plan, modules, copy only from the plan, captures, narration lock, assets
 just validate <id>          # rendering, safe area, overlaps, contrast, glyphs, display punctuation (+ plan diagnostics)
+just hear <id>              # narrated films: the transcript against what each line should say (out/<id>/hear.md)
 just mix <id>               # final mix: every line >= 6 dB over the music, -16 LUFS
 ```
 

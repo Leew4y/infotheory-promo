@@ -170,6 +170,10 @@ music film=film: (cues film)
 narrate film=film *args:
     bun scripts/narrate.ts --film {{film}} {{args}}
 
+# Transcribe the committed narration and compare it with what each line should say; out/<film>/hear.md lists what to listen to (Apple silicon).
+hear film=film:
+    bun scripts/hear.ts --film {{film}}
+
 # Final mix: the music with the narration over it, ducked and mastered -> out/<film>/master.wav (the export uses it); --music <file|none>.
 mix film=film *args: (build film)
     bun scripts/export.ts --film {{film}} --narration
