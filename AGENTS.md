@@ -167,7 +167,7 @@ Every film command takes the film id first (default `infotheory`); outputs go to
   too for a film seen on phones), and a delivered MP4 passed `just verify <film>`. Baselines are per
   platform because text rasterises differently on macOS and Windows; record a missing one for your platform from a
   known-good commit (`scripts/regress.ts` header: a worktree build and `--dist ... --update`), never from your change,
-  and say which platform's baselines you could not run. The layout checks sample five frames
+  and say which platform's baselines you could not run. The layout checks sample five frames and every caption
   per scene and judge axis-aligned boxes: a strong heuristic, not a proof. Report what was verified, what was not, and
   anything only inferred.
 

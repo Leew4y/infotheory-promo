@@ -8,16 +8,16 @@
  *   (engine/schema.ts); no page errors
  * - timeline: scenes start at 0, are contiguous (no gap, no overlap) and end at the film's duration
  * - render: each sampled frame renders without error (this includes the bundled-font glyph check in text())
- * - layout: at 0 / 25 / 50 / 75 % and the last frame of every scene (no motion blur), every visible text box
- *   (alpha >= 0.02 after the scene's fade, after the camera transform) lies inside the frame and inside the safe area
- *   (5 % each side); both are errors. Five frames per scene are a sample: nothing is proved
+ * - layout: at 0 / 25 / 50 / 75 %, the last frame of every scene and the middle of every caption (scripts/lib/moments.ts,
+ *   no motion blur), every visible text box (alpha >= 0.02 after the scene's fade, after the camera transform) lies inside
+ *   the frame and inside the safe area (5 % each side); both are errors. These frames are a sample: nothing is proved
  *   about the frames in between.
  * - overlap: on the same frames, two text boxes that intersect by more than 2 px each way: an error when both are
  *   fully shown (alpha >= 0.9), a warning when both are at least half shown.
  * - contrast: on the same frames, rendered as exported (motion blur), each text box against what is under it, glyph by
  *   glyph (engine/inspect.ts), WCAG AA: 4.5, large text (>= 24 px, or >= 18.66 px bold) 3. Below AA: an error for
  *   fully shown text, a warning for text at 0.5–0.9 alpha; text below 0.5 alpha is counted as unchecked in the report.
- *   Boxes are axis-aligned and sampled on five frames per scene: a heuristic, not a proof of glyph-level legibility.
+ *   Boxes are axis-aligned and sampled on those frames: a heuristic, not a proof of glyph-level legibility.
  * - display punctuation (AGENTS.md; only for a film with defineFilm punctuation 'display'): on the same frames, a
  *   scene's large display line (>= 32 px, at least half shown;
  *   not the chapter label or captions) that ends in ，、；：or 。 is a warning: on screen a line break is the pause. A 。 is
@@ -33,6 +33,7 @@ import { chromeArgs, findChrome, loadFilm, serveDist } from './chrome';
 import { filmArg, mediaDir } from './film-arg';
 import { checkPlan } from './plan-check';
 import { requireCaptureFrames } from './lib/captures';
+import { sampleTimes } from './lib/moments';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const argv = Bun.argv.slice(2);
@@ -137,7 +138,7 @@ try {
     const pageFilm: string | undefined = await page.evaluate(() => window.__film);
     if (pageFilm !== FILM) err('film-mismatch', 'page', `the built page renders film "${pageFilm}", not "${FILM}"`);
     else {
-      const scenes: { name: string; start: number; end: number }[] = await page.evaluate(() => window.__scenes());
+      const scenes: { name: string; start: number; end: number; subs: [number, number][] }[] = await page.evaluate(() => window.__scenes());
       const FPS: number = await page.evaluate(() => window.__timeline().fps);
       const punctuation: string = await page.evaluate(() => window.__punctuation?.() ?? '');
       const duration: number = await page.evaluate(() => window.__duration);
@@ -156,8 +157,7 @@ try {
       const sx0 = W * SAFE, sx1 = W * (1 - SAFE), sy0 = H * SAFE, sy1 = H * (1 - SAFE);
       for (const s of scenes) {
         scenesChecked++;
-        const d = s.end - s.start;
-        for (const [tag, t] of [['0%', s.start], ['25%', s.start + d * 0.25], ['50%', s.start + d * 0.5], ['75%', s.start + d * 0.75], ['end', s.end - 1 / FPS]] as const) {
+        for (const [tag, t] of sampleTimes(s, FPS)) {
           framesChecked++;
           let boxes: { s: string; px: number; role: string; x0: number; y0: number; x1: number; y1: number; alpha: number }[];
           try {
