@@ -93,6 +93,8 @@ descriptions and plays each in narration; they choose; never clone a real person
 
 ## 3. Scenes
 
+How scenes are written here, with the code they use: `docs/scene-patterns.md`.
+
 `just scaffold <id>` writes a module per plan scene (never overwrites). Fill in `draw` with the style's roles
 (`text`, `statement`, `plate`, `backdrop`, `C.*`, `F.*`, `M`, `COL`, `W`, `H`; in a portrait film one column,
 stacked top to bottom, nothing important in the bottom quarter, where the captions and the phone app sit), texts
