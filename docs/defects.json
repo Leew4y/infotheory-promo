@@ -75,7 +75,7 @@
    "id": "D10",
    "symptom": "A commit that does not build",
    "cause": "git add failed on a stale path and the commit went on with what was staged",
-   "source": { "file": "films/math-lessons/review/workflow-notes.md", "note": "item 8" },
+   "source": { "file": "films/math-lessons/review/workflow-notes.md", "note": "item 8; open by decision (2026-11-09): no CI for now, since check, check-imports, test and defects run locally in under a second and the checks that matter need Chrome and per-platform baselines. Add a CI for those four if a broken commit reaches main or contributors grow markedly" },
    "status": "open"
   },
   {
