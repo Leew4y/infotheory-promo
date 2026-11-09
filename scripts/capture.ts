@@ -34,7 +34,7 @@ import { chromium, type Browser, type Page } from 'playwright-core';
 import type { CaptureEvent } from '../engine/capture';
 import { findChrome } from './chrome';
 import { FILM_ID, requireFilm } from './film-arg';
-import { mb, SOURCE_LIMIT, sourcesDir } from './lib/captures';
+import { mb, sha256, SOURCE_LIMIT, sourceOwner, sourcesDir } from './lib/captures';
 import type { Act, Scenario } from './lib/scenario';
 
 const ROOT = path.resolve(import.meta.dir, '..');
@@ -280,6 +280,10 @@ try {
   const bytes = statSync(tmpVideo).size;
   if (IN_FILM && bytes > SOURCE_LIMIT)
     throw new Error(`the recording is ${mb(bytes)}, over the ${mb(SOURCE_LIMIT)} limit for films/${FILM}/captures/sources/: record again without --store-source (the source then stays in out/${FILM}/sources/) or shorten the scenario; nothing was changed`);
+  if (IN_FILM) {
+    const owner = sourceOwner(FILM, ID, `${ID}.mp4`, await sha256(tmpVideo));
+    if (owner) throw new Error(`films/${FILM}/captures/sources/${ID}.mp4 is the source of capture "${owner}": record under another id; nothing was changed`);
+  }
   const events = raw.map((e) => ({ ...e, t: (e.t - t0) / 1000 })).filter((e) => e.t >= 0 && e.t < n / FPS).sort((a, b) => a.t - b.t);
   writeFileSync(tmpEvents, events.map((e) => JSON.stringify(e)).join('\n') + (events.length ? '\n' : ''));
   const skipped = dropped.popup + dropped.frame;

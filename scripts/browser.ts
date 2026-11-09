@@ -107,12 +107,15 @@ async function moveDir(from: string, to: string): Promise<void> {
 
 try {
   mkdirSync(base, { recursive: true });
-  const have = existsSync(zip) && statSync(zip).size === b.bytes;
-  if (have) {
-    // an archive kept from an interrupted run: used only if its sha256 matches
-    const hash = new Bun.CryptoHasher('sha256');
-    for await (const chunk of Bun.file(zip).stream()) hash.update(chunk);
-    if (hash.digest('hex') !== b.sha256) rmSync(zip, { force: true });
+  if (existsSync(zip)) {
+    // an archive kept from an interrupted run: used only if both its size and its sha256 match
+    let good = statSync(zip).size === b.bytes;
+    if (good) {
+      const hash = new Bun.CryptoHasher('sha256');
+      for await (const chunk of Bun.file(zip).stream()) hash.update(chunk);
+      good = hash.digest('hex') === b.sha256;
+    }
+    if (!good) rmSync(zip, { force: true });
   }
   if (!existsSync(zip)) {
     await download(archiveUrl(b), b);

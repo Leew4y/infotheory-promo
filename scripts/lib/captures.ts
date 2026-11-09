@@ -69,6 +69,17 @@ export function readManifest(film: string, n: string): CaptureAsset {
   return a;
 }
 
+/** The id of another capture whose source has this file name with other content (`hash`), or null: replacing the file would orphan it. */
+export function sourceOwner(film: string, id: string, name: string, hash: string): string | null {
+  for (const n of manifestNames(film)) {
+    if (n === `${id}.json`) continue;
+    let other: CaptureAsset;
+    try { other = readManifest(film, n); } catch { continue; }
+    if (other.source.file === name && other.source.sha256 !== hash) return other.id;
+  }
+  return null;
+}
+
 /** What is wrong with a capture's derived frames (null when exactly frames 0 .. frames - 1 are there). */
 function framesProblem(film: string, a: CaptureAsset): string | null {
   const dir = path.join(mediaDir(film), a.id);
