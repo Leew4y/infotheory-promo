@@ -62,8 +62,8 @@ import path from 'node:path';
 import puppeteer, { type Browser, type Page } from 'puppeteer-core';
 import { chromeArgs, findChrome, loadFilm, killTree, serveDist } from './chrome';
 import { mediaDir, requireFilm } from './film-arg';
-import { createHash } from 'node:crypto';
 import { requireCaptureFrames } from './lib/captures';
+import { masterStale, placementsDigest } from './lib/master';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const argv = Bun.argv.slice(2);
@@ -317,31 +317,6 @@ async function probe(file: string): Promise<Probe> {
 }
 const audioSeconds = async (file: string) => finite((await runProbe(['-show_entries', 'format=duration', '-of', 'csv=p=0', file])).trim(), `duration of ${file}`);
 
-const sha256 = (b: Uint8Array | string) => createHash('sha256').update(b).digest('hex');
-/** The placements' identity, computed the same way by audio/mix.py (id, start, duration to 1 µs). */
-/**
- * The placements' identity: ids with start and duration in whole microseconds (floor(x * 1e6 + 0.5)). Computed here only:
- * export --narration writes it into the placements file, audio/mix.py copies it into master.json.
- */
-const placementsDigest = (ps: { id: string; t: number; dur: number }[]) =>
-  sha256(ps.map((p) => `${p.id}:${Math.floor(p.t * 1e6 + 0.5)}:${Math.floor(p.dur * 1e6 + 0.5)}`).join('\n'));
-/** Why the final mix no longer matches the film (out/<film>/master.json, written by audio/mix.py), or null. */
-function masterStale(tl: { frames: number; fps: number }, placements: { id: string; t: number; dur: number }[]): string | null {
-  const meta = path.join(ROOT, 'out', FILM, 'master.json');
-  if (!existsSync(meta)) return 'no master.json';
-  const m: { frames: number; fps: number; music: { path: string; external: boolean; sha256: string } | 'none'; lock: string; placements: string; master: string } = JSON.parse(readFileSync(meta, 'utf8'));
-  if (m.frames !== tl.frames || m.fps !== tl.fps) return `it was mixed for ${m.frames} frames at ${m.fps} fps, the film has ${tl.frames} at ${tl.fps}`;
-  if (!existsSync(MASTER) || sha256(readFileSync(MASTER)) !== m.master) return 'master.wav is not the one master.json describes';
-  if (m.music !== 'none') {
-    const music = m.music.external ? m.music.path : path.join(ROOT, m.music.path);
-    if (!existsSync(music) || sha256(readFileSync(music)) !== m.music.sha256) return 'the music changed';
-  }
-  const lock = path.join(ROOT, 'films', FILM, 'narration.lock.json');
-  if ((existsSync(lock) ? sha256(readFileSync(lock)) : 'none') !== m.lock) return 'the narration changed';
-  if (placementsDigest(placements) !== m.placements) return 'the narration moved in the timeline';
-  return null;
-}
-
 interface Worker {
   id: number; browser: Browser; page: Page; frame: (t: number) => Promise<Buffer>;
   /** Render frame n (time t) and have the page post it as JPEG n; resolves once drawn (the upload goes on). */
@@ -411,7 +386,7 @@ try {
     if (placements.length && opt('audio') === undefined && AUDIO !== MASTER) fail(2, `the film has narration but no final mix (${path.relative(ROOT, MASTER)}): run just mix ${FILM}`);
     if (!existsSync(AUDIO)) fail(2, `audio ${AUDIO} not found: run \`just music ${FILM}\` (and \`just mix ${FILM}\`), or pass --noaudio for a silent export`);
     if (AUDIO === MASTER) {
-      const stale = masterStale(tl, placements);
+      const stale = masterStale(FILM, tl, placements);
       if (stale) fail(2, `the final mix ${path.relative(ROOT, MASTER)} is stale (${stale}): run just mix ${FILM}`);
     }
   }

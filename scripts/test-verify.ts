@@ -17,7 +17,7 @@
  * Only the directories this run created are removed afterwards (also on failure). Needs uv (fonts), ffmpeg, Chrome.
  * Exit code 0 when every case behaves as expected, 1 otherwise.
  */
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dir, '..');
@@ -37,12 +37,14 @@ const ffmpeg = (...args: string[]) => step(`ffmpeg ${args.slice(-1)}`, run(['ffm
 const tone = (file: string, hz: number, seconds: number) =>
   ffmpeg('-f', 'lavfi', '-i', `sine=frequency=${hz}:sample_rate=44100:duration=${seconds}`, '-af', 'loudnorm=I=-16:TP=-2:LRA=7,aresample=44100', '-c:a', 'pcm_s16le', file);
 interface Diag { level: string; code: string; path: string; message: string }
-const verify = (...args: string[]): { code: number; diags: Diag[]; err: string } => {
-  const r = run(['bun', 'scripts/verify.ts', '--film', ID, '--audio', path.relative(ROOT, TONE), '--json', ...args]);
+/** verify against `audio` (null: let it pick the final mix or the music, as the export does). */
+const verifyWith = (audio: string | null, ...args: string[]): { code: number; diags: Diag[]; err: string } => {
+  const r = run(['bun', 'scripts/verify.ts', '--film', ID, ...(audio === null ? [] : ['--audio', audio]), '--json', ...args]);
   let diags: Diag[] = [];
   try { diags = JSON.parse(r.out); } catch {}
   return { code: r.code, diags, err: r.err };
 };
+const verify = (...args: string[]) => verifyWith(path.relative(ROOT, TONE), ...args);
 
 const failures: string[] = [];
 /** `want` must be reported and nothing else, but for `also`: what the damage may bring with it. */
@@ -86,6 +88,17 @@ try {
   };
   const same = ['-c:v', 'libx264', '-crf', '18', '-pix_fmt', 'yuv420p'];
   expectCodes('a small patch on the picture', verify('--file', copy('patch.mp4', '-vf', 'drawbox=x=300:y=300:w=64:h=64:color=white:t=fill', ...same, '-c:a', 'copy')), ['verify-picture']);
+  expectCodes('colour only (the hue turned, luma unchanged)', verify('--file', copy('hue.mp4', '-vf', 'hue=h=120:s=2', ...same, '-c:a', 'copy')), ['verify-picture']);
+  const end = frames / fps;
+  expectCodes('the last 0.6 s of sound removed', verify('--file', copy('tail.mp4', '-c:v', 'copy', '-af', `volume=enable='gte(t,${end - 0.6})':volume=0`, '-c:a', 'aac', '-b:a', '256k')), ['verify-audio-stale'], { also: ['verify-loudness'] });
+  const hole = path.join(OUT, 'hole.wav');
+  ffmpeg('-i', TONE, '-af', "volume=enable='between(t,0,2.5)':volume=0", '-c:a', 'pcm_s16le', hole);
+  expectCodes('sound where the source is silent', verifyWith(path.relative(ROOT, hole), '--file', path.relative(ROOT, VIDEO)), ['verify-audio-stale'], { also: ['verify-loudness'] });
+  expectCodes('--audio names no file', verifyWith('out/none.wav'), ['verify-file'], { exit: 2 });
+  const master = path.join(OUT, 'master.wav');
+  copyFileSync(TONE, master);
+  expectCodes('a final mix the export would refuse', verifyWith(null), ['verify-audio-stale']);
+  rmSync(master);
   expectCodes('the last second cut', verify('--file', copy('short.mp4', '-t', String(frames / fps - 1), '-c', 'copy')), ['verify-frames'], { also: ['verify-audio'] });
   expectCodes('6 dB louder', verify('--file', copy('loud.mp4', '-c:v', 'copy', '-af', 'volume=6dB', '-c:a', 'aac', '-b:a', '256k')), ['verify-loudness', 'verify-audio-stale']);
   const other = path.join(OUT, 'other.wav');

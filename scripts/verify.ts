@@ -13,8 +13,8 @@
  * - verify-frames, verify-fps, verify-size   one video stream with the film's frame count, frame rate and pixel size.
  * - verify-picture   the middle frame of every scene, decoded from the file, against the same frame rendered by the
  *                    current build (dist/<id>/, a stale dist makes this fail: rebuild first). The score is the largest
- *                    difference of any 16x16 block (mean per pixel, 0-255): a changed word on a plain page moves one
- *                    block a lot and a whole-frame average hardly at all. Measured (infotheory, 1080p): 6 as exported at
+ *                    difference of any 16x16 block in any of Y, U, V (mean per pixel, 0-255): a changed word on a plain
+ *                    page moves one block a lot and a whole-frame average hardly at all. Measured (infotheory, 1080p): 6 as exported at
  *                    crf 18, 8 capped at 20 Mbit/s (--for x), 15 re-encoded at crf 30, which fails: pass such a copy
  *                    through verify before compressing it, not after; one character changed for another at 28-40 px
  *                    60-100, but near twins (己 and 已, 10) and small low-contrast digits (8) stay under PICTURE_LIMIT.
@@ -26,8 +26,12 @@
  *                    a master of math-lessons' voice alone went from -1.8 to -1.6 dBTP at the same -16.0 LUFS.
  * - verify-audio-stale   the encoded audio against the file it should have been made from (--audio, else the final mix
  *                    out/<id>/master.wav, else out/<id>/music.wav, as the export picks): signal to difference in 2 s
- *                    windows; the worst window must clear SNR_LIMIT (measured 39 dB on music, 40 on the voice alone).
- *                    Without such a file: warning verify-audio-unchecked.
+ *                    windows and a last window ending with the file; the worst must clear SNR_LIMIT (measured 39 dB on
+ *                    music, 40 on the voice alone). A window silent in the source is judged too: sound there is an error.
+ *                    A final mix the export would refuse as stale is an error here as well (scripts/lib/master.ts).
+ *                    Without such a file: warning verify-audio-unchecked. The comparison is mono at 8 kHz: it tells
+ *                    whether the file was made from this mix, not that the channels or the high band survived.
+ * - verify-file-changed   the file was replaced while it was being checked: the record would describe another file.
  *
  * Writes to <out>, as a whole and only over a previous verify (it has a verify.json): verify.json (the file's sha256,
  * the measurements and the diagnostics, a record of exactly what was checked), sheet.jpg and phone.jpg (the decoded
@@ -44,11 +48,14 @@ import { chromeArgs, findChrome, loadFilm, serveDist } from './chrome';
 import { filmArg, mediaDir } from './film-arg';
 import { requireCaptureFrames } from './lib/captures';
 import { grid, phoneCell } from './lib/grid';
+import { masterPath, masterStale } from './lib/master';
 
 /** Largest allowed 16x16 block difference (see the header). */
 const PICTURE_LIMIT = 12;
 /** Worst allowed 2 s window of the encoded audio against its source, dB; windows below SILENCE_DB are not judged. */
 const SNR_LIMIT = 12, SILENCE_DB = -50, WINDOW_S = 2;
+/** In a window silent in the source, a difference below this is the codec's noise, not sound (dB). */
+const EXTRA_DB = -40;
 /** The encoded audio: the master's target (audio/synth.py: -16 ± 0.5 LUFS, -1.5 dBTP) with room for the codec. */
 const LOUDNESS = -16, LOUDNESS_TOL = 1, MAX_TRUE_PEAK = -1;
 
@@ -82,6 +89,7 @@ const FILE = path.resolve(ROOT, opt('file') ?? `out/${FILM}/${FILM}${STYLE ? `-$
 const OUT = path.resolve(ROOT, opt('out') ?? `out/${FILM}/verify`);
 const DIST = path.resolve(ROOT, opt('dist') ?? `dist/${FILM}`);
 if (!existsSync(FILE)) stop('verify-file', `${FILE} not found: run just export ${FILM}, or name a file with --file`);
+if (opt('audio') !== undefined && !existsSync(path.resolve(ROOT, opt('audio')!))) stop('verify-file', `--audio ${opt('audio')} not found`);
 if (!existsSync(path.join(DIST, 'index.html'))) stop('verify-file', `${path.relative(ROOT, DIST)}/index.html missing: run just build ${FILM}`);
 if (existsSync(OUT) && !existsSync(path.join(OUT, 'verify.json')) && readdirSync(OUT).length) stop('usage', `--out ${OUT} exists and is not a previous verify (no verify.json): refusing to replace it`);
 await requireCaptureFrames(FILM, { json: JSON_OUT });
@@ -116,13 +124,14 @@ async function decodeFrames(frames: number[], dir: string): Promise<boolean> {
   return true;
 }
 
-/** The largest 16x16 block difference between two JPEGs, the first scaled to the second's size (0-255). */
+/** The largest 16x16 block difference between two JPEGs in any plane, the first scaled to the second's size (0-255). */
 async function blockDifference(decoded: string, rendered: string, w: number, h: number): Promise<number> {
   const graph = `[0:v]scale=${w}:${h}:flags=area,format=yuvj444p[a];[1:v]format=yuvj444p[b];[a][b]blend=all_mode=difference,scale=${Math.floor(w / 16)}:${Math.floor(h / 16)}:flags=area,signalstats,metadata=print:file=-`;
   const r = await run(['ffmpeg', '-v', 'error', '-i', decoded, '-i', rendered, '-filter_complex', graph, '-f', 'null', '-']);
-  const m = /lavfi\.signalstats\.YMAX=(\d+(?:\.\d+)?)/.exec(new TextDecoder().decode(r.out));
-  if (r.code !== 0 || !m) throw new Error(`comparing frames: ${r.err.trim().split('\n').slice(-1)[0] || `no measurement (ffmpeg exit ${r.code})`}`);
-  return Number(m[1]);
+  const out = new TextDecoder().decode(r.out);
+  const planes = ['Y', 'U', 'V'].map((p) => new RegExp(`lavfi\\.signalstats\\.${p}MAX=(\\d+(?:\\.\\d+)?)`).exec(out));
+  if (r.code !== 0 || planes.some((m) => !m)) throw new Error(`comparing frames: ${r.err.trim().split('\n').slice(-1)[0] || `no measurement (ffmpeg exit ${r.code})`}`);
+  return Math.max(...planes.map((m) => Number(m![1])));
 }
 
 /** Integrated loudness and true peak of the file's audio (EBU R128), as audio/synth.py measures the master. */
@@ -139,14 +148,22 @@ const pcm = async (file: string, rate: number): Promise<Float32Array> => {
   if (r.code !== 0) throw new Error(`decoding ${file}: ${r.err.trim().split('\n').slice(-1)[0]}`);
   return new Float32Array(r.out.buffer.slice(r.out.byteOffset, r.out.byteOffset + r.out.byteLength));
 };
-/** Signal to difference (dB) of two signals in windows, the worst one and where; windows of near silence do not count. */
+/**
+ * Signal to difference (dB) of the encoded audio against its source in windows covering the whole file (the last one ends
+ * with it; past the source's end the source counts as silence), the worst one and where. A window silent in the source
+ * counts only if the difference there is more than codec noise; null when no window counts.
+ */
 function worstWindow(a: Float32Array, ref: Float32Array, rate: number): { snr: number; at: number } | null {
-  const n = Math.min(a.length, ref.length), win = WINDOW_S * rate;
+  const n = a.length, win = Math.min(WINDOW_S * rate, n);
+  const starts: number[] = [];
+  for (let i = 0; win > 0 && i + win <= n; i += win) starts.push(i);
+  if (starts.length && starts[starts.length - 1] + win < n) starts.push(n - win);
+  const level = (e: number) => 10 * Math.log10(e / win + 1e-12);
   let worst: { snr: number; at: number } | null = null;
-  for (let i = 0; i + win <= n; i += win) {
+  for (const i of starts) {
     let s = 0, d = 0;
-    for (let k = i; k < i + win; k++) { s += ref[k] * ref[k]; d += (a[k] - ref[k]) ** 2; }
-    if (10 * Math.log10(s / win + 1e-12) < SILENCE_DB) continue;
+    for (let k = i; k < i + win; k++) { const r = k < ref.length ? ref[k] : 0; s += r * r; d += (a[k] - r) ** 2; }
+    if (level(s) < SILENCE_DB && level(d) < EXTRA_DB) continue;
     const snr = 10 * Math.log10(s / (d + 1e-12));
     if (!worst || snr < worst.snr) worst = { snr, at: i / rate };
   }
@@ -161,6 +178,7 @@ let code = 0;
 try {
   rmSync(TMP, { recursive: true, force: true });
   mkdirSync(TMP, { recursive: true });
+  const fileHash = await sha256(FILE); // taken again at the end: every measurement in between is of this content
   browser = await puppeteer.launch({ executablePath: findChrome(), headless: true, defaultViewport: { width: 1920, height: 1080, deviceScaleFactor: 1 }, args: chromeArgs('platform') });
   const page = await browser.newPage();
   await loadFilm(page, server.url, FILM, STYLE);
@@ -226,6 +244,11 @@ try {
     if (!source) warn('verify-audio-unchecked', where, 'no final mix or music master here to compare the encoded audio with');
     else {
       report.reference = source;
+      if (path.resolve(ROOT, source) === masterPath(FILM)) {
+        const { placements } = await page.evaluate(() => window.__narration());
+        const stale = masterStale(FILM, { frames: filmFrames, fps }, placements);
+        if (stale) err('verify-audio-stale', where, `the final mix ${source} is stale (${stale}): run just mix ${FILM}, then export again`);
+      }
       const rate = 8000;
       report.worstWindow = worstWindow(await pcm(FILE, rate), await pcm(path.resolve(ROOT, source), rate), rate);
       const w = report.worstWindow;
@@ -234,9 +257,10 @@ try {
   }
 
   // ---- the record
+  if ((await sha256(FILE)) !== fileHash) err('verify-file-changed', where, 'the file was replaced while it was being checked: verify it again');
   const stat = statSync(FILE);
   writeFileSync(path.join(TMP, 'verify.json'), JSON.stringify({
-    film: FILM, style, file: where, sha256: await sha256(FILE), bytes: stat.size, frames: fileFrames, fps,
+    film: FILM, style, file: where, sha256: fileHash, bytes: stat.size, frames: fileFrames, fps,
     size: v ? [v.width, v.height] : null, audio: report, limits: { picture: PICTURE_LIMIT, snr: SNR_LIMIT, loudness: [LOUDNESS, LOUDNESS_TOL], truePeak: MAX_TRUE_PEAK },
     picture, diagnostics: diags,
   }, null, 1) + '\n');
