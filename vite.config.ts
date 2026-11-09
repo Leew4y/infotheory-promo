@@ -68,6 +68,8 @@ export default defineConfig({
       });
     },
   }],
-  server: { host: '127.0.0.1', port: 5174, open: false, fs: { deny: ['**/out/**', '**/dist/**', '**/.cache/**', '.env', '.env.*'] } },
+  // the deny globs are anchored at the repository: '**/dist/**' also denied node_modules/vite/dist/client/, so Vite's own
+  // client never ran and the page did not reload on an edit
+  server: { host: '127.0.0.1', port: 5174, open: false, fs: { deny: ['out', 'dist', '.cache'].map((d) => `${root.replace(/\\/g, '/')}${d}/**`).concat('.env', '.env.*') } },
   build: { outDir: path.join(root, 'dist', FILM), emptyOutDir: true, target: 'es2022', sourcemap: false },
 });
