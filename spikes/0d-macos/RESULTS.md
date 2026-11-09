@@ -21,7 +21,7 @@
 |---|---|---|
 | `just check`、`just check-imports`、`just test`（46 个单测） | 通过 | 通过 |
 | GPU 检查（`gpu-check.json`） | 通过：WebGL2、`EXT_color_buffer_float`、半浮点 framebuffer、着色器编译与链接都具备 | 通过 |
-| 三张样张（`mac-frames/`，PNG 转为 JPEG q2 入库） | 字体、颜色、地平线着色器正常，无黑块、错色、缺字 | — |
+| 三张样张（已看过，未入库：仓库只放文本和代码） | 字体、颜色、地平线着色器正常，无黑块、错色、缺字 | — |
 | 0a 现状参数（`0a-default.json`） | FAIL：3 处不一致（帧 600、4950，只在乱序与多 worker 组） | FAIL |
 | 0a CPU 2D canvas（`0a-cpu2d.json`） | PASS：79 帧 × 4 组 | PASS |
 | 单帧探测，帧 150（地平线），GPU + CPU 2D | 6 个 session 全部逐像素一致 | 6 个中 2 个差 1 色阶 |

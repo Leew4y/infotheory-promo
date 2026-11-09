@@ -27,10 +27,8 @@
  *      capture, the frame, the source and its sha256); a frame file the page cannot decode still fails the render
  *      (strict mode, engine/media.ts) instead of being drawn as a placeholder;
  *   6. a failed re-import (bad events file) leaves the manifest and frames as they were, and nothing staged behind;
- *      --store-source puts the source in films/<film>/captures/sources/ (sha256 as recorded), refuses a file over the
- *      size limit and a name another capture's source has with other content, changing nothing; with every source
- *      there, the pre-check's message says `just captures <film>`, and --rebuild without --from (that recipe without
- *      a directory) re-derives the frames from there;
+ *      with every source in out/<film>/sources/, the pre-check's message says `just captures <film>`, and --rebuild
+ *      without --from (that recipe without a directory) re-derives the frames from there;
  *   7. --rebuild refuses a manifest whose id is a path, re-derives a cleared cache from the sources (sha256), and refuses
  *      a changed source without touching the frames;
  *   8. the web capture itself: each recorded click names its target and box, lies within 4 px of the red marker the
@@ -40,13 +38,11 @@
  * Every fixture path is created exclusively before anything is written (an existing one aborts the run), and only
  * those are removed afterwards. Needs ffmpeg, uv (fonts).
  */
-import { closeSync, copyFileSync, existsSync, ftruncateSync, mkdirSync, openSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
-import { createHash } from 'node:crypto';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import type { CaptureAsset, Segment } from '../engine/capture';
 import { mediaDir } from './film-arg';
 import { makeNumberedVideo, readBarcode } from './lib/barcode';
-import { SOURCE_LIMIT } from './lib/captures';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const ID = `capture-fixture-${process.pid}`;
@@ -331,35 +327,11 @@ demoScene({ name: 'webbare', ...webOpts, clicks: [] });
     failures.push(`failed import: exit ${fi.code}, manifest ${readFileSync(manifest, 'utf8') === before ? 'kept' : 'changed'}, ${frames()} frames (expected 180), left behind: ${staged.join(', ') || 'nothing'}`);
   else ok('failed import: manifest and frames unchanged, nothing staged left behind');
 
-  // 6b. --store-source and the committed sources directory
-  const SOURCES = path.join(FILM, 'captures', 'sources');
-  const hash = (f: string) => createHash('sha256').update(readFileSync(f)).digest('hex');
-  const stored = run(['bun', 'scripts/import-capture.ts', '--film', ID, '--id', 'kept', gray, '--store-source']);
-  const kept: CaptureAsset | null = existsSync(path.join(FILM, 'captures', 'kept.json')) ? JSON.parse(readFileSync(path.join(FILM, 'captures', 'kept.json'), 'utf8')) : null;
-  if (stored.code !== 0 || !kept || kept.source.file !== 'gray.mp4' || !existsSync(path.join(SOURCES, 'gray.mp4')) || hash(path.join(SOURCES, 'gray.mp4')) !== kept.source.sha256 || readdirSync(SOURCES).some((n) => n.startsWith('.')))
-    failures.push(`--store-source: exit ${stored.code}, ${existsSync(path.join(SOURCES, 'gray.mp4')) ? 'source stored' : 'no source'}: ${stored.err.trim()}`);
-  else ok('--store-source: the source is in captures/sources/ with the recorded sha256, nothing staged left');
-  const big = path.join(WORK, 'big.mp4'), fd = openSync(big, 'w');
-  ftruncateSync(fd, SOURCE_LIMIT + 1);
-  closeSync(fd);
-  const tooBig = run(['bun', 'scripts/import-capture.ts', '--film', ID, '--id', 'big', big, '--store-source']);
-  if (tooBig.code !== 2 || !/limit/.test(tooBig.err) || existsSync(path.join(FILM, 'captures', 'big.json')) || existsSync(path.join(SOURCES, 'big.mp4')) || existsSync(path.join(MEDIA, 'big')))
-    failures.push(`--store-source over the limit: exit ${tooBig.code}: ${tooBig.err.trim()}`);
-  else ok(`--store-source refuses a video over the ${SOURCE_LIMIT / 2 ** 20} MB limit before anything is done`);
-  mkdirSync(path.join(WORK, 'alt'));
-  const alt = path.join(WORK, 'alt', 'gray.mp4');
-  await makeNumberedVideo(alt, 1, 30); // another file named gray.mp4
-  const clash = run(['bun', 'scripts/import-capture.ts', '--film', ID, '--id', 'other', alt, '--store-source']);
-  if (clash.code !== 1 || !/is the source of capture "(gray|kept)"/.test(clash.err) || hash(path.join(SOURCES, 'gray.mp4')) !== kept?.source.sha256 || existsSync(path.join(FILM, 'captures', 'other.json')) || existsSync(path.join(MEDIA, 'other')))
-    failures.push(`--store-source name clash: exit ${clash.code}: ${clash.err.trim()}`);
-  else ok("--store-source refuses a file name another capture's source has with other content; nothing changes");
-  // recording under an id whose <id>.mp4 is another capture's source (kept's gray.mp4): refused before anything is swapped
-  const grayManifest = readFileSync(path.join(FILM, 'captures', 'gray.json'), 'utf8');
-  const recClash = run(['bun', 'scripts/capture.ts', '--film', ID, '--id', 'gray', path.join(ROOT, 'scripts', 'test-fixtures', 'capture-scenario.ts'), '--store-source']);
-  if (recClash.code !== 1 || !/is the source of capture "kept"/.test(recClash.err) || hash(path.join(SOURCES, 'gray.mp4')) !== kept?.source.sha256 || readFileSync(path.join(FILM, 'captures', 'gray.json'), 'utf8') !== grayManifest || readdirSync(SOURCES).some((n) => n.startsWith('.')))
-    failures.push(`capture --store-source over another capture's source: exit ${recClash.code}: ${recClash.err.trim()}`);
-  else ok("capture --store-source refuses an id whose video is another capture's source; nothing changes");
-  // the other sources put there by hand (as the pre-check's message says), then the cache cleared
+  // 6b. the sources, in out/<film>/sources/ (the rebuild's default), then the cache cleared
+  const SOURCES = path.join(WORK, 'sources');
+  step('import-capture kept', run(['bun', 'scripts/import-capture.ts', '--film', ID, '--id', 'kept', gray]));
+  mkdirSync(SOURCES, { recursive: true });
+  copyFileSync(gray, path.join(SOURCES, path.basename(gray)));
   copyFileSync(video, path.join(SOURCES, path.basename(video)));
   copyFileSync(path.join(WORK, 'web.mp4'), path.join(SOURCES, 'web.mp4'));
   rmSync(path.join(MEDIA, 'num'), { recursive: true });
@@ -367,14 +339,14 @@ demoScene({ name: 'webbare', ...webOpts, clicks: [] });
   const pre = run(['bun', 'scripts/export.ts', '--film', ID, '--shots', '0.1', '--dir', path.join(WORK, 'shots')]);
   const advice = pre.err.split(`rebuild the frames: just captures ${ID}\n`).length - 1;
   if (pre.code !== 2 || !pre.err.includes('capture "kept"') || !pre.err.includes('capture "num"') || advice !== 2)
-    failures.push(`pre-check with the sources committed: exit ${pre.code}, ${advice} rebuild hint(s): ${pre.err.trim()}`);
+    failures.push(`pre-check with the sources in place: exit ${pre.code}, ${advice} rebuild hint(s): ${pre.err.trim()}`);
   else ok(`pre-check: both cleared captures named, each with "just captures ${ID}"`);
   const fromDefault = run(['bun', 'scripts/import-capture.ts', '--film', ID, '--rebuild']);
   const count = (id: string) => (existsSync(path.join(MEDIA, id)) ? readdirSync(path.join(MEDIA, id)).filter((n) => n.endsWith('.jpg')).length : 0);
   const after = run(['bun', 'scripts/export.ts', '--film', ID, '--shots', '0.1', '--dir', path.join(WORK, 'shots')]);
   if (fromDefault.code !== 0 || count('num') !== 180 || count('kept') !== 60 || after.code !== 0)
-    failures.push(`rebuild from captures/sources: exit ${fromDefault.code}, ${count('num')} and ${count('kept')} frames (expected 180 and 60), then a shot exits ${after.code}: ${(fromDefault.err || after.err).trim()}`);
-  else ok('rebuild without --from (just captures <film>): every capture re-derived from captures/sources/; the pre-check passes');
+    failures.push(`rebuild from out/<film>/sources: exit ${fromDefault.code}, ${count('num')} and ${count('kept')} frames (expected 180 and 60), then a shot exits ${after.code}: ${(fromDefault.err || after.err).trim()}`);
+  else ok('rebuild without --from (just captures <film>): every capture re-derived from out/<film>/sources/; the pre-check passes');
 
   // 7. --rebuild: a path as id is refused; a cleared cache is re-derived; a changed source is refused, frames kept
   const evil = path.join(FILM, 'captures', 'evil.json');

@@ -81,9 +81,9 @@ descriptions and plays each in narration; they choose; never clone a real person
 ## 2. Material
 
 - Screen captures: a scripted web demo with `just capture <id> <capture-id> <scenario.ts>` (Playwright, records
-  clicks), or any recording with `just import-capture`. Add `--store-source` so the source video (at most 25 MB) is
-  committed in `films/<id>/captures/sources/` and the film renders on another machine after `just captures <id>`;
-  a larger source stays outside the repository: write down where it is (the review notes or the brief).
+  clicks), or any recording (OBS) with `just import-capture`. Source videos stay outside the repository, by default in
+  `out/<id>/sources/`: write down where they are (the review notes or the brief). On another machine, copy them there
+  and run `just captures <id>`; recording again makes a new source, so check the edit, camera and timing.
 - Voice: `just narrate <id>` (the first run on a machine needs `just tts-setup`: 2.3 GB on Apple silicon, about 10 GB
   with the PyTorch environment elsewhere; ask first unless the person already set the machine up for it). The FLACs
   are committed; `--resynth` changes timing. `just doctor` says whether the model is there.

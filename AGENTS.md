@@ -22,9 +22,8 @@ checks, and revises. The plan and its records: `docs/plan/reusable-engine.md`.
   - `review/`: `NN-<topic>.md` review rounds and audits (with their sheets and frames), `workflow-notes.md`;
   - a plan film's `film-plan.json`; narration `narration.json` (hand-written films), `narration/<id>.flac` and
     `narration.lock.json`; `assets/` with `assets.json`;
-  - screen captures: manifests `captures/<id>.json`, scenario scripts `capture/<name>.ts`, and source videos of at
-    most 25 MB in `captures/sources/` (larger ones stay outside the repository; see Rules). No `.json` file goes under
-    `captures/sources/` (a plan film's glob would read it as a manifest).
+  - screen captures: manifests `captures/<id>.json` and scenario scripts `capture/<name>.ts`; the videos stay
+    outside the repository (see Rules).
   Research and brief may come first: `just new-film` adds the template to a `films/<id>/` that has no film code yet.
 - Imports (enforced by `just check-imports`): films use `engine/index.ts` and `styles/<id>/index.ts` only; styles
   use `engine/` and themselves; nothing imports another film, another style, or a template.
@@ -63,9 +62,9 @@ Every film command takes the film id first (default `infotheory`); outputs go to
 | `just defects` | check the defect ledger `docs/defects.json` (every guard still in its file) and list the open defects |
 | `just font-catalog` | download and verify the whole font library |
 | `just browser` | the pinned browser (Chrome for Testing, version and sha256 in `scripts/lib/browser-pin.ts`) into `.cache/chrome/`; every tool prefers it (`$CHROME_PATH` first), an installed Chrome only with a warning; `just setup` runs it |
-| `just import-capture <film> <id> <video> [--fps 30] [--crop W:H:X:Y] [--events f.jsonl --sync rec=video] [--store-source]` | a screen recording (OBS, any video) becomes capture `<id>`: manifest `films/<film>/captures/<id>.json`, frames in `.cache/captures/<film>/<id>/`; `--store-source` also puts the video in `films/<film>/captures/sources/` (at most 25 MB) |
-| `just capture <film> <id> <scenario.ts> [--store-source]` | record a web demo with Playwright (`scripts/lib/scenario.ts`), with click and pointer events; the source video goes to `out/<film>/sources/`, with `--store-source` to `films/<film>/captures/sources/` (at most 25 MB) |
-| `just captures <film> [dir]` | re-derive every capture's frames from its source videos (by name in `dir`, default `films/<film>/captures/sources/`, checked by sha256) |
+| `just import-capture <film> <id> <video> [--fps 30] [--crop W:H:X:Y] [--events f.jsonl --sync rec=video]` | a screen recording (OBS, any video) becomes capture `<id>`: manifest `films/<film>/captures/<id>.json`, frames in `.cache/captures/<film>/<id>/` |
+| `just capture <film> <id> <scenario.ts>` | record a web demo with Playwright (`scripts/lib/scenario.ts`), with click and pointer events; the source video goes to `out/<film>/sources/` |
+| `just captures <film> [dir]` | re-derive every capture's frames from its source videos (by name in `dir`, default `out/<film>/sources/`, checked by sha256) |
 | `just test`, `just test-capture`, `just bench-capture` | unit tests; capture end-to-end cases; capture throughput and memory |
 | `just narrate <film> [--resynth ids\|all]` | synthesize plan lines (otherwise `narration.json`) into `films/<film>/narration/<id>.flac` and the lock (`narration.lock.json`); both committed |
 | `just mix <film> [--music file\|none]` | final mix: music ducked under the narration, mastered to −16 LUFS → `out/<film>/master.wav` (the export uses it and refuses a stale one) |
@@ -133,10 +132,10 @@ Every film command takes the film id first (default `infotheory`); outputs go to
   without overlap (cuts between them; no reordering or repeats);
   the camera is keyframes `{ t, x, y, zoom }` in frame pixels on the scene's clock; cursor and clicks come from the
   recorded events, or keyframes for a recording without events; a click shows from the frame its time falls in. Invalid
-  edits, camera or cursor keys fail at registration. Manifests are committed; frames are derived and are not. A
-  source video of at most 25 MB may be committed in `captures/sources/` (`--store-source`; this replaces the earlier
-  rule that every source stays outside, so that a demo renders on another machine); a larger one stays outside the
-  repository, and whoever recorded it says where it is. Before rendering (validate, export, shots, render-scene,
+  edits, camera or cursor keys fail at registration. Manifests are committed; frames are derived and are not; source videos stay
+  outside the repository (it holds text and code: Develata, 2026-10-09 and 2026-11-09), by default in `out/<film>/sources/`,
+  and whoever recorded one says where it is. A lost source can be recorded again (`just capture`, or OBS and
+  `just import-capture`): that is a new source, so the manifest changes and the film's edit, camera and timing need checking. Before rendering (validate, export, shots, render-scene,
   render-range, sheet, regress), every capture manifest of the film must have all its frames in
   `.cache/captures/<film>/<id>/`; otherwise the tool stops (exit 2) naming the capture, its source and sha256 and the
   command that rebuilds the frames (`just captures <film> [dir]`), or saying that the source is not on this machine.

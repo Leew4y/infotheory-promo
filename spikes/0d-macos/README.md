@@ -77,7 +77,7 @@ just dev infotheory                         # 打开 http://127.0.0.1:5174：字
   不能逐像素比较。两台机器在同一提交、同一固定浏览器版本上各跑 `just sheet infotheory`，把两张 `out/infotheory/sheet/sheet.jpg`
   并排人眼对照：版面、字体、颜色应相同，只允许字形边缘的细微差别。
 - `windows-reference/` 是 2026-10-03（64bcf17）的 Windows 样张，早于 1c 的字体替换、A2 的对比度修正和显示标点，
-  只作历史记录，不能拿来和现在的画面对照。`mac-frames/` 是 2026-10-23 在 28506f1 上的 macOS 样张（PNG 转为 JPEG 入库）。
+  只作历史记录，不能拿来和现在的画面对照。2026-10-23 在 28506f1 上的 macOS 样张没有入库（仓库只放文本和代码）。
 
 ## 需要人眼看的
 

@@ -3,10 +3,8 @@
  * renders): the committed manifests films/<film>/captures/<id>.json, the frames derived from each source video in
  * .cache/captures/<film>/<id>/ (not committed), and where a source video may be found.
  *
- * Sources: a video of at most SOURCE_LIMIT bytes may be committed under films/<film>/captures/sources/ (import-capture
- * and capture --store-source put it there; `just captures <film>` rebuilds from there by default); a larger one stays
- * outside the repository (capture's default is out/<film>/sources/). Only video and .events.jsonl files go there: a
- * .json file under captures/ would be bundled as a manifest by a plan film's captures glob.
+ * Sources: videos stay outside the repository (the repository holds text and code; Develata, 2026-10-09 and 2026-11-09).
+ * capture writes them to out/<film>/sources/, and `just captures <film>` rebuilds from there by default.
  *
  * requireCaptureFrames(film) is the pre-check of the render tools (validate, export and shots, render-scene and
  * render-range, sheet, regress): every manifest of the film must have exactly its frames 00000.jpg .. (frames - 1).
@@ -23,12 +21,8 @@ import { FILM_ID, mediaDir } from '../film-arg';
 const ROOT = path.resolve(import.meta.dir, '..', '..');
 const rel = (p: string) => path.relative(ROOT, p).replace(/\\/g, '/');
 
-/** The largest source video that may be committed under films/<film>/captures/sources/ (25 MiB). */
-export const SOURCE_LIMIT = 25 * 1024 * 1024;
 export const capturesDir = (film: string): string => path.join(ROOT, 'films', film, 'captures');
-/** Committed source videos of a film's captures (at most SOURCE_LIMIT bytes each). */
-export const sourcesDir = (film: string): string => path.join(capturesDir(film), 'sources');
-/** Where `just capture` writes a source video unless told otherwise (outside the repository). */
+/** Where source videos live on this machine, unless told otherwise (out/ is not committed). */
 export const outSourcesDir = (film: string): string => path.join(ROOT, 'out', film, 'sources');
 export const mb = (bytes: number): string => `${(bytes / 2 ** 20).toFixed(1).replace(/\.0$/, '')} MB`;
 
@@ -69,17 +63,6 @@ export function readManifest(film: string, n: string): CaptureAsset {
   return a;
 }
 
-/** The id of another capture whose source has this file name with other content (`hash`), or null: replacing the file would orphan it. */
-export function sourceOwner(film: string, id: string, name: string, hash: string): string | null {
-  for (const n of manifestNames(film)) {
-    if (n === `${id}.json`) continue;
-    let other: CaptureAsset;
-    try { other = readManifest(film, n); } catch { continue; }
-    if (other.source.file === name && other.source.sha256 !== hash) return other.id;
-  }
-  return null;
-}
-
 /** What is wrong with a capture's derived frames (null when exactly frames 0 .. frames - 1 are there). */
 function framesProblem(film: string, a: CaptureAsset): string | null {
   const dir = path.join(mediaDir(film), a.id);
@@ -95,21 +78,18 @@ function framesProblem(film: string, a: CaptureAsset): string | null {
 
 /** Where the source of `a` is on this machine, and how to rebuild from it; or why it is not available. */
 async function sourceAdvice(film: string, a: CaptureAsset): Promise<string> {
-  const places = [sourcesDir(film), outSourcesDir(film)];
-  const wrong: string[] = [];
-  for (const dir of places) {
-    const f = path.join(dir, a.source.file);
-    if (!existsSync(f) || !statSync(f).isFile()) continue;
+  const dir = outSourcesDir(film), f = path.join(dir, a.source.file);
+  let wrong: string[] = [];
+  if (existsSync(f) && statSync(f).isFile()) {
     const h = await sha256(f);
-    if (h === a.source.sha256) return `rebuild the frames: just captures ${film}${dir === sourcesDir(film) ? '' : ` ${rel(dir)}`}`;
-    wrong.push(`${rel(f)} has sha256 ${h}: not the recorded source`);
+    if (h === a.source.sha256) return `rebuild the frames: just captures ${film}`;
+    wrong = [`${rel(f)} has sha256 ${h}: not the recorded source`];
   }
-  const fits = a.source.bytes > 0 && a.source.bytes <= SOURCE_LIMIT;
   return [
     ...wrong,
-    `the source is not available here: no ${a.source.file} with that sha256 in ${places.map((d) => `${rel(d)}/`).join(' or ')}.`,
-    `Get the file from whoever recorded it${fits ? ` and put it in ${rel(sourcesDir(film))}/ (it is under the ${mb(SOURCE_LIMIT)} limit, so it can be committed there)` : ', put it in a directory'}, then run: just captures ${film}${fits ? '' : ' <that directory>'}`,
-    'Recording it again (just capture / just import-capture) makes a new source: it changes the manifest and the film.',
+    `the source is not available here: no ${a.source.file} with that sha256 in ${rel(dir)}/.`,
+    `Get the file from whoever recorded it and put it in ${rel(dir)}/, then run: just captures ${film} (or keep it elsewhere: just captures ${film} <dir>).`,
+    'Recording it again (just capture / OBS and just import-capture) makes a new source: it changes the manifest and the film.',
   ].join('\n    ');
 }
 

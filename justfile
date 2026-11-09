@@ -61,7 +61,7 @@ import-capture film id video *args:
 capture film id scenario *args:
     bun scripts/capture.ts --film {{film}} --id {{id}} {{quote(scenario)}} {{args}}
 
-# Re-derive every capture of a film from its source videos (found by name in <dir>, default films/<film>/captures/sources/, checked by sha256).
+# Re-derive every capture of a film from its source videos (found by name in <dir>, default out/<film>/sources/, checked by sha256).
 captures film dir="":
     bun scripts/import-capture.ts --film {{film}} --rebuild {{ if dir == "" { "" } else { "--from " + quote(dir) } }}
 
