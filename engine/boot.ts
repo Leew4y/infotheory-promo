@@ -12,6 +12,10 @@
  *   __layout(t)        text boxes of the frame at t (for scripts/validate.ts)
  *   __contrast(t)      measured contrast of every text box (alpha >= 0.5) of the frame at t as exported (for scripts/validate.ts)
  *   __gpu()            WebGL renderer string
+ *   __frameSize()      the frame in canvas units (the film's size), the render scale and the canvas's pixel size
+ *   __covers()         the names of the film's covers (engine/cover.ts)
+ *   __cover(name)      render that cover at its own size (the page's frame size changes: one cover per page load) and
+ *                      return it as a PNG data URL with its text boxes
  *   __cues()           the sound-effect cue sheet (the film's score reads it as cues.json)
  *   __scenes()         name, kind, start/end, fade lengths and caption times (film seconds) of every scene
  *   __narration()      where each narration line plays (film seconds), for the final mix, and the lines no scene placed
@@ -22,7 +26,7 @@
  */
 import { cv, recordText, setCoverage, type TextBox } from './draw';
 import { contrastAt, type ContrastBox } from './inspect';
-import { frame, needsAt, prepare } from './frame';
+import { coverFrame, frame, needsAt, prepare } from './frame';
 import { prefetch, setStrict } from './media';
 import { allNotes, type Note } from './notes';
 import { lap, perfOn, perfReport } from './perf';
@@ -30,7 +34,9 @@ import { narrationReport, type LinePlacement } from './narration';
 import { gpuName } from './gl';
 import { SC, sceneAt } from './scene';
 import { style, styleIds } from './style';
-import { clamp, fmtTime } from './util';
+import { clamp, fmtTime, H, SCALE, setFrameSize, setScale, W } from './util';
+import { coverNames, getCover } from './cover';
+import { restyle } from './style';
 import { film, FPS, FRAMES, TOTAL } from './film';
 import { assertPlanScenes } from './plan';
 
@@ -50,10 +56,13 @@ declare global {
     __styles: string[];
     __timeline: () => { film: string; style: string; fps: number; bpm: number; frames: number; duration: number; scenes: { name: string; kind: string; f0: number; f1: number; start: number; end: number }[] };
     __gpu: () => string;
+    __frameSize: () => { width: number; height: number; scale: number; pixels: [number, number] };
+    __covers: () => string[];
+    __cover: (name: string) => { png: string; boxes: TextBox[]; size: [number, number] };
     /** The film's punctuation rule ('display', or '' when it draws text as written). */
     __punctuation: () => string;
     __cues: () => { t: number; name: string; [k: string]: number | string }[];
-    __scenes: () => { name: string; kind: string; start: number; end: number; fadeIn: number; fadeOut: number; subs: [number, number][] }[];
+    __scenes: () => { name: string; kind: string; start: number; end: number; fadeIn: number; fadeOut: number; subs: [number, number][]; chapter?: number; ch?: [string, string] }[];
     __layout: (t: number, fps?: number) => Promise<TextBox[]>;
     __contrast: (t: number, fps?: number) => Promise<ContrastBox[]>;
     __fonts: () => FontManifest;
@@ -82,6 +91,24 @@ export function boot(o: BootOptions): void {
   if (h1) h1.textContent = o.title.name;
   if (tag) tag.textContent = o.title.tagline ?? '';
   const params = new URLSearchParams(location.search);
+
+  // The canvas: the film's frame (W x H units) times the render scale. ?res=<pixels on the short side> (export --res)
+  // sets the scale; the pixel size must come out whole and even (H.264 4:2:0).
+  const res = params.get('res');
+  if (res !== null) {
+    const s = +res / Math.min(W, H);
+    const pw = W * s, ph = H * s;
+    if (!(Number.isFinite(s) && s >= 0.25 && s <= 4 && Number.isInteger(pw) && Number.isInteger(ph) && pw % 2 === 0 && ph % 2 === 0))
+      throw new Error(`?res=${res}: a ${W}x${H} frame at that short side would be ${+pw.toFixed(2)}x${+ph.toFixed(2)} pixels: it must be whole and even, at scale 0.25-4 (e.g. 720, 1080, 1440, 2160 for 16:9)`);
+    setScale(s);
+  }
+  const pw = Math.round(W * SCALE), ph = Math.round(H * SCALE);
+  if (cv.width !== pw) cv.width = pw;
+  if (cv.height !== ph) cv.height = ph;
+  // the player fits the frame's aspect into the window (the page shell's CSS assumes 16:9)
+  cv.style.width = `min(100vw, ${(100 * W) / H}vh)`;
+  cv.style.height = `min(100vh, ${(100 * H) / W}vw)`;
+  cv.style.maxWidth = cv.style.maxHeight = 'none';
 
   // Fonts: only the active style's bundled subsets for this film, loaded explicitly. A missing bundle or a face that
   // fails to load is an error: __ready() throws, so the tools stop instead of rendering with a system fallback.
@@ -172,6 +199,20 @@ export function boot(o: BootOptions): void {
     return recordText(false);
   };
   window.__gpu = gpuName;
+  window.__frameSize = () => ({ width: W, height: H, scale: SCALE, pixels: [cv.width, cv.height] });
+  window.__covers = coverNames;
+  window.__cover = (name) => {
+    const c = getCover(name);
+    setFrameSize(c.size[0], c.size[1]);
+    setScale(1);
+    restyle();
+    cv.width = c.size[0];
+    cv.height = c.size[1];
+    recordText(true);
+    coverFrame(c);
+    const boxes = recordText(false);
+    return { png: cv.toDataURL('image/png'), boxes, size: c.size };
+  };
   window.__punctuation = () => film().punctuation ?? '';
   window.__notes = allNotes;
   window.__narration = narrationReport;
@@ -181,6 +222,7 @@ export function boot(o: BootOptions): void {
     name: s.name, kind: s.kind, start: +s.t0.toFixed(3), end: +(s.t0 + s.d).toFixed(3),
     fadeIn: s.fi ?? style().motion.fadeIn, fadeOut: s.fo ?? style().motion.fadeOut,
     subs: s.subs.map(([a, b]) => [+(s.t0 + a).toFixed(3), +(s.t0 + b).toFixed(3)] as [number, number]),
+    ...(s.chapter ? { chapter: s.chapter, ch: s.ch } : {}),
   }));
 
   const au = document.getElementById('au') as HTMLAudioElement;

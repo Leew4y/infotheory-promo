@@ -32,6 +32,8 @@ export interface NarrationLine {
 export interface NarrationScript { voice: string; lines: NarrationLine[] }
 export interface LockLine {
   text: string; read: string; duration: number; sha256: string; key: string;
+  /** The TTS backend that made this line (scripts/narrate.ts); older locks name one backend at the top level. */
+  backend?: string;
   /** The speech between pauses, seconds from the line's start (scripts/narrate.ts); captions follow it. */
   spans?: [number, number][];
 }

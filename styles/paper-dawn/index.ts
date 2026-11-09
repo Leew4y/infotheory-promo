@@ -5,7 +5,7 @@
 import { ctx, text, rule, label, measure, rgba } from '../../engine/draw';
 import { glPlate } from '../../engine/gl';
 import { C, F, M, type StylePackage, type SubLine } from '../../engine/style';
-import { clamp, eout, mulberry, sstep, win, W, H } from '../../engine/util';
+import { clamp, eout, mulberry, portrait, sstep, win, W, H, SCALE } from '../../engine/util';
 import { PLATE_FS } from './plate';
 
 // ---- paper: a fixed fibre tile, then a soft edge fall-off
@@ -41,6 +41,12 @@ function paper(tone = C.bg): void {
   ctx.fillRect(0, 0, W, H);
   ctx.restore();
 }
+
+/** Where captions sit: the lower band of a landscape frame; in portrait above the bottom quarter, where phone apps
+ *  put their own text and buttons. */
+const captionY = () => (portrait() ? Math.round(H * 0.7) : 900);
+/** Type scale of the style's own overlays and rows: larger in portrait, where the frame is seen on a phone. */
+const ts = (px: number) => (portrait() ? Math.round(px * 1.3) : px);
 
 function arrowPath(x: number, y: number, s: number): void {
   const p: [number, number][] = [[0, 0], [0, 17], [4.2, 13.2], [7, 19.5], [9.6, 18.4], [6.9, 12.2], [12.4, 12.2]];
@@ -79,7 +85,7 @@ const paperDawn: StylePackage = {
   plateGrade: { bloom: 0.22, ca: 0.0012, vig: 0.42, grain: 0.085, sat: 1.0 },
   fills: { page: '#F3F1EA', plate: '#0d0b09' },
   motion: { fadeIn: 0.6, fadeOut: 0.6, drift: 0.025 },
-  layout: { margin: 150, column: 1000 },
+  layout: { margin: 150, column: 1000, portrait: { margin: 90, column: 90 } },
 
   background: () => paper(),
   // progress is the time of day (first light -> morning), highlight the sun's height above the horizon
@@ -95,9 +101,9 @@ const paperDawn: StylePackage = {
 
   row(key, title, note, x, y, a, keyW = 96) {
     if (a <= 0.002) return;
-    text(key, x, y, { font: F.latin, size: 24, color: C.accent, alpha: a, ls: 1 });
-    text(title, x + keyW, y, { size: 26, weight: 500, color: C.fg, alpha: a });
-    text(note, x + keyW, y + 32, { size: 20, color: C.muted, alpha: a });
+    text(key, x, y, { font: F.latin, size: ts(24), color: C.accent, alpha: a, ls: 1 });
+    text(title, x + keyW, y, { size: ts(26), weight: 500, color: C.fg, alpha: a });
+    text(note, x + keyW, y + ts(32), { size: ts(20), color: C.muted, alpha: a });
   },
 
   /** Small-caps tracking label: "01 — 惊讶 · SURPRISE". */
@@ -127,7 +133,7 @@ const paperDawn: StylePackage = {
   /** Captures as prints pasted on the page: a thin ink border, a soft shadow, the title as a small caps label above. */
   demo: {
     // the margins of the layout; below the chapter label, above the captions
-    area: { x: 150, y: 190, w: W - 300, h: H - 420 },
+    get area() { return portrait() ? { x: M, y: 400, w: W - 2 * M, h: captionY() - 90 - 400 } : { x: 150, y: 190, w: W - 300, h: H - 420 }; },
     rippleDur: 0.6,
     pressDur: 0.15,
     cursorEase: (u) => u * u * (3 - 2 * u),
@@ -135,8 +141,9 @@ const paperDawn: StylePackage = {
       ctx.save();
       ctx.globalAlpha = a;
       ctx.shadowColor = 'rgba(60,40,20,0.22)';
-      ctx.shadowBlur = 28;
-      ctx.shadowOffsetY = 10;
+      // canvas shadows are in pixels whatever the transform: scaled to stay in frame units at any --res
+      ctx.shadowBlur = 28 * SCALE;
+      ctx.shadowOffsetY = 10 * SCALE;
       ctx.fillStyle = C.bg;
       ctx.fillRect(r.x, r.y, r.w, r.h);
       ctx.restore();
@@ -182,13 +189,17 @@ const paperDawn: StylePackage = {
   chapterLabel(lt, d, n, ch, chapters) {
     const a = win(lt, 0.2, d, 0.8, 0.5);
     if (a <= 0) return;
-    const x = 150, y = 132;
+    // portrait: below a phone app's top bar (about 260 px)
+    const x = portrait() ? M : 150, y = portrait() ? 310 : 132;
     const num = String(n).padStart(2, '0');
-    text(num, x, y, { font: F.latin, size: 26, color: C.accent, alpha: a, ls: 2 });
-    rule(x + 52, y - 9, x + 52 + 40 * eout(clamp((lt - 0.3) / 0.8)), y - 9, C.accent, a, 1.5);
-    text(ch[0], x + 108, y, { size: 26, weight: 600, color: C.fg, alpha: a, ls: 3 });
-    label(ch[1], x + 108 + measure(ch[0], 26, F.body, 600, 3) + 60, y - 1, a, C.muted, 17);
-    label(`${num} / ${String(chapters).padStart(2, '0')}`, W - 150, H - 96, a, C.muted, 16, 'right');
+    const u = ts(100) / 100;
+    text(num, x, y, { font: F.latin, size: ts(26), color: C.accent, alpha: a, ls: 2 });
+    rule(x + 52 * u, y - 9 * u, x + (52 + 40 * eout(clamp((lt - 0.3) / 0.8))) * u, y - 9 * u, C.accent, a, 1.5);
+    text(ch[0], x + 108 * u, y, { size: ts(26), weight: 600, color: C.fg, alpha: a, ls: 3 });
+    label(ch[1], x + 108 * u + measure(ch[0], ts(26), F.body, 600, 3) + 60 * u, y - 1, a, C.muted, ts(17));
+    // the page number: bottom right; in portrait top right, clear of the phone app's own buttons
+    if (portrait()) label(`${num} / ${String(chapters).padStart(2, '0')}`, W - M, y - 1, a, C.muted, ts(16), 'right');
+    else label(`${num} / ${String(chapters).padStart(2, '0')}`, W - 150, H - 96, a, C.muted, 16, 'right');
   },
 
   captions(T: number, subs: SubLine[]) {
@@ -197,13 +208,16 @@ const paperDawn: StylePackage = {
       const a = win(T, s.a, s.b, 0.55, 0.55);
       if (a <= 0) continue;
       const rise = (1 - eout(clamp((T - s.a) / 0.7))) * 10;
+      const y = captionY(), x = portrait() ? M : 150, u = ts(100) / 100;
+      // portrait plates: centred left of the middle, clear of the phone app's buttons on the right
+      const cx = portrait() ? Math.round(W * 0.455) : W / 2;
       if (s.plate) {
-        text(s.zh, W / 2, 900 + rise, { size: 38, weight: 500, color: C.fgOnDark, alpha: a, align: 'center', ls: 3 });
-        text(s.en, W / 2, 950 + rise, { font: F.latin, style: 'italic', size: 24, color: C.mutedOnDark, alpha: a * 0.9, align: 'center' });
+        text(s.zh, cx, y + rise, { size: ts(38), weight: 500, color: C.fgOnDark, alpha: a, align: 'center', ls: 3 });
+        text(s.en, cx, y + 50 * u + rise, { font: F.latin, style: 'italic', size: ts(24), color: C.mutedOnDark, alpha: a * 0.9, align: 'center' });
       } else {
-        rule(150, 900, 150 + 36, 900, C.accent, a, 1.5);
-        text(s.zh, 150, 950 + rise, { size: 34, weight: 500, color: C.fg, alpha: a, ls: 2 });
-        text(s.en, 150, 990 + rise, { font: F.latin, style: 'italic', size: 23, color: C.muted, alpha: a });
+        rule(x, y, x + 36, y, C.accent, a, 1.5);
+        text(s.zh, x, y + 50 * u + rise, { size: ts(34), weight: 500, color: C.fg, alpha: a, ls: 2 });
+        text(s.en, x, y + 90 * u + rise, { font: F.latin, style: 'italic', size: ts(23), color: C.muted, alpha: a });
       }
     }
   },

@@ -1,6 +1,28 @@
 /** Frame size, easing and seeded randomness. Everything here is pure: no clocks, no Math.random. The timing grid is in film.ts. */
-export const W = 1920;
-export const H = 1080;
+/**
+ * The frame in canvas units: the film's size (defineFilm `size`, default 1920 x 1080). Scenes and styles draw in these
+ * units whatever the output resolution. Live bindings, set before any scene registers: read them at draw time or in a
+ * scene module, not at the top of a style module (a style module loads before its film is defined).
+ */
+export let W = 1920;
+export let H = 1080;
+/** A portrait frame (taller than wide, e.g. 1080 x 1920 for phones): styles and scenes lay out for it. */
+export const portrait = (): boolean => H > W;
+/**
+ * Render scale: the canvas holds W·SCALE × H·SCALE pixels and every drawing is scaled up to it, so a 4K export redraws
+ * text, lines and shaders at 4K instead of enlarging a 1080p frame. 1 except in an export with --res (the page's
+ * ?res=); the check tools (validate, regress, sheet, shots) always render at 1.
+ */
+export let SCALE = 1;
+/** Set by defineFilm only. */
+export function setFrameSize(w: number, h: number): void {
+  W = w;
+  H = h;
+}
+/** Set by boot() only, before the first frame. */
+export function setScale(s: number): void {
+  SCALE = s;
+}
 export const PI = Math.PI;
 export const TAU = PI * 2;
 

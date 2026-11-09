@@ -1,0 +1,273 @@
+{
+ "env": {
+  "platform": "darwin arm64",
+  "chrome": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  "playwright": "1.63.0"
+ },
+ "results": [
+  {
+   "config": "vp1920-dpr1",
+   "viewport": {
+    "width": 1920,
+    "height": 1080
+   },
+   "dpr": 1,
+   "requestedSize": "1920x1080",
+   "quality": 90,
+   "jpegSizes": [
+    "1920x1080"
+   ],
+   "frameViewport": "1920x1080",
+   "frames": 924,
+   "seconds": 15.36,
+   "effectiveFps": 60.1,
+   "intervalMs": {
+    "median": 16.7,
+    "p95": 19,
+    "max": 19.9
+   },
+   "unreadableMarkers": 0,
+   "clicks": 15,
+   "alignment": [
+    {
+     "click": 1,
+     "expected": 20,
+     "observed": 22,
+     "deviation": 2,
+     "latencyMs": 52.4
+    },
+    {
+     "click": 2,
+     "expected": 48,
+     "observed": 50,
+     "deviation": 2,
+     "latencyMs": 46.2
+    },
+    {
+     "click": 3,
+     "expected": 80,
+     "observed": 82,
+     "deviation": 2,
+     "latencyMs": 40
+    },
+    {
+     "click": 4,
+     "expected": 105,
+     "observed": 107,
+     "deviation": 2,
+     "latencyMs": 43.2
+    },
+    {
+     "click": 5,
+     "expected": 133,
+     "observed": 136,
+     "deviation": 3,
+     "latencyMs": 60
+    },
+    {
+     "click": 6,
+     "expected": 166,
+     "observed": 168,
+     "deviation": 2,
+     "latencyMs": 40.6
+    },
+    {
+     "click": 7,
+     "expected": 191,
+     "observed": 194,
+     "deviation": 3,
+     "latencyMs": 64.5
+    },
+    {
+     "click": 8,
+     "expected": 220,
+     "observed": 223,
+     "deviation": 3,
+     "latencyMs": 68.1
+    },
+    {
+     "click": 9,
+     "expected": 253,
+     "observed": 255,
+     "deviation": 2,
+     "latencyMs": 36.7
+    },
+    {
+     "click": 10,
+     "expected": 279,
+     "observed": 281,
+     "deviation": 2,
+     "latencyMs": 52.4
+    },
+    {
+     "click": 11,
+     "expected": 308,
+     "observed": 310,
+     "deviation": 2,
+     "latencyMs": 47.3
+    },
+    {
+     "click": 12,
+     "expected": 341,
+     "observed": 343,
+     "deviation": 2,
+     "latencyMs": 39.3
+    },
+    {
+     "click": 13,
+     "expected": 367,
+     "observed": 369,
+     "deviation": 2,
+     "latencyMs": 41.1
+    },
+    {
+     "click": 14,
+     "expected": 396,
+     "observed": 399,
+     "deviation": 3,
+     "latencyMs": 60.8
+    },
+    {
+     "click": 15,
+     "expected": 430,
+     "observed": 432,
+     "deviation": 2,
+     "latencyMs": 42.2
+    }
+   ],
+   "maxAbsDeviation": 3
+  },
+  {
+   "config": "vp1280-dpr2",
+   "viewport": {
+    "width": 1280,
+    "height": 720
+   },
+   "dpr": 2,
+   "requestedSize": "1920x1080",
+   "quality": 90,
+   "jpegSizes": [
+    "1280x720"
+   ],
+   "frameViewport": "1280x720",
+   "frames": 930,
+   "seconds": 15.48,
+   "effectiveFps": 60,
+   "intervalMs": {
+    "median": 16.7,
+    "p95": 16.9,
+    "max": 32.2
+   },
+   "unreadableMarkers": 0,
+   "clicks": 15,
+   "alignment": [
+    {
+     "click": 1,
+     "expected": 23,
+     "observed": 25,
+     "deviation": 2,
+     "latencyMs": 40.3
+    },
+    {
+     "click": 2,
+     "expected": 51,
+     "observed": 53,
+     "deviation": 2,
+     "latencyMs": 34.9
+    },
+    {
+     "click": 3,
+     "expected": 84,
+     "observed": 85,
+     "deviation": 1,
+     "latencyMs": 26.5
+    },
+    {
+     "click": 4,
+     "expected": 109,
+     "observed": 110,
+     "deviation": 1,
+     "latencyMs": 23.6
+    },
+    {
+     "click": 5,
+     "expected": 137,
+     "observed": 139,
+     "deviation": 2,
+     "latencyMs": 40.6
+    },
+    {
+     "click": 6,
+     "expected": 170,
+     "observed": 171,
+     "deviation": 1,
+     "latencyMs": 21.7
+    },
+    {
+     "click": 7,
+     "expected": 195,
+     "observed": 197,
+     "deviation": 2,
+     "latencyMs": 46.7
+    },
+    {
+     "click": 8,
+     "expected": 224,
+     "observed": 226,
+     "deviation": 2,
+     "latencyMs": 52.3
+    },
+    {
+     "click": 9,
+     "expected": 257,
+     "observed": 258,
+     "deviation": 1,
+     "latencyMs": 21.9
+    },
+    {
+     "click": 10,
+     "expected": 282,
+     "observed": 284,
+     "deviation": 2,
+     "latencyMs": 34.8
+    },
+    {
+     "click": 11,
+     "expected": 312,
+     "observed": 313,
+     "deviation": 1,
+     "latencyMs": 30.7
+    },
+    {
+     "click": 12,
+     "expected": 345,
+     "observed": 346,
+     "deviation": 1,
+     "latencyMs": 22.5
+    },
+    {
+     "click": 13,
+     "expected": 371,
+     "observed": 372,
+     "deviation": 1,
+     "latencyMs": 24.6
+    },
+    {
+     "click": 14,
+     "expected": 400,
+     "observed": 401,
+     "deviation": 1,
+     "latencyMs": 9.1
+    },
+    {
+     "click": 15,
+     "expected": 434,
+     "observed": 435,
+     "deviation": 1,
+     "latencyMs": 22.8
+    }
+   ],
+   "maxAbsDeviation": 2
+  }
+ ]
+}

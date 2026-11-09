@@ -3,6 +3,7 @@ import { mkdirSync, readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { requireFilm } from './film-arg';
+import { requireCaptureFrames } from './lib/captures';
 import { ROOT } from './plan-schema';
 
 const argv = Bun.argv.slice(2);
@@ -11,12 +12,13 @@ let o;
 try {
   o = parseArgs({ args: argv, options: {
     film: { type: 'string' }, scene: { type: 'string' }, from: { type: 'string' }, to: { type: 'string' },
-    draft: { type: 'boolean' }, style: { type: 'string' },
+    draft: { type: 'boolean' }, style: { type: 'string' }, res: { type: 'string' },
   } }).values;
 } catch (e) { usage((e as Error).message); }
 const opts = o!, id = requireFilm(argv);
 if (opts.scene ? opts.from !== undefined || opts.to !== undefined : opts.from === undefined || opts.to === undefined)
   usage('render: give --scene <id> or --from <seconds> --to <seconds>');
+await requireCaptureFrames(id);
 const dir = path.join(ROOT, 'out', id, 'render');
 mkdirSync(dir, { recursive: true });
 const timeline = path.join(dir, `.timeline-${process.pid}-${crypto.randomUUID()}.json`);
@@ -40,10 +42,10 @@ try {
       throw Object.assign(new Error('render: empty or invalid range'), { exit: 2 });
     // Use the frame range for filenames: round-trip seconds may have many decimal places.
     const name = opts.scene ? opts.scene.replace(/[^a-zA-Z0-9-]/g, '-') : `${from}-${to}`;
-    const out = path.join(dir, `${name}${opts.draft ? '-draft' : ''}.mp4`);
-    code = await run(['--from', String(from / tl.fps), '--to', String(to / tl.fps), '--noaudio', '--out', out, ...(opts.draft ? ['--draft'] : [])]);
+    const out = path.join(dir, `${name}${opts.res ? `-${opts.res}p` : ''}${opts.draft ? '-draft' : ''}.mp4`);
+    code = await run(['--from', String(from / tl.fps), '--to', String(to / tl.fps), '--noaudio', '--out', out, ...(opts.draft ? ['--draft'] : []), ...(opts.res ? ['--res', opts.res] : [])]);
     process.exitCode = code;
-    if (!code) console.log(JSON.stringify({ out, ...(opts.scene ? { scene: opts.scene } : {}), from: from / tl.fps, to: to / tl.fps, frames: to - from, seconds: (to - from) / tl.fps, fps: tl.fps, draft: !!opts.draft, style: tl.style }));
+    if (!code) console.log(JSON.stringify({ out, ...(opts.scene ? { scene: opts.scene } : {}), from: from / tl.fps, to: to / tl.fps, frames: to - from, seconds: (to - from) / tl.fps, fps: tl.fps, draft: !!opts.draft, style: tl.style, ...(opts.res ? { res: Number(opts.res) } : {}) }));
   }
 } catch (e) { console.error((e as Error).message); process.exitCode = (e as { exit?: number }).exit ?? 1; }
 finally { rmSync(timeline, { force: true }); }

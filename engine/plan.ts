@@ -54,6 +54,9 @@ const ScenePlanSpec = z.strictObject({
 export const FilmPlanSpec = z.strictObject({
   film: id, fps: z.number().int().positive(), bpm: positive.optional(),
   styles: z.array(id).min(1), chapters: z.number().int().nonnegative().optional(), voice: id.optional(),
+  /** Frame size [width, height] in canvas units, both even; omitted: [1920, 1080]; [1080, 1920] for phones. */
+  size: z.tuple([z.number().int().min(64).max(4096), z.number().int().min(64).max(4096)])
+    .refine(([w, h]) => w % 2 === 0 && h % 2 === 0, 'width and height must be even (H.264 4:2:0)').optional(),
   scenes: z.array(ScenePlanSpec).min(1),
 }).superRefine((p, ctx) => {
   const scenes = new Set<string>(), lines = new Set<string>();
@@ -93,6 +96,8 @@ export function usePlan(p: unknown, lock?: NarrationLock, assets: Record<string,
   const plan = FilmPlanSpec.parse(p), f = film();
   if (active || SC.length) throw new Error('plan: usePlan must run once, before any scenes');
   if (plan.film !== f.id || plan.fps !== f.fps) throw new Error(`film-plan.json: film/fps must match defineFilm (${f.id}, ${f.fps} fps)`);
+  const [pw, ph] = plan.size ?? [1920, 1080], [fw, fh] = f.size ?? [1920, 1080];
+  if (pw !== fw || ph !== fh) throw new Error(`film-plan.json: size ${pw}x${ph} must match defineFilm (${fw}x${fh})`);
   if ((plan.bpm ?? 80) !== f.bpm || (plan.chapters ?? 0) !== f.chapters) throw new Error('film-plan.json: bpm/chapters must match defineFilm');
   const script = planNarration(plan);
   if (script.lines.length) {

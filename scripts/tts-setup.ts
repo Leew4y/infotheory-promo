@@ -13,10 +13,18 @@
  *    ModelScope (the publisher's own hub, fast from China; TTS_MODEL_SOURCE=hf for Hugging Face), file by file;
  *    a verified file is kept, so an interrupted download resumes with the next file.
  * Platforms: Windows x64 installs exactly audio/tts-lock-win.txt (the environment verified by a real synthesis);
- * Linux and Apple-silicon macOS resolve audio/tts-requirements.txt (not yet verified: a warning says so); Intel macOS
- * is refused (PyTorch 2.3.1 has no wheels for it). Needs git and uv.
+ * Linux resolves audio/tts-requirements.txt (not yet verified: a warning says so); Intel macOS is refused (PyTorch
+ * 2.3.1 has no wheels for it). Needs git and uv.
+ *
+ * Apple silicon (backend cosyvoice3-mlx) takes another route, about 2.3 GB instead of the 5.4 GB model and a PyTorch
+ * environment: the `speech` tool (Homebrew formula speech; installed with brew when missing) and the same model
+ * converted to MLX, aufklarer/CosyVoice3-0.5B-MLX-bf16 pinned below, file by file into
+ * .cache/tts/models/CosyVoice3-0.5B-MLX-bf16, each checked like the PyTorch files. Verified on an M5 Pro
+ * (2026-10-23): speech 0.0.28, RTF 0.2-0.3, the same seed gives identical samples, and a line read with
+ * zh-male-professor has WeSpeaker cosine 0.89-0.90 to the PyTorch reading of the same line (two PyTorch lines: 0.86).
+ * TTS_TORCH=1 forces the PyTorch route on Apple silicon.
  */
-import { existsSync, mkdirSync, rmSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, renameSync, rmSync, statSync } from 'node:fs';
 import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dir, '..');
@@ -42,6 +50,21 @@ const FILES: [string, number, string][] = [
   ['llm.pt', 2024669519, '69f43bd545131c30e98947fb360ea8b4dc9916d8e83dded7757c7ea4f5a24970'],
   ['speech_tokenizer_v3.onnx', 969451503, '23236a74175dbdda47afc66dbadd5bcb41303c467a57c261cb8539ad9db9208d'],
 ];
+/** The MLX bundle (Apple silicon): Hugging Face revision 9b210b23 of aufklarer/CosyVoice3-0.5B-MLX-bf16. */
+const MLX_REPO = 'aufklarer/CosyVoice3-0.5B-MLX-bf16', MLX_REVISION = '9b210b2381280b3af1c631d474a250e3e46d7017';
+const MLX_DIR = path.join(TTS, 'models', 'CosyVoice3-0.5B-MLX-bf16');
+const MLX_FILES: [string, number, string][] = [
+  ['config.json', 1780, 'git:ace6d327808eea0c39f5e47f094875cc7dc82b3c'],
+  ['flow.safetensors', 664553192, 'f1685d7e476295b104a675aa7e25a2572d5858879a4be0dfdd25253215b8e3d4'],
+  ['flow_noise.bin', 4800000, '3ebc526a5163d79f14b760e978e05e86dc83d9685f24a537a494cb1a5cf06c6f'],
+  ['hifigan.safetensors', 83086548, '840350956a8403245c738504a0da2a0c2047d5e705173930030013f28d4e3a1e'],
+  ['llm.safetensors', 1012327296, '7d40340e3feda51dfe10137bf12690a512a1092d2eccf3b9605357a895c9ba2b'],
+  ['merges.txt', 1402109, 'git:90d3d82d027eadcc6a5e77c38eb82d43fc51b53b'],
+  ['speech_tokenizer.safetensors', 484039728, 'a3b9b816756469673efe84af9190f6cac4a8946cd7a113b76a35375daaea0e26'],
+  ['tokenizer_config.json', 1287, 'git:ff55d7b9eb1384e5d4d7e75dc0f564c1a8833d6e'],
+  ['vocab.json', 2776833, 'git:4783fe10ac3adce15ac8f358ef5462739852c569'],
+];
+const MLX = process.platform === 'darwin' && process.arch === 'arm64' && process.env.TTS_TORCH !== '1';
 const PY = process.platform === 'win32' ? path.join(VENV, 'Scripts', 'python.exe') : path.join(VENV, 'bin', 'python');
 const TORCH = ['torch==2.3.1', 'torchaudio==2.3.1'];
 const TORCH_INDEX = process.platform === 'darwin' ? [] : ['--index-url', 'https://download.pytorch.org/whl/cu121'];
@@ -54,6 +77,37 @@ function sh(what: string, cmd: string[], cwd = ROOT): string {
 }
 const pyOk = (code: string) => existsSync(PY) && Bun.spawnSync([PY, '-c', code], { stdout: 'ignore', stderr: 'ignore' }).exitCode === 0;
 const pip = (what: string, args: string[]) => sh(what, ['uv', 'pip', 'install', '--python', PY, ...args]);
+
+/** Whether a file matches its pinned hash (sha256, or git's blob sha1 for small files). */
+async function verified(f: string, size: number, hash: string): Promise<boolean> {
+  if (!existsSync(f) || statSync(f).size !== size) return false;
+  const h = new Bun.CryptoHasher(hash.startsWith('git:') ? 'sha1' : 'sha256');
+  if (hash.startsWith('git:')) h.update(`blob ${size}\0`);
+  for await (const chunk of Bun.file(f).stream()) h.update(chunk);
+  return h.digest('hex') === hash.replace('git:', '');
+}
+
+if (MLX) {
+  mkdirSync(MLX_DIR, { recursive: true });
+  if (!Bun.which('speech')) {
+    if (!Bun.which('brew')) { console.error('tts-setup: the speech tool is missing and Homebrew is not installed (https://brew.sh), then: brew install speech'); process.exit(1); }
+    sh('speech (Homebrew)', ['brew', 'install', 'speech']);
+  }
+  for (const [rel, size, hash] of MLX_FILES) {
+    const f = path.join(MLX_DIR, rel);
+    if (await verified(f, size, hash)) continue;
+    console.log(`- ${rel} (${(size / 2 ** 20).toFixed(0)} MiB, huggingface.co)`);
+    const tmp = `${f}.${process.pid}.part`;
+    const res = await fetch(`https://huggingface.co/${MLX_REPO}/resolve/${MLX_REVISION}/${rel}`);
+    if (!res.ok || !res.body) { console.error(`${rel}: download failed (HTTP ${res.status})`); process.exit(1); }
+    await Bun.write(tmp, res);
+    if (!(await verified(tmp, size, hash))) { rmSync(tmp, { force: true }); console.error(`${rel}: downloaded file does not match the pinned revision ${MLX_REVISION.slice(0, 8)}`); process.exit(1); }
+    renameSync(tmp, f);
+  }
+  const v = Bun.spawnSync(['brew', 'list', '--versions', 'speech'], { stdout: 'pipe' }).stdout.toString().trim();
+  console.log(`TTS ready (cosyvoice3-mlx): ${path.relative(ROOT, MLX_DIR)}, ${v || 'speech on PATH'}`);
+  process.exit(0);
+}
 
 if (process.platform === 'darwin' && process.arch !== 'arm64') { console.error('tts-setup: Intel macOS is not supported (no PyTorch 2.3.1 wheels); use Apple silicon, Windows or Linux'); process.exit(1); }
 const LOCKED = process.platform === 'win32' && process.arch === 'x64';
@@ -79,14 +133,6 @@ const extraIndex = TORCH_INDEX.map((a) => (a === '--index-url' ? '--extra-index-
 if (LOCKED) pip('inference packages (locked)', ['-r', path.join(ROOT, 'audio', 'tts-lock-win.txt'), ...extraIndex, '--index-strategy', 'unsafe-best-match']);
 else pip('inference packages', ['-r', path.join(ROOT, 'audio', 'tts-requirements.txt'), ...TORCH, ...extraIndex, '--index-strategy', 'unsafe-best-match']);
 // 4. model, file by file, each verified
-/** Whether a file matches its pinned hash (sha256, or git's blob sha1 for small files). */
-async function verified(f: string, size: number, hash: string): Promise<boolean> {
-  if (!existsSync(f) || statSync(f).size !== size) return false;
-  const h = new Bun.CryptoHasher(hash.startsWith('git:') ? 'sha1' : 'sha256');
-  if (hash.startsWith('git:')) h.update(`blob ${size}\0`);
-  for await (const chunk of Bun.file(f).stream()) h.update(chunk);
-  return h.digest('hex') === hash.replace('git:', '');
-}
 const source = process.env.TTS_MODEL_SOURCE === 'hf' ? 'hf' : 'modelscope';
 for (const [rel, size, hash] of FILES) {
   const f = path.join(MODEL, rel);

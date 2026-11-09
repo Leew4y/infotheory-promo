@@ -4,7 +4,7 @@
  */
 import { ctx, recordText, textMode, type TextBox } from './draw';
 import { frame } from './frame';
-import { W, H } from './util';
+import { W, H, SCALE } from './util';
 
 /**
  * A text box with its measured contrast: the lowest WCAG ratio (1–21) over the glyph cells of the box, with the text
@@ -32,6 +32,8 @@ function luminance([r, g, b]: [number, number, number]): number {
  * Not modelled: a text box covering another text (overlap is reported separately), bloom spreading from the solid boxes.
  */
 export function contrastAt(t: number, fps: number, samples: number, minAlpha = 0.5): ContrastBox[] {
+  // boxes are in frame units and are read here as pixels: measured at render scale 1 only (validate never sets ?res)
+  if (SCALE !== 1) throw new Error(`contrast is measured at render scale 1, not ${SCALE}`);
   const grab = () => ctx.getImageData(0, 0, W, H).data;
   let A1: Uint8ClampedArray, B1: Uint8ClampedArray, A: Uint8ClampedArray, Cc: Uint8ClampedArray, boxes: TextBox[];
   try {

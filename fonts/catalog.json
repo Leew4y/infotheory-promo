@@ -1,5 +1,5 @@
 {
- "comment": "The shared font library: every bundled font file, pinned to an upstream commit with its sha256 and licence, plus tags for choosing (script: zh / latin / math; class: serif / sans / mono / script / display; gb2312: a CJK display face measured to cover all 6763 GB2312 hanzi but not much beyond, so a style chains it before a full CJK face such as Noto). Styles reference entries by id (styles/<id>/fonts.json). scripts/font-catalog.ts --lock downloads a new entry, checks it against the blob id GitHub reports and records its sha256 and weight; scripts/fonts.ts subsets per film and style. Adding a font needs Develata’s confirmation.",
+ "comment": "The shared font library: every bundled font file, pinned to an upstream commit with its sha256 and licence, plus tags for choosing (script: zh / latin / math; class: serif / sans / mono / script / display; gb2312: a CJK display face measured to cover all 6763 GB2312 hanzi but not much beyond, so a style chains it before a full CJK face such as Noto). Styles reference entries by id (styles/<id>/fonts.json). scripts/font-catalog.ts --lock downloads a new entry, checks it against the blob id GitHub reports and records its sha256 and weight; scripts/fonts.ts subsets per film and style. defects: a known fault of the upstream file (note, source); scripts/fonts.ts refuses such a font unless the style's fonts.json entry gives \"acceptDefects\": \"<why>\", and checks the glyphs of every zh face on the film's text (scripts/glyph_check.py). Adding a font needs Develata’s confirmation.",
  "fonts": [
   {
    "id": "noto-serif-sc",
@@ -195,7 +195,11 @@
     "display",
     "elegant",
     "gb2312"
-   ]
+   ],
+   "defects": {
+    "note": "the upstream file draws characters wrongly: 回 圃 圊 圄 崮 徊 痼 蛔 are filled (a counter wound like the contour around it); 己 is drawn like 巳, 熹 like 喜, 锛 like 钡, 亓 like 开, 莨 like 茛, 末 and 未 alike; 受 reads as 要; 。 is a filled dot, ，！：；？ are centred and … is narrow on the baseline; ideographs advance 1.024 em. Not for any text a reader must read correctly",
+    "source": "films/math-lessons/review/08-post-acceptance.md (回 己 受 and the punctuation, found in the delivered film); scripts/glyph_check.py over the 6763 GB2312 hanzi (the other characters, each looked at)"
+   }
   },
   {
    "id": "zcool-qingke-huangyou",

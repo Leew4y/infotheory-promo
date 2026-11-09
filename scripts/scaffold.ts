@@ -12,7 +12,7 @@ function skeleton(s: PlanScene): string {
 
 planScene('${s.id}', { draw(lt, d) {} });
 `;
-  return `import { planScene, copy, background, plate, backdrop, text, C, F, M, W, H, type FilmPlan } from '../../../engine';
+  return `import { planScene, copy, background, plate, backdrop, text, portrait, C, F, M, W, H, type FilmPlan } from '../../../engine';
 import plan from '../film-plan.json';
 
 const content = (plan as unknown as FilmPlan).scenes.find((s) => s.id === '${s.id}')!;
@@ -21,9 +21,10 @@ planScene('${s.id}', {
     ${s.kind === 'plate' ? 'plate({ time: lt, progress: 0.4, highlight: 0.1 });\n    backdrop(W / 2, H / 2, W - M, H / 2, 1);' : 'background();'}
     const rows = [...(content.title ?? []), ...Object.keys(content.copy ?? {}).map((key) => copy('${s.id}', key))].filter(Boolean);
     rows.forEach((s, i) => {
-      text(s, W / 2, H * 0.36 + i * H * 0.28 / Math.max(1, rows.length - 1), {
+      // portrait: higher, clear of the captions (the style puts them above the bottom quarter)
+      text(s, W / 2, H * (portrait() ? 0.28 : 0.36) + i * H * (portrait() ? 0.22 : 0.28) / Math.max(1, rows.length - 1), {
         font: /[^\\x00-\\x7f]/.test(s) ? F.body : F.latin,
-        size: Math.min(W / 36, (W - M * 2) / Math.max(1, [...s].length)),
+        size: Math.min(Math.max(W, H) / 36, (W - M * 2) / Math.max(1, [...s].length)),
         color: C.${s.kind === 'plate' ? 'fgOnDark' : 'fg'}, align: 'center',
       });
     });

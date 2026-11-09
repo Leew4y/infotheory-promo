@@ -8,16 +8,15 @@
  * have the git blob id GitHub reports for that path at the pinned commit (so the first download is checked against the
  * upstream repository, not just trusted). A null weight is measured from the file with the pinned fontTools (the wght
  * axis range of a variable font, else OS/2 usWeightClass). Measured values are written back under the catalog lock.
- * Prints the library. Adding entries to the catalog needs Develata's confirmation (licences, size).
+ * Prints the library; an entry with a `defects` record (a known fault of the upstream file) is marked DEFECTS with
+ * its note and source. Adding entries to the catalog needs Develata's confirmation (licences, size).
  * Needs uv for measuring weights. Exit code 1 on any download, checksum or tool failure.
  */
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { CACHE, die, download, gitBlob, licence, readCatalog, recordInCatalog, sha256, type Entry } from './font-lib';
+import { CACHE, die, download, GENERATOR, gitBlob, licence, readCatalog, recordInCatalog, sha256, UV, type Entry } from './font-lib';
 
 const LOCK = Bun.argv.includes('--lock');
-const GENERATOR = { fonttools: '4.66.1', brotli: '1.2.0' };
-const UV = process.env.UV ?? (existsSync(path.join(process.env.USERPROFILE ?? '', 'scoop', 'shims', 'uv.exe')) ? path.join(process.env.USERPROFILE!, 'scoop', 'shims', 'uv.exe') : 'uv');
 
 /** GitHub directory listings by owner/repo/dir@ref, fetched once per run (the anonymous API allows 60 calls an hour). */
 const listings = new Map<string, Promise<{ path: string; sha: string }[]>>();
@@ -98,6 +97,8 @@ try {
 const now = readCatalog();
 for (const e of now.fonts) {
   const mb = (statSync(path.join(CACHE, e.file)).size / 1048576).toFixed(1).padStart(5);
-  console.log(`${e.id.padEnd(26)} ${`${e.family} ${e.style}`.padEnd(32)} ${String(e.weight).padEnd(9)} ${mb} MB  ${(e.tags ?? []).join(' ')}`);
+  console.log(`${e.id.padEnd(26)} ${`${e.family} ${e.style}`.padEnd(32)} ${String(e.weight).padEnd(9)} ${mb} MB  ${(e.tags ?? []).join(' ')}${e.defects ? '  DEFECTS' : ''}`);
+  if (e.defects) console.log(`${''.padEnd(26)} DEFECTS: ${e.defects.note} (${e.defects.source}); a style needs "acceptDefects" to use it`);
 }
-console.log(`${now.fonts.length} fonts, all present and verified${measured.length ? `; recorded ${measured.length} in the catalog` : ''}`);
+const flagged = now.fonts.filter((e) => e.defects).length;
+console.log(`${now.fonts.length} fonts, all present and verified${flagged ? `; ${flagged} with recorded defects` : ''}${measured.length ? `; recorded ${measured.length} in the catalog` : ''}`);

@@ -100,6 +100,15 @@ scene({
     if (!d.path.startsWith('scene:faults')) failures.push(`faults: diagnostic outside the fault scene: ${d.path} ${d.code}`);
   }
   if (!failures.some((f) => f.startsWith('faults'))) console.log(`ok    fault scene reports ${want.map(([c, s]) => `${c} (${s})`).join(', ')}, nothing else`);
+
+  // 3. a text added after the fonts were made (drawn only between the sampled frames, so no render fails): the
+  // committed subsets no longer cover the sources' characters
+  const late = path.join(FILM, 'scenes', 'faults.ts');
+  writeFileSync(late, readFileSync(late, 'utf8') + "\n// added after just fonts\nexport const LATE = '迟到的字：鑫';\n");
+  const v3 = validate();
+  const stale = v3.diags.find((d) => d.code === 'fonts-stale');
+  if (!stale || !stale.message.includes('鑫')) failures.push(`fonts-stale: expected an error naming 鑫, got ${JSON.stringify(v3.diags.filter((d) => d.level === 'error').map((d) => d.code))}`);
+  else console.log('ok    a character added after just fonts is reported as fonts-stale');
 } catch (e) {
   failures.push(e instanceof Error ? e.message : String(e));
 } finally {

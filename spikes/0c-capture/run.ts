@@ -8,8 +8,14 @@
  * epoch clock, then:
  *   - frame intervals (median / p95 / max) and actual JPEG size;
  *   - resamples to 30 fps (last frame at or before each output time) and finds, for each click, the first output
- *     frame whose in-page marker shows that click; deviation = that frame - the output frame containing the event.
- * Writes result.json and one sample frame per config to out/0c-capture/.
+ *     frame whose in-page marker shows that click; deviation = that frame - the output frame containing the event;
+ *     latencyMs = the timestamp of the screencast frame that output frame shows - the event (it includes the
+ *     resampling: a later screencast frame in the same output frame);
+ *   - from the screencast frames themselves (added for 0d): rawLatencyMs = the first screencast frame showing the
+ *     click - the event, split into eventToHandler, handlerToFrameStart (to the start of the frame that draws the
+ *     change: requestAnimationFrame's time) and frameStartToSwap (to that screencast frame's timestamp).
+ * Writes capture-result.json (RESULT_NAME to name it otherwise) and one sample frame per config to out/0c-capture/;
+ * env records the browser's version.
  */
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -93,7 +99,7 @@ for (const c of configs) {
   }
   await page.waitForTimeout(1000);
   await page.screencast.stop();
-  const events: { i: number; t: number }[] = await page.evaluate(() => (window as any).__events);
+  const events: { i: number; t: number; h: number; raf: number }[] = await page.evaluate(() => (window as any).__events);
   await ctx.close();
 
   frames.sort((a, b) => a.ts - b.ts);
@@ -111,7 +117,13 @@ for (const c of configs) {
   const align = events.map((e) => {
     const expected = Math.floor(((e.t - t0) * 30) / 1000);
     const observed = outMarker.findIndex((m) => m === e.i);
-    return { click: e.i, expected, observed, deviation: observed < 0 ? null : observed - expected, latencyMs: observed < 0 ? null : +(frames[pick[observed]].ts - e.t).toFixed(1) };
+    const raw = markers.findIndex((m, j) => m === e.i && frames[j].ts >= e.t - 100);
+    const S = raw < 0 ? null : frames[raw].ts;
+    return {
+      click: e.i, expected, observed, deviation: observed < 0 ? null : observed - expected, latencyMs: observed < 0 ? null : +(frames[pick[observed]].ts - e.t).toFixed(1),
+      rawLatencyMs: S === null ? null : +(S - e.t).toFixed(1), eventToHandler: +(e.h - e.t).toFixed(1),
+      handlerToFrameStart: Number.isFinite(e.raf) ? +(e.raf - e.h).toFixed(1) : null, frameStartToSwap: S === null || !Number.isFinite(e.raf) ? null : +(S - e.raf).toFixed(1),
+    };
   });
   const r = {
     config: c.name, viewport: c.viewport, dpr: c.dpr, requestedSize: '1920x1080', quality: 90,
@@ -121,15 +133,20 @@ for (const c of configs) {
     unreadableMarkers: markers.filter((m) => m < 0).length,
     clicks: events.length, alignment: align,
     maxAbsDeviation: Math.max(...align.map((a) => (a.deviation === null ? Infinity : Math.abs(a.deviation)))),
+    ...Object.fromEntries((['rawLatencyMs', 'frameStartToSwap'] as const).map((k) => {
+      const v = align.map((a) => a[k]).filter((x): x is number => x !== null);
+      return [k, { min: Math.min(...v), median: q(v, 0.5), max: Math.max(...v) }];
+    })),
   };
   results.push(r);
   console.log(JSON.stringify({ ...r, alignment: undefined }));
 }
+const version = browser.version();
 await browser.close();
-const env = { platform: `${process.platform} ${process.arch}`, chrome: CHROME, playwright: '1.63.0' };
+const env = { platform: `${process.platform} ${process.arch}`, chrome: CHROME, version, playwright: '1.63.0' };
 // RESULT_DIR lets another machine keep its results apart (e.g. spikes/0d-macos)
 const RES = process.env.RESULT_DIR ? path.resolve(ROOT, process.env.RESULT_DIR) : import.meta.dir;
 mkdirSync(RES, { recursive: true });
-const resultFile = path.join(RES, 'capture-result.json');
+const resultFile = path.join(RES, process.env.RESULT_NAME ?? 'capture-result.json');
 writeFileSync(resultFile, JSON.stringify({ env, results }, null, 1));
 console.log(`-> ${resultFile}`);

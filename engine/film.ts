@@ -11,6 +11,8 @@
  * The timing values are live bindings that grow as scenes register: read them at draw time, not at module load.
  */
 import { check, FilmSpec } from './schema';
+import { setFrameSize } from './util';
+import { restyle } from './style';
 
 export interface FilmMeta {
   id: string;
@@ -26,6 +28,11 @@ export interface FilmMeta {
    * film's text is drawn as written (a film made before the rule keeps its published look).
    */
   punctuation?: 'display';
+  /**
+   * Frame size [width, height] in canvas units, both even; omitted: [1920, 1080]. A portrait film for phones is
+   * [1080, 1920]. Styles lay out for it (their layout.portrait), scenes read W, H, M, COL and portrait().
+   */
+  size?: [number, number];
 }
 
 export let FILM: FilmMeta | null = null;
@@ -42,6 +49,10 @@ export function defineFilm(m: FilmMeta): FilmMeta {
   if (FILM) throw new Error(`film already defined: ${FILM.id}`);
   check(FilmSpec, m, 'film');
   FILM = m;
+  const [w, h] = m.size ?? [1920, 1080];
+  setFrameSize(w, h);
+  // a style installed before the film (selectStyle, then defineFilm) takes its layout for this frame now
+  restyle();
   FPS = m.fps;
   BPM = m.bpm;
   BEAT = 60 / BPM;

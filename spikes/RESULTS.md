@@ -118,15 +118,38 @@ PNG 与 JPEG 序列的吞吐接近，JPEG 体积小一半以上，建议默认 J
 - 标准已修订为两条：时延（帧呈现时刻 − 事件时刻）≤ 66 ms；偏差在 [0, 2] 帧之内。按修订后的标准，0c 通过。
 - 对 BrowserDemo 的含义：合成光标的点击效果放在事件时刻，界面反应在 1–2 帧后出现，和真实操作的观感一致。
 
-## 0d · macOS 实机 — 待协作者运行
+## 0d · macOS 实机 — 完成（2026-10-23）
 
-说明见 `spikes/0d-macos/README.md`。Windows 对照结果在 `spikes/0d-macos/windows-reference/`（GPU 能力全部具备，三张样张正常）。
+机器：Apple M5 Pro（6 性能核 + 12 能效核），macOS 26.5.1，Chrome 155.0.8059.85，ffmpeg 9.0.2。重跑说明见
+`spikes/0d-macos/README.md`，完整结果与原始文件见 `spikes/0d-macos/RESULTS.md`。
+
+| 项 | 结果 |
+|---|---|
+| GPU 检查 | 通过：WebGL2、`EXT_color_buffer_float`、半浮点 framebuffer、着色器都具备（ANGLE Metal）；三张样张正常 |
+| 0a | 现状参数 FAIL（3 处，只在乱序与多 worker 组），CPU 2D canvas PASS，与 Windows 结论相同；GPU 地平线帧 6 个 session 逐像素一致 |
+| 0b | 未运行；`just test-capture` 与 `just test-plan` 覆盖了相近的路径，但不是同一组命令 |
+| 0c | 60 fps（Windows 99）；14 px 文字清晰；点击时延见下 |
+| validate、music、导出、test-validate、test-plan、test-narration | 通过（validate 只有 raa-demo 失败：它的录屏源视频不在仓库）；整片导出约 50 帧/秒（Windows 约 9） |
+| 回归 | 文字栅格化随平台不同，基线改为按平台各录一份（`<style>.<os-arch>.json`）；darwin-arm64 基线已录 |
+
+运行中暴露的问题与修正（`spikes/0d-macos/RESULTS.md` 的"后续"一节）：
+
+- **已核实**：工具用本机 Chrome，版本随自动更新变化，两台机器不同，macOS 品牌版还会拉起 GoogleUpdater（test-export 把它报为遗留进程）。
+  现在 `just browser` 下载固定版本的 Chrome for Testing 155.0.8059.85（四个平台各记 sha256），所有工具优先用它；
+  它的包里没有更新器。用它跑 infotheory 与 math-lessons 的 darwin-arm64 回归逐像素 PASS。Windows 上未运行。
+- **已核实**：test-export 的真实 SIGINT 用例按墙钟第 12 秒发信号，这台机器 10.7 秒就导完了；改为在导出报告写出 150 帧后发信号。
+- **已核实**：test-capture 的"点击后 0–2 帧内显示"检查与 0c 的时延标准不等价（事件在帧内越靠后，同样的时延算出的偏差越大）。
+  macOS 上 screencast 是 60 Hz，帧开始到帧时间戳为 0、1 或 2 个间隔，时延 4–54 ms（180 次点击），约一半点击算出 3 帧。
+  检查改为时延本身：Windows 等平台沿用 66 ms，macOS 83 ms（多一个 60 Hz 间隔）。不在录制时补偿时延：时延在一次录制里就相差
+  0–2 个间隔，常数补偿缩小不了这个范围。
+- **已核实**：test-capture 中 paper-dawn 第一次点击偏 3.3 px 是测量方法的偏差，不是映射错误：镜头推近时运动模糊把圆环一侧拉宽，
+  阈值后的像素质心偏向那一侧。按引擎的几何算出的位置与页面标记相差不到 1 px；圆心改用拟合圆后，7 次运行里所有点击都在 0.9 px 内。
 
 ## 决策门
 
 - 0a：现状 FAIL；改用 CPU 2D canvas 后 PASS（GPU 地平线帧的 ±1 偶发差异，按计划只影响生产路径）。
 - 0b：全部 PASS，余量大。
 - 0c：PASS（事件对齐按修订后的标准）。
-- 0d：待运行。
+- 0d：完成（2026-10-23）。macOS 上引擎与工具链可用；暴露的问题（浏览器版本、两个测试的判定方法）已修正，见上。
 
 建议：保留现有渲染器，0d 结果回来后开始阶段 1。

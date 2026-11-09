@@ -1,5 +1,5 @@
 /** Plan workflow and failure cases in exclusively owned paths; no downloads, real fake-backend FLACs and MP4s. */
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { checkPlan } from './plan-check';
@@ -9,6 +9,8 @@ import { makeNumberedVideo } from './lib/barcode';
 import { mediaDir } from './film-arg';
 
 const ID = `plan-fixture-${process.pid}`, FILM = path.join(ROOT, 'films', ID), WORK = path.join(ROOT, 'out', ID), DIST = path.join(ROOT, 'dist', ID);
+/** A second fixture: a film directory that holds only what is written before the film (brief, research, review). */
+const PRE_ID = `${ID}-pre`, PRE = path.join(ROOT, 'films', PRE_ID);
 const MEDIA = mediaDir(ID);
 const owned: string[] = [];
 const run = (cmd: string[], env: Record<string, string> = {}) => {
@@ -31,6 +33,36 @@ let failed = false;
 try {
   if (existsSync(FILM)) throw new Error(`${FILM} exists; not touching it`);
   for (const p of [WORK, DIST, MEDIA]) { mkdirSync(path.dirname(p), { recursive: true }); mkdirSync(p); owned.push(p); }
+
+  // new-film into an existing directory without film code: the template goes around the material, which stays as it was
+  if (existsSync(PRE)) throw new Error(`${PRE} exists; not touching it`);
+  mkdirSync(PRE); owned.push(PRE);
+  const material: Record<string, string> = { 'brief.md': '# 简报\n', 'research/facts.md': 'F1 1948\n', 'research/sources/a.txt': 'source\n', 'review/01-notes.md': '- one\n' };
+  for (const [f, text] of Object.entries(material)) { mkdirSync(path.dirname(path.join(PRE, f)), { recursive: true }); writeFileSync(path.join(PRE, f), text); }
+  const tree = (dir: string): string => {
+    const out: string[] = [];
+    const walk = (rel: string) => { for (const n of readdirSync(path.join(dir, rel)).sort()) { const r = rel ? `${rel}/${n}` : n, f = path.join(dir, r); if (lstatSync(f).isDirectory()) { out.push(`${r}/`); walk(r); } else out.push(`${r} ${createHash('sha256').update(readFileSync(f)).digest('hex')}`); } };
+    walk('');
+    return out.join('\n');
+  };
+  const bare = tree(PRE);
+  const newFilm = (env: Record<string, string> = {}) => run(['bun', 'scripts/new-film.ts', PRE_ID, '--style', 'nebula', '--plan'], env);
+  for (const at of ['scenes/title.ts', 'main.ts']) {
+    const hooked = newFilm({ NEW_FILM_FAIL_AT: at });
+    ok(hooked.code === 1 && tree(PRE) === bare && !readdirSync(path.join(ROOT, 'films')).some((n) => n.startsWith(`.${PRE_ID}.`)),
+      `new-film into an existing directory: a failure before ${at} removes what it added, nothing staged is left`);
+  }
+  const added = newFilm();
+  const prePlan = existsSync(path.join(PRE, 'film-plan.json')) ? JSON.parse(readFileSync(path.join(PRE, 'film-plan.json'), 'utf8')) : {};
+  ok(added.code === 0 && Object.entries(material).every(([f, text]) => readFileSync(path.join(PRE, f), 'utf8') === text)
+    && ['film.ts', 'main.ts', 'scenes/index.ts'].every((f) => existsSync(path.join(PRE, f))) && prePlan.film === PRE_ID && prePlan.styles?.[0] === 'nebula',
+    'new-film --plan adds the template around brief.md, research/ and review/ without changing them');
+  const full = tree(PRE), again = newFilm();
+  ok(again.code === 1 && /film code/.test(again.err) && tree(PRE) === full, 'new-film refuses a directory that already has film code, and changes nothing');
+  rmSync(PRE, { recursive: true }); mkdirSync(path.join(PRE, 'scenes'), { recursive: true }); writeFileSync(path.join(PRE, 'brief.md'), '# b\n');
+  const scenesOnly = tree(PRE), refusedScenes = run(['bun', 'scripts/new-film.ts', PRE_ID, '--style', 'nebula']);
+  ok(refusedScenes.code === 1 && /scenes/.test(refusedScenes.err) && tree(PRE) === scenesOnly, 'new-film refuses a directory with a scenes/ of its own');
+  rmSync(PRE, { recursive: true, force: true });
   const created = run(['bun', 'scripts/new-film.ts', ID, '--style', 'nebula', '--plan']);
   if (created.code === 0) owned.push(FILM);
   step('new-film --plan', created);
@@ -152,7 +184,7 @@ try {
 finally {
   for (const p of owned.reverse()) {
     const resolved = path.resolve(p);
-    if (!resolved.startsWith(ROOT + path.sep) || ![FILM, WORK, DIST, MEDIA].includes(resolved)) throw new Error(`unsafe cleanup path ${resolved}`);
+    if (!resolved.startsWith(ROOT + path.sep) || ![FILM, WORK, DIST, MEDIA, PRE].includes(resolved)) throw new Error(`unsafe cleanup path ${resolved}`);
     rmSync(resolved, { recursive: true, force: true });
   }
 }

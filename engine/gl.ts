@@ -4,13 +4,16 @@
  *   accumulate(k, K)              upload the finished 2D canvas and average K sub-frames (motion blur)
  *   post(T, grade)                film grain, gentle vignette, a little halation on the plates, warm/cool split
  * The 2D canvas is then overwritten with the graded result; overlays (captions) are drawn on top, sharp.
+ * Every target has the canvas's pixel size, W·SCALE × H·SCALE (allocated on first use, once the film has set its
+ * frame and the page its render scale). Shaders get uRes in pixels and uScale, so effects sized in pixels (grain, a
+ * style's dot grid) divide gl_FragCoord by uScale and look the same at every resolution. Grain does so at whole scales
+ * only: at 4/3 a cell of one frame pixel would be 1, 1 or 2 pixels in a fixed pattern, so it stays per pixel there.
+ * The bloom chain gains a level per doubling (rounded), so at 4/3 its halo is about a quarter smaller in frame units.
  */
 import { cv, ctx } from './draw';
-import { W, H } from './util';
+import { W, H, SCALE } from './util';
 
 export const glc = document.createElement('canvas');
-glc.width = W;
-glc.height = H;
 const ctxGl = glc.getContext('webgl2', { preserveDrawingBuffer: true, antialias: false, alpha: false, premultipliedAlpha: false });
 if (!ctxGl) throw new Error('WebGL2 is not available: the frame pipeline needs it (check the GPU backend / --use-angle)');
 const gl: WebGL2RenderingContext = ctxGl;
@@ -26,6 +29,7 @@ export const HEAD = `#version 300 es
 precision highp float;
 in vec2 vUv; out vec4 o;
 uniform vec2 uRes;
+uniform float uScale;
 #define PI 3.14159265359
 float hash(vec2 p){ uvec2 q=uvec2(ivec2(floor(p))+ivec2(4096))*uvec2(1597334673u,3812015801u); uint n=(q.x^q.y)*1597334673u; n^=n>>16; n*=2246822519u; n^=n>>13; return float(n)*(1./4294967295.); }
 float noise(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.-2.*f);
@@ -54,7 +58,8 @@ void main(){
   c=mix(c, c*mix(uTintS,uTintH,smoothstep(.04,.7,l)), uSplit);
   c=mix(vec3(l),c,uSat);
   c*=1.-uVig*smoothstep(.45,1.15,length(d*vec2(1.,.7))*1.5);
-  float g=hash(gl_FragCoord.xy+vec2(uSeed*37.,uSeed*17.))-.5;
+  float gs=fract(uScale)==0.?uScale:1.;
+  float g=hash(gl_FragCoord.xy/gs+vec2(uSeed*37.,uSeed*17.))-.5;
   c+=g*uGrain*(.6+.4*(1.-l));
   o=vec4(clamp(c,0.,1.),1.);
 }`;
@@ -75,7 +80,7 @@ function program(fs: string, names: string[]): Prog {
   gl.linkProgram(pr);
   if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) throw new Error(`shader link failed: ${gl.getProgramInfoLog(pr)}`);
   const u: Record<string, WebGLUniformLocation | null> = {};
-  for (const n of ['uRes', ...names]) u[n] = gl.getUniformLocation(pr, n);
+  for (const n of ['uRes', 'uScale', ...names]) u[n] = gl.getUniformLocation(pr, n);
   return { pr, u };
 }
 const P_ACC = program(FS_ACC, ['uT', 'uW']);
@@ -106,9 +111,22 @@ function makeFbo(w: number, h: number): Fbo {
   if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw new Error(`half-float framebuffer ${w}x${h} is incomplete on this GPU backend`);
   return { t, f, w, h };
 }
-const SCENE_TEX = makeTex(W, H, false);
-const ACC = makeFbo(W, H);
-const MIPS = [1, 2, 3, 4, 5].map((k) => makeFbo(Math.ceil(W / 2 ** k), Math.ceil(H / 2 ** k)));
+/** The pixel-sized targets: the uploaded scene, the motion-blur accumulator, the bloom chain (one level more per
+ *  doubling of the render scale, so the halo keeps its size in frame units). */
+let SCENE_TEX: WebGLTexture, ACC: Fbo, MIPS: Fbo[] = [];
+let PW = 0, PH = 0;
+function targets(): void {
+  const w = Math.round(W * SCALE), h = Math.round(H * SCALE);
+  if (w === PW && h === PH) return;
+  for (const f of [ACC, ...MIPS]) if (f) { gl.deleteFramebuffer(f.f); gl.deleteTexture(f.t); }
+  if (SCENE_TEX) gl.deleteTexture(SCENE_TEX);
+  glc.width = PW = w;
+  glc.height = PH = h;
+  SCENE_TEX = makeTex(w, h, false);
+  ACC = makeFbo(w, h);
+  const levels = 5 + Math.max(0, Math.round(Math.log2(SCALE)));
+  MIPS = Array.from({ length: levels }, (_, i) => makeFbo(Math.ceil(w / 2 ** (i + 1)), Math.ceil(h / 2 ** (i + 1))));
+}
 function tri(target: WebGLFramebuffer | null, w: number, h: number): void {
   gl.bindFramebuffer(gl.FRAMEBUFFER, target);
   gl.viewport(0, 0, w, h);
@@ -124,11 +142,13 @@ const BG_UNIFORMS = ['uTime', 'uMode', 'uTint', 'uAmp', 'uP', 'uQ'];
 const bgPrograms = new Map<string, Prog>();
 /** Draw a style's background shader (HEAD + body) onto the 2D canvas. `mode` is passed as uMode. */
 export function glPlate(body: string, mode: number, u: BgUniforms = {}, alpha = 1): void {
+  targets();
   let P = bgPrograms.get(body);
   if (!P) bgPrograms.set(body, (P = program(HEAD + body, BG_UNIFORMS)));
   gl.useProgram(P.pr);
   gl.disable(gl.BLEND);
-  gl.uniform2f(P.u.uRes, W, H);
+  gl.uniform2f(P.u.uRes, PW, PH);
+  gl.uniform1f(P.u.uScale, SCALE);
   gl.uniform1f(P.u.uTime, u.time ?? 0);
   gl.uniform1i(P.u.uMode, mode);
   const t = u.tint ?? [0.2, 0.3, 0.7];
@@ -136,14 +156,16 @@ export function glPlate(body: string, mode: number, u: BgUniforms = {}, alpha = 
   gl.uniform1f(P.u.uAmp, u.amp ?? 1);
   gl.uniform1f(P.u.uP, u.p ?? 0);
   gl.uniform1f(P.u.uQ, u.q ?? 0);
-  tri(null, W, H);
+  tri(null, PW, PH);
   ctx.save();
   ctx.globalAlpha = alpha;
-  ctx.drawImage(glc, 0, 0);
+  // the pixel-sized shader output into the frame's W x H units (the current transform scales it back)
+  ctx.drawImage(glc, 0, 0, W, H);
   ctx.restore();
 }
 
 export function accumulate(k: number, K: number): void {
+  targets();
   bindTex(0, SCENE_TEX);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, cv);
   gl.useProgram(P_ACC.pr);
@@ -154,7 +176,7 @@ export function accumulate(k: number, K: number): void {
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE);
   }
-  tri(ACC.f, W, H);
+  tri(ACC.f, PW, PH);
   gl.disable(gl.BLEND);
 }
 
@@ -189,7 +211,8 @@ export function post(T: number, g: Grade, fps = 30): void {
   bindTex(1, MIPS[0].t);
   gl.uniform1i(P.u.uScene, 0);
   gl.uniform1i(P.u.uBloom, 1);
-  gl.uniform2f(P.u.uRes, W, H);
+  gl.uniform2f(P.u.uRes, PW, PH);
+  gl.uniform1f(P.u.uScale, SCALE);
   gl.uniform1f(P.u.uBloomAmt, g.bloom);
   gl.uniform1f(P.u.uCA, g.ca);
   gl.uniform1f(P.u.uVig, g.vig);
@@ -199,7 +222,7 @@ export function post(T: number, g: Grade, fps = 30): void {
   gl.uniform1f(P.u.uSplit, g.split);
   gl.uniform3fv(P.u.uTintS, g.tintS);
   gl.uniform3fv(P.u.uTintH, g.tintH);
-  tri(null, W, H);
+  tri(null, PW, PH);
   bindTex(1, null);
   bindTex(0, null);
 }

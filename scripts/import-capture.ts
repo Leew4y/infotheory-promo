@@ -3,7 +3,7 @@
  *
  *   bun scripts/import-capture.ts --film <film> --id <id> <video> [--fps 30] [--crop W:H:X:Y] [--quality 2]
  *                                 [--viewport WxH] [--dpr 1] [--events <file.jsonl> --sync <rec>=<video>]
- *   bun scripts/import-capture.ts --film <film> --rebuild --from <dir>      re-derive every asset's frames from its source
+ *   bun scripts/import-capture.ts --film <film> --rebuild [--from <dir>]    re-derive every asset's frames from its source
  *
  * - The frames, a fixed-rate JPEG sequence of the first video stream (ffmpeg crop with exact=1, then the fps filter,
  *   -q:v <quality>), go to .cache/captures/<film>/<id>/ (derived, not committed). The frame count is what the fps filter
@@ -13,25 +13,26 @@
  *   frame size, viewport (CSS pixels the source video shows; default the source size) and device pixel ratio (default
  *   1), the crop in source pixels, the source's name, sha256, size, duration and format, how the frames were made
  *   (fps, quality, ffmpeg version), and the events.
- * - The source video stays outside the repository (Develata's decision, 2026-10-09): only its sha256 is recorded.
- *   --rebuild finds each source by file name in --from, checks the sha256, and re-derives the frames (another machine,
- *   a cleared cache). Every manifest is checked first (id, file names, numbers), so no path comes from an unchecked value.
+ * - The source video: its name and sha256 are recorded; it stays outside the repository (Develata's decision,
+ *   2026-10-09, confirmed 2026-11-09: the repository holds text and code). --rebuild finds each source by file name in
+ *   --from (default out/<film>/sources/), checks the sha256, and re-derives the frames (another machine, a cleared
+ *   cache). Every manifest is checked first (id, file names, numbers), so no path comes from an unchecked value.
  * - Events: a JSON-lines file, one { t, type: click|move|key|mark, x, y, label, target, box } per line, on its own
  *   clock; --sync <rec>=<video> says that recording-clock time <rec> is video time <video>. Times keep full precision.
  *   Events outside the video are dropped.
  * - Nothing is replaced until everything is checked: frames are made in a staging directory; the old frames are moved
- *   aside, the new ones moved in, the manifest written (the commit point), and only then the old frames deleted (before
+ *   aside, the new ones moved in, the manifest written (the commit point), and only then the old ones deleted (before
  *   the commit point a failure puts them back). Cleaning up after the commit point never fails the import: a leftover
  *   is reported as a warning. One import per asset at a time (a lock directory .cache/captures/<film>/.<id>.lock);
  *   --rebuild reads each manifest again under its lock and does all its work there.
  * Exit code 0: committed (every asset, for --rebuild); 1: nothing committed for the failing asset; 2: bad arguments.
  */
-import { createReadStream, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import type { CaptureAsset, CaptureEvent } from '../engine/capture';
 import { FILM_ID, mediaDir, requireFilm } from './film-arg';
+import { manifestNames, outSourcesDir, readManifest, sha256 } from './lib/captures';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const argv = Bun.argv.slice(2);
@@ -53,6 +54,7 @@ try { args = parse(); } catch (e) { usage(e instanceof Error ? e.message : Strin
 const o = args!.values;
 const CAPTURES = path.join(ROOT, 'films', FILM, 'captures');
 const MEDIA = path.resolve(mediaDir(FILM));
+const SOURCES = outSourcesDir(FILM);
 
 /** A path directly inside the film's media directory (the only place this tool creates, replaces or deletes). */
 function inMedia(name: string): string {
@@ -66,11 +68,6 @@ async function run(cmd: string[]): Promise<string> {
   const [out, err, code] = await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text(), p.exited]);
   if (code !== 0) fail(`${cmd[0]} failed (${code}): ${err.trim().split('\n').slice(-3).join(' ')}`);
   return out;
-}
-async function sha256(file: string): Promise<string> {
-  const h = createHash('sha256');
-  for await (const chunk of createReadStream(file)) h.update(chunk as Buffer);
-  return h.digest('hex');
 }
 /** The first video stream (the one extract() maps): size, rate, and its duration if the container states it. */
 async function probe(file: string) {
@@ -169,21 +166,6 @@ function writeManifest(a: CaptureAsset): void {
   renameSync(tmp, f);
 }
 
-const posInt = (v: unknown, max = Infinity) => Number.isInteger(v) && (v as number) > 0 && (v as number) <= max;
-/** A committed manifest, checked before anything is derived from it. */
-function checkManifest(n: string, a: CaptureAsset): string[] {
-  const p: string[] = [];
-  if (typeof a.id !== 'string' || !FILM_ID.test(a.id) || `${a.id}.json` !== n) p.push(`id "${a.id}" must be the file name's and lowercase letters, digits, hyphens`);
-  const f = a.source?.file;
-  if (typeof f !== 'string' || !f || f !== path.basename(f) || f !== path.win32.basename(f) || f === '.' || f === '..') p.push(`source.file "${f}" must be a plain file name`);
-  if (typeof a.source?.sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(a.source.sha256)) p.push('source.sha256 must be 64 hex digits');
-  if (!posInt(a.fps, 120) || !posInt(a.frames) || !posInt(a.width) || !posInt(a.height)) p.push('fps (1–120), frames, width and height must be positive integers');
-  const c = a.crop;
-  if (c !== null && !(c && [c.x, c.y].every((v) => Number.isInteger(v) && v >= 0) && posInt(c.w) && posInt(c.h))) p.push('crop must be null or integers { x, y >= 0, w, h > 0 }');
-  if (!posInt(+a.made?.quality, 31)) p.push('made.quality must be an integer 1–31');
-  return p;
-}
-
 function parseCrop(s: string, src: { width: number; height: number }): Crop {
   const m = /^(\d+):(\d+):(\d+):(\d+)$/.exec(s) ?? usage(`--crop ${s}: W:H:X:Y in pixels`);
   const [w, h, x, y] = m.slice(1).map(Number);
@@ -193,25 +175,21 @@ function parseCrop(s: string, src: { width: number; height: number }): Crop {
 
 try {
   if (o.rebuild) {
-    const from = o.from ?? usage('--rebuild needs --from <dir> with the source videos');
+    // out/<film>/sources/ by default (an empty --from too)
+    const from = o.from || SOURCES;
     if (!existsSync(CAPTURES)) usage(`films/${FILM} has no captures`);
-    const read = (n: string): CaptureAsset => {
-      let a: CaptureAsset;
-      try { a = JSON.parse(readFileSync(path.join(CAPTURES, n), 'utf8')); } catch { return fail(`films/${FILM}/captures/${n}: not JSON`); }
-      const p = checkManifest(n, a);
-      if (p.length) fail(`films/${FILM}/captures/${n}: ${p.join('; ')}`);
-      return a;
-    };
+    const read = (n: string): CaptureAsset => readManifest(FILM, n);
     // every manifest checked before anything is touched; each read again under its lock (another import may commit
     // meanwhile), and the source check, extraction and commit done under that lock
-    const names = readdirSync(CAPTURES).filter((n) => n.endsWith('.json'));
+    const names = manifestNames(FILM);
     for (const n of names) read(n);
     for (const n of names) {
       const release = lock(n.slice(0, -'.json'.length));
       try {
         const a = read(n);
         const src = path.join(from, a.source.file);
-        if (!existsSync(src)) fail(`${a.id}: source ${a.source.file} not found in ${from}`);
+        if (!existsSync(src))
+          fail(`${a.id}: source ${a.source.file} (sha256 ${a.source.sha256}) not found in ${from}${from === SOURCES ? `; if it is elsewhere: just captures ${FILM} <dir>` : ''}`);
         const h = await sha256(src);
         if (h !== a.source.sha256) fail(`${a.id}: ${src} has sha256 ${h}, the manifest says ${a.source.sha256}`);
         const s = await stage(a.id, src, { fps: a.fps, crop: a.crop, quality: +a.made.quality });
@@ -253,10 +231,11 @@ try {
         if (info.streamDuration !== null && Math.abs(s.frames - info.streamDuration * fps) > 1 + 1e-6)
           fail(`${id}: ${s.frames} frames extracted, but the video stream lasts ${info.streamDuration}s (${(info.streamDuration * fps).toFixed(2)} frames at ${fps} fps)`);
         const events = o.events ? readEvents(o.events, sync![1] - sync![0], s.frames / fps) : [];
+        const hash = await sha256(src);
         const asset: CaptureAsset = {
           id, fps, frames: s.frames, width: s.width, height: s.height,
           viewport: vp ? { width: vp[0], height: vp[1] } : { width: info.width, height: info.height }, dpr, crop,
-          source: { file: path.basename(src), sha256: await sha256(src), bytes: statSync(src).size, duration: info.duration, width: info.width, height: info.height, fps: +info.fps.toFixed(3) },
+          source: { file: path.basename(src), sha256: hash, bytes: statSync(src).size, duration: info.duration, width: info.width, height: info.height, fps: +info.fps.toFixed(3) },
           events,
           made: { tool: 'import-capture', fps, quality, ffmpeg: s.ffmpeg },
         };

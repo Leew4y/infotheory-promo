@@ -112,7 +112,7 @@ const style: StylePackage = {
 
   // math-lessons shows no screen capture; a plain window in the palette so the style meets the demo contract
   demo: {
-    area: { x: 170, y: 190, w: W - 340, h: H - 420 },
+    get area() { return { x: 170, y: 190, w: W - 340, h: H - 420 }; },
     rippleDur: 0.6,
     pressDur: 0.15,
     cursorEase: (u) => u * u * (3 - 2 * u),

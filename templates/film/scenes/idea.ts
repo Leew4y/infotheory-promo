@@ -1,5 +1,5 @@
-// Chapter 1: one statement, three points, and a small diagram in the right column.
-import { text, ink, circle, arrow, background, statement, row, M, COL, C, F, scene, clamp, sstep, W } from '../../../engine';
+// Chapter 1: one statement, three points, and a small diagram in the right column (in portrait: below the points).
+import { text, ink, circle, arrow, background, statement, row, M, COL, C, F, scene, clamp, sstep, W, portrait } from '../../../engine';
 
 const POINTS: [string, string, string][] = [
   ['01', '第一点', 'What the first point says, in one line.'],
@@ -18,7 +18,7 @@ scene({
     statement('一页只讲一件事', 'One page, one idea.', lt);
     POINTS.forEach(([k, t, n], i) => row(k, t, n, M, 440 + i * 110, sstep(1.2 + i * 0.4, 1.8 + i * 0.4, lt)));
     // the diagram: input -> process -> output, drawn in
-    const y = 560, x0 = COL + 80, x1 = W - M - 80, xm = (x0 + x1) / 2;
+    const y = portrait() ? 1000 : 560, x0 = (portrait() ? M : COL) + 80, x1 = W - M - 80, xm = (x0 + x1) / 2;
     const k = clamp((lt - 2.4) / 2.0);
     circle(x0, y, 56, clamp(k * 3));
     circle(xm, y, 56, clamp(k * 3 - 1), C.accent);
