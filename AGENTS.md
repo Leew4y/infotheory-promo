@@ -48,16 +48,18 @@ Every film command takes the film id first (default `infotheory`); outputs go to
 | `just glyphs <film> [--style id]` | glyph proof for review: the film's character set in every font of each style, drawn from the committed subsets at 48 px with code points and the character in the system font beside it → `out/<film>/glyphs/<style>/NN-<face>.png` + `index.json` |
 | `just glyph-check <font-id>[,<id>] (--text <chars> \| --film <film> [--style id]) [--ref id] [--json]` | the glyph check `just fonts` runs, on catalog CJK fonts without subsetting: vet a font before a style uses it; exit 1 on an error |
 | `just validate <film> [--style id]` | schema, timeline, rendering, text inside the 5 % safe area, no overlapping text, WCAG AA contrast (as exported, glyph by glyph, on sampled frames), display punctuation (warning); `--json` gives the diagnostics list |
-| `just sheet <film> [--style a,b]` | contact sheet of representative moments in every style: `out/<film>/sheet/sheet.jpg` + `sheet.json` |
+| `just sheet <film> [--style a,b]` | contact sheet of representative moments in every style: `out/<film>/sheet/sheet.jpg`, the same at the width a phone shows `phone.jpg` (look at it unscaled), + `sheet.json` |
 | `just sheet-compare <film> <style>[,<style>] [--times t1,t2]` | the same sheet with styles the film does not use (its styles first) → `out/<film>/sheet-compare/`: for one build it writes their font bundles and adds them to `film.ts` / `film-plan.json`, then restores both byte for byte (also after Ctrl+C; a killed run is undone by the next one) |
 | `just texts <film> [--style id]` | every displayed and spoken text for fact-checking → `out/<film>/texts.md` + `texts.json`: per scene with film times, plan title/copy/captions, narration lines (`text`, `read`, `en`, lines without a caption marked), then the literals of the film's code (in a hand-written film: its captions and labels) |
 | `just shots <film> 5,20.5 [--style id]` | single frames |
 | `just covers <film> [--only a,b]` | the film's covers (`cover({ name, size, kind, draw, overlay })` from the engine, in a module main.ts imports; each at its own size, e.g. 1080 × 1920 and 1920 × 1080) → `out/<film>/covers/<name>.png` + `.jpg`; text outside the image is an error, in the outer 5 % a warning |
 | `just chapters <film>` | chapter timestamps for a video description (`MM:SS 中文 · English`, from scenes' `chapter` / `ch`; a hook before chapter 1 joins it at 00:00), checked against YouTube's rules (00:00 first, at least 3, each at least 10 s) → `out/<film>/chapters.txt` |
-| `just dev <film>` | preview at http://127.0.0.1:5174 (`?style=<id>`) |
+| `just dev <film>` | preview at http://127.0.0.1:5174: opens paused, a reload (every edit) returns to the same moment of the same scene; `?style=<id>`, `?scene=<name>`, `?t=<s>`, `?loop=1` (key L: loop the scene) |
 | `just regress <film>` | pixel regression per style against this platform's baseline `regress/<style>.<os>-<arch>.json` (`--update` only after a person approved the change) |
 | `just export <film> [workers crf] [--noaudio] [--style id] [--res <px>] [--maxrate <Mbit/s>] [--for x]` | the video; `--res` = pixels on the short side (1440, 2160; 720 for a small preview), rendered at that scale, not upscaled, named `<film>[-<style>]-<res>p.mp4`; `--for x` caps the bitrate at 20 Mbit/s and warns past 140 s / 512 MB |
 | `just check`, `just check-imports`, `just test-validate`, `just test-export <film>` | type check, boundaries, tests |
+| `just verify <film> [--style id] [--res px] [--for x] [--file path] [--noaudio] [--json]` | the exported MP4 itself: it decodes, frames and size, every scene's middle frame against the current build, encoded loudness and true peak, the audio against its mix → `out/<film>/verify/` (`verify.json` with the file's sha256, `sheet.jpg`, `phone.jpg`) |
+| `just defects` | check the defect ledger `docs/defects.json` (every guard still in its file) and list the open defects |
 | `just font-catalog` | download and verify the whole font library |
 | `just browser` | the pinned browser (Chrome for Testing, version and sha256 in `scripts/lib/browser-pin.ts`) into `.cache/chrome/`; every tool prefers it (`$CHROME_PATH` first), an installed Chrome only with a warning; `just setup` runs it |
 | `just import-capture <film> <id> <video> [--fps 30] [--crop W:H:X:Y] [--events f.jsonl --sync rec=video]` | a screen recording (OBS, any video) becomes capture `<id>`: manifest `films/<film>/captures/<id>.json`, frames in `.cache/captures/<film>/<id>/` |
@@ -65,6 +67,7 @@ Every film command takes the film id first (default `infotheory`); outputs go to
 | `just captures <film> [dir]` | re-derive every capture's frames from its source videos (by name in `dir`, default `out/<film>/sources/`, checked by sha256) |
 | `just test`, `just test-capture`, `just bench-capture` | unit tests; capture end-to-end cases; capture throughput and memory |
 | `just narrate <film> [--resynth ids\|all]` | synthesize plan lines (otherwise `narration.json`) into `films/<film>/narration/<id>.flac` and the lock (`narration.lock.json`); both committed |
+| `just hear <film>` | transcribe the committed narration (local, Apple silicon) and compare it with each line's `read`: `out/<film>/hear.md` lists what to listen to; a person judges, exit 1 only for a line that is clearly not its audio or has none |
 | `just mix <film> [--music file\|none]` | final mix: music ducked under the narration, mastered to −16 LUFS → `out/<film>/master.wav` (the export uses it and refuses a stale one) |
 | `just tts-setup`, `just test-narration` | local TTS into `.cache/tts/`: on Apple silicon the `speech` tool and Fun-CosyVoice3-0.5B in MLX (2.3 GB, pinned, backend `cosyvoice3-mlx`), elsewhere the PyTorch model (5.4 GB, backend `cosyvoice3`); narration end-to-end cases on the fake voice |
 | `just voice-design <voice> --describe "A=<text>" [...]` / `--pick A` | Apple silicon: design voice prompts from descriptions (Qwen3-TTS VoiceDesign, pinned), check them (transcribed back, pitch), audition each read by CosyVoice3 (`out/voice-design/<voice>/*-sample.mp3`), keep one as `voices/<voice>/` with its provenance |
@@ -88,7 +91,8 @@ Every film command takes the film id first (default `infotheory`); outputs go to
   `source` and `license`, and matching lowercase `sha256`; optional `generator`, `seed`, `notes` record provenance.
   Captures, narration FLACs and fonts retain their own manifests/locks. No general asset loader is needed for this phase.
 - `frame(t)` is a pure function of `t`: no `Math.random`, no wall clock, no state carried between frames; use
-  `mulberry`, `hash1`, `noise1` with fixed seeds.
+  `mulberry`, `hash1`, `noise1` with fixed seeds. `just regress` compares frames out of order and names an
+  order-dependent frame; `--update` refuses to record one (`just test-regress`).
 - Text only through `text()` / `label()` / the style's blocks, in the style's font roles (`F.body`, `F.latin`, `F.math`,
   `F.mono`) and palette roles (`C.fg`, `C.muted`, `C.accent`, ...). No hex colours, font names or pixel margins that
   belong to a style inside scenes; geometry from `M`, `COL`, `W`, `H`.
@@ -155,11 +159,15 @@ Every film command takes the film id first (default `infotheory`); outputs go to
   a designed or licensed prompt clip, never a clone of a real person without their consent. Run `just fonts <film>` after changing captions. With narration, `demoScene`'s `dur` is a minimum (footage
   is never cut). A film with narration exports only with a current final mix (`just mix`; `just all` runs music → mix →
   export); write numbers, versions and amounts out in `read` (the voice has no text normaliser).
-- Done means: `just check`, `just check-imports`, `just validate <film>` (0 errors in every style) and `just regress
-  <film>` (every style with a baseline for this platform) pass, and the sheet has been looked at. Baselines are per
+- A defect found while making a film goes into `docs/defects.json` when it is found, with what would stop it coming
+  back: `guarded` (a command fails on it), `assisted` (a command gives the evidence, a person judges) or `open` (nothing
+  yet). Review notes record what happened; the ledger is what closes it. `just defects` lists what is still open.
+- Done means: `just check`, `just check-imports`, `just defects`, `just validate <film>` (0 errors in every style) and
+  `just regress <film>` (every style with a baseline for this platform) pass, the sheet has been looked at (`phone.jpg`
+  too for a film seen on phones), and a delivered MP4 passed `just verify <film>`. Baselines are per
   platform because text rasterises differently on macOS and Windows; record a missing one for your platform from a
   known-good commit (`scripts/regress.ts` header: a worktree build and `--dist ... --update`), never from your change,
-  and say which platform's baselines you could not run. The layout checks sample five frames
+  and say which platform's baselines you could not run. The layout checks sample five frames and every caption
   per scene and judge axis-aligned boxes: a strong heuristic, not a proof. Report what was verified, what was not, and
   anything only inferred.
 

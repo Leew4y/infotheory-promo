@@ -86,10 +86,10 @@ just captures demo [dir]      # 换机器或清了缓存后，从源视频重建
 just fonts demo               # 字体子集（每个风格一套）；生成前检查中文字形（两个字画成一样、字腔被填实、标点按西文排），有错就停，旧子集不动
 just glyphs demo              # 字形校样：用随仓库的字体子集把片中每个字逐字画出（48 px，标码位，旁边是系统字体的同一个字）→ out/demo/glyphs/<style>/；换字体后要逐格看过
 just glyph-check <字体 id> --film demo   # 字形检查单独跑（不生成子集），选字体前先查；字体库里记了 defects 的字体（如 ZCOOL XiaoWei）只有风格的 fonts.json 写明 acceptDefects 理由（须经本人同意）才能用
-just dev demo                 # 预览 http://127.0.0.1:5174：空格播放/暂停，←/→ 5 秒，, . 单帧，[ ] 跳场景，F 全屏；?style=<id> 切换风格
+just dev demo                 # 预览 http://127.0.0.1:5174：空格播放/暂停，←/→ 5 秒，, . 单帧，[ ] 跳场景，L 循环当前场景，F 全屏；改代码后停在原场景原时刻；?style=<id> ?scene=<名> ?t=<秒> ?loop=1
 just render-scene demo idea --draft / just render-range demo 1 3 --draft   # 无声局部，stdout 一行 JSON 摘要
 just shots demo 5,20.5        # 检查帧 → out/demo/shots/
-just sheet demo               # 拼图：代表时刻 × 每个风格 → out/demo/sheet/sheet.jpg（--style a,b；--times t1,t2）
+just sheet demo               # 拼图：代表时刻 × 每个风格 → out/demo/sheet/sheet.jpg，手机宽度的 phone.jpg（--style a,b；--times t1,t2）
 just sheet-compare demo paper-dawn,nebula   # 拼图里加上片子没用的风格（构建期间临时改动，构建完逐字节恢复）
 just texts demo               # 全部画面文字与旁白 → out/demo/texts.md
 just covers demo              # 封面：片子里用 cover({ name, size, draw, overlay }) 声明，各自的画幅（竖版 1080×1920、横版 1920×1080 等）→ out/demo/covers/
@@ -97,10 +97,12 @@ just chapters demo            # 章节时间戳（贴进视频简介），按 Yo
 just validate demo            # 所有风格：声明、时间轴、渲染、出画面、出 5% 安全区、文字重叠、WCAG AA 对比度、显示标点
 just cues demo / just music demo / just mix demo [--music file|none]   # 音效 cue 与时间轴 / 配乐 / 最终混音
 just export demo [workers crf] [--res 2160] [--for x] [--maxrate 20] [--noaudio] [--style id]
-just all demo                 # cues → music → mix → export
+just verify demo              # 成片本身：能完整解码、帧数、每场中间帧对照当前构建、编码后响度、音轨对照混音 → out/demo/verify/
+just all demo                 # cues → music → mix → export → verify
 just check / just check-imports / just test   # 类型检查 / 依赖方向 / 单元测试
+just defects                  # 缺陷台账 docs/defects.json：每条的检查还在不在，列出还没人防的
 just regress demo [--update]  # 像素回归，每个风格、每个平台一份基线
-just test-validate / just test-plan / just test-narration / just test-capture / just test-export infotheory
+just test-validate / just test-plan / just test-narration / just test-capture / just test-verify / just test-regress / just test-export infotheory
 just font-catalog             # 下载并校验字体库（约 80 MB）；新增字体须经确认后用 --lock 登记
 ```
 

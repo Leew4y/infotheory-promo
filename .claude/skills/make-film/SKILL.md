@@ -45,7 +45,7 @@ Mac, not on this branch; teardown in its `research/references.md`). The rules he
   defaults are E and A (`audio/synth.py`): give each a `midi` from the score's key, and shorten the decay in `score.py`
   (`synth.FX.update`) so a cue ends before the chord changes. renao had 14 cues out of key and tails that clashed with
   the next chord.
-- Nobody has heard it. You cannot hear audio, and neither can Codex: its audits measure spectra, loudness and the
+- Nobody has heard it. `just hear <id>` transcribes the narration back and lists the lines to listen to; it is a machine's ear, and hand-over names them. Beyond that you cannot hear audio, and neither can Codex: its audits measure spectra, loudness and the
   schedule. Say so in the hand-over, with what only an ear can settle, and offer an effects-only track: give the
   film's `score.py` a `SCORE` variable (`full` renders the music and the cues, `sfx` skips the music and still calls
   `synth.place_cues(cues)`), then `SCORE=sfx just music <id>`, `just mix <id>`, an export with `--out`, and render the
@@ -93,6 +93,8 @@ descriptions and plays each in narration; they choose; never clone a real person
 
 ## 3. Scenes
 
+How scenes are written here, with the code they use: `docs/scene-patterns.md`.
+
 `just scaffold <id>` writes a module per plan scene (never overwrites). Fill in `draw` with the style's roles
 (`text`, `statement`, `plate`, `backdrop`, `C.*`, `F.*`, `M`, `COL`, `W`, `H`; in a portrait film one column,
 stacked top to bottom, nothing important in the bottom quarter, where the captions and the phone app sit), texts
@@ -112,6 +114,7 @@ in a block whose other line ends in ？ or ！; use `displayText`. Then `just fo
 - Look at the frames yourself (read the images) before showing anyone: legibility, what the eye goes to, whether the
   demo screen is readable at its size, whether a number on screen matches the narration. For a portrait film judge
   legibility at phone size: a 1080-wide frame is about 390-430 points wide on a phone, so text under ~28 px reads as small print.
+  Any film that may be watched on a phone: look at the sheet's `phone.jpg` unscaled (a landscape film in a portrait feed gets the same width).
 - The same sentence should not be both large on the page and a caption (math-lessons review 09): show a keyword,
   number or diagram, or mark the line `shown`.
 
@@ -120,12 +123,14 @@ in a block whose other line ends in ？ or ！; use `displayText`. Then `just fo
 ```bash
 just plan-check <id>        # plan, modules, copy only from the plan, captures, narration lock, assets
 just validate <id>          # rendering, safe area, overlaps, contrast, glyphs, display punctuation (+ plan diagnostics)
+just hear <id>              # narrated films: the transcript against what each line should say (out/<id>/hear.md)
 just mix <id>               # final mix: every line >= 6 dB over the music, -16 LUFS
 ```
 
 ## 6. Revise (at least one full round on your own)
 
-Write down what is wrong (in `films/<id>/review/NN-*.md`): accuracy of every claim and number, clarity of the
+A defect that a check should have caught goes into `docs/defects.json` as well (AGENTS.md): the note says what
+happened, the ledger what stops it next time. Write down what is wrong (in `films/<id>/review/NN-*.md`): accuracy of every claim and number, clarity of the
 argument in 60–120 s, pacing (no scene longer than its content), legibility, consistency of terms. Fix in the plan
 first, then the scenes; re-narrate only changed lines. For anything factual, keep sources in `films/<id>/research/`.
 Check the facts against `just texts <id>` (`out/<id>/texts.md`): every displayed string and every spoken line with
@@ -136,5 +141,8 @@ its scene and time, exactly as the sources hold them; it is also what to hand an
 `just export <id>` (final: about 50 frames/s on an M5 Pro with 4 workers, about 9 on the Windows laptop of the plan;
 check that no other export runs — a timeout prints the load and other exports). `--res 2160` for a 4K master
 (rendered at that resolution), `--for x` for an X post (bitrate cap and length/size warnings).
-Hand the person the MP4, the sheet and a short note: what was verified, what was not, what you chose for them.
+Then `just verify <id>` (same `--style` / `--res` / `--for` as the export): the file against the current build and its mix, and
+the loudness after encoding. An error means the MP4 is not the film that passed the checks: fix or re-export, do not
+hand it over. Look at `out/<id>/verify/sheet.jpg` and `phone.jpg`: those are the delivered frames, a scene each.
+Hand the person the MP4, `sheet.jpg` and a short note: what was verified, what was not, what you chose for them.
 The person approves the film; do not publish it. No credit line on screen unless the person asks for one.
