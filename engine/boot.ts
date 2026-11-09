@@ -39,6 +39,7 @@ import { coverNames, getCover } from './cover';
 import { restyle } from './style';
 import { film, FPS, FRAMES, TOTAL } from './film';
 import { assertPlanScenes } from './plan';
+import { startPlace, type Place } from './dev-place';
 
 declare global {
   interface Window {
@@ -113,6 +114,7 @@ export function boot(o: BootOptions): void {
   // Fonts: only the active style's bundled subsets for this film, loaded explicitly. A missing bundle or a face that
   // fails to load is an error: __ready() throws, so the tools stop instead of rendering with a system fallback.
   let fontsReady = false;
+  let onReady = (): void => {};
   let fontError: string | null = null;
   const sid = style().id;
   const manifest = o.fonts.find((m) => m.style === sid && m.film === film().id);
@@ -135,6 +137,7 @@ export function boot(o: BootOptions): void {
       const l = document.getElementById('load');
       if (l) l.textContent = o.readyText ?? '字体已就绪 · 建议全屏观看（F）';
       frame(0);
+      onReady();
     })
     .catch((e) => {
       fontError = `page not ready: ${e instanceof Error ? e.message : String(e)}`;
@@ -247,8 +250,11 @@ export function boot(o: BootOptions): void {
     // a paused seek draws at once (with stand-in frames if media is still loading), then again once its media is in;
     // a later seek makes the earlier one's redraw stale
     let seekSeq = 0;
+    // just dev: the scene played over and over (key L, ?loop=1); a seek out of it moves the loop to the scene it lands in
+    let loopScene: ReturnType<typeof sceneAt> | null = null;
     const setT = (t: number) => {
       au.currentTime = clamp(t, 0, TOTAL - 0.01);
+      if (loopScene && (au.currentTime < loopScene.t0 || au.currentTime >= loopScene.t0 + loopScene.d)) loopScene = sceneAt(au.currentTime);
       if (!useAudio) clock0 = performance.now() - au.currentTime * 1000;
       if (playing) return;
       const T = au.currentTime, seq = ++seekSeq;
@@ -264,12 +270,13 @@ export function boot(o: BootOptions): void {
       fill.style.width = `${(T / TOTAL) * 100}%`;
       tm.textContent = fmtTime(T);
       const sc = sceneAt(T);
-      info.textContent = `${T.toFixed(2)}s  [${sc.name} +${(T - sc.t0).toFixed(2)}s]`;
+      info.textContent = `${T.toFixed(2)}s  [${sc.name} +${(T - sc.t0).toFixed(2)}s]${loopScene ? '  loop' : ''}`;
     };
     function loop() {
       const T = now();
       draw(T);
-      if (T >= TOTAL - 0.05) {
+      if (loopScene && T >= loopScene.t0 + loopScene.d - 0.05) setT(loopScene.t0);
+      else if (T >= TOTAL - 0.05) {
         playing = false;
         pp.textContent = '▶';
       }
@@ -286,6 +293,7 @@ export function boot(o: BootOptions): void {
       requestAnimationFrame(loop);
     }
     function pause() {
+      if (!useAudio) au.currentTime = now(); // without audio the clock runs on: the pause is where it was
       playing = false;
       pp.textContent = '▶';
       au.pause();
@@ -328,7 +336,38 @@ export function boot(o: BootOptions): void {
         const prev = SC.filter((x) => x.t0 < au.currentTime - 0.3);
         if (prev.length) setT(prev[prev.length - 1].t0);
       }
+      if (import.meta.env.DEV && e.code === 'KeyL') {
+        loopScene = loopScene ? null : sceneAt(au.currentTime);
+        if (!playing) draw(au.currentTime);
+      }
       poke();
     });
+
+    // just dev: no start card, and a reload (Vite reloads the page on every edit) comes back to the same place
+    if (import.meta.env.DEV) {
+      const key = `film-preview:${film().id}`;
+      window.addEventListener('pagehide', () => {
+        const T = playing ? now() : au.currentTime, sc = sceneAt(T);
+        const place: Place = { search: location.search, scene: sc.name, lt: T - sc.t0, loop: !!loopScene, playing };
+        try { sessionStorage.setItem(key, JSON.stringify(place)); } catch { /* the place is only a convenience */ }
+      });
+      onReady = () => {
+        let saved: Place | null = null;
+        try { saved = JSON.parse(sessionStorage.getItem(key) ?? 'null'); } catch { /* opens from the URL */ }
+        const start = startPlace(SC, TOTAL, location.search, saved);
+        if (start.error) {
+          console.error(start.error);
+          const l = document.getElementById('load');
+          if (l) l.textContent = start.error;
+          return; // the start card stays, with the message
+        }
+        document.getElementById('start')?.remove();
+        setT(start.t);
+        if (start.loop) loopScene = sceneAt(au.currentTime);
+        if (start.playing) play();
+        else draw(au.currentTime);
+        poke();
+      };
+    }
   }
 }
