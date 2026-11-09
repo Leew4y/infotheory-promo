@@ -36,7 +36,7 @@ import path from 'node:path';
 import { parseArgs } from 'node:util';
 import type { CaptureAsset, CaptureEvent } from '../engine/capture';
 import { FILM_ID, mediaDir, requireFilm } from './film-arg';
-import { manifestNames, mb, readManifest, sha256, SOURCE_LIMIT, sourcesDir } from './lib/captures';
+import { manifestNames, mb, readManifest, sha256, SOURCE_LIMIT, sourceOwner, sourcesDir } from './lib/captures';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const argv = Bun.argv.slice(2);
@@ -118,13 +118,8 @@ interface StagedSource { tmp: string; dst: string }
  */
 async function stageSource(id: string, src: string, hash: string): Promise<StagedSource | null> {
   const name = path.basename(src), dst = path.join(SOURCES, name);
-  for (const n of manifestNames(FILM)) {
-    if (n === `${id}.json`) continue;
-    let other: CaptureAsset;
-    try { other = readManifest(FILM, n); } catch { continue; }
-    if (other.source.file === name && other.source.sha256 !== hash)
-      fail(`${id}: films/${FILM}/captures/sources/${name} is the source of capture "${other.id}" (another file of that name): rename the video before importing it with --store-source`);
-  }
+  const owner = sourceOwner(FILM, id, name, hash);
+  if (owner) fail(`${id}: films/${FILM}/captures/sources/${name} is the source of capture "${owner}" (another file of that name): rename the video before importing it with --store-source`);
   if (existsSync(dst) && realpathSync(dst) === realpathSync(src)) return null;
   if (existsSync(dst) && (await sha256(dst)) === hash) return null;
   mkdirSync(SOURCES, { recursive: true });

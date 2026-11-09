@@ -14,7 +14,7 @@ void main(){
   vec3 lav = vec3(.84, .96, .95), blu = vec3(.84, .89, 1.0);
   vec3 c = mix(base, lav, g1 * .55);
   c = mix(c, blu, g2 * .45);
-  c = mix(c, vec3(.985), smoothstep(-.2, -1., uv.y) * .6);
+  c = mix(c, vec3(.985), (1. - smoothstep(-1., -.2, uv.y)) * .6);
   c -= vec3(.10, .10, .04) * exp(-pow((uv.y + .32) * 70., 2.)) * .35 * uQ * exp(-uv.x * uv.x * 1.5);
   c += (hash(gl_FragCoord.xy) - .5) / 255.;
   o = vec4(c * uAmp, 1.);

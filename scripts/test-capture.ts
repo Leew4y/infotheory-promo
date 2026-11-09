@@ -353,6 +353,12 @@ demoScene({ name: 'webbare', ...webOpts, clicks: [] });
   if (clash.code !== 1 || !/is the source of capture "(gray|kept)"/.test(clash.err) || hash(path.join(SOURCES, 'gray.mp4')) !== kept?.source.sha256 || existsSync(path.join(FILM, 'captures', 'other.json')) || existsSync(path.join(MEDIA, 'other')))
     failures.push(`--store-source name clash: exit ${clash.code}: ${clash.err.trim()}`);
   else ok("--store-source refuses a file name another capture's source has with other content; nothing changes");
+  // recording under an id whose <id>.mp4 is another capture's source (kept's gray.mp4): refused before anything is swapped
+  const grayManifest = readFileSync(path.join(FILM, 'captures', 'gray.json'), 'utf8');
+  const recClash = run(['bun', 'scripts/capture.ts', '--film', ID, '--id', 'gray', path.join(ROOT, 'scripts', 'test-fixtures', 'capture-scenario.ts'), '--store-source']);
+  if (recClash.code !== 1 || !/is the source of capture "kept"/.test(recClash.err) || hash(path.join(SOURCES, 'gray.mp4')) !== kept?.source.sha256 || readFileSync(path.join(FILM, 'captures', 'gray.json'), 'utf8') !== grayManifest || readdirSync(SOURCES).some((n) => n.startsWith('.')))
+    failures.push(`capture --store-source over another capture's source: exit ${recClash.code}: ${recClash.err.trim()}`);
+  else ok("capture --store-source refuses an id whose video is another capture's source; nothing changes");
   // the other sources put there by hand (as the pre-check's message says), then the cache cleared
   copyFileSync(video, path.join(SOURCES, path.basename(video)));
   copyFileSync(path.join(WORK, 'web.mp4'), path.join(SOURCES, 'web.mp4'));
