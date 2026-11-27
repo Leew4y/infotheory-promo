@@ -34,7 +34,7 @@ FILM, FID = 'grow1', 'g1c'
 V2 = '--v2' in sys.argv[1:]
 ARGS = [a for a in sys.argv[1:] if a != '--v2']
 OUT = os.path.abspath(ARGS[0]) if ARGS else os.path.join(REPO, 'films', FILM, 'delivery')
-V2_T = 27.6
+V2_T = 30.3   # the close-up with 「……」 and the red 「已道歉」 on the window
 WORK = os.path.join(REPO, 'out', FILM, 'covers_v2' if V2 else 'covers')
 TITLE = '第 3 天，头顶到 5 楼' if V2 else '长高一倍，体重变几倍？'
 PRE = 'cover_v2_' if V2 else 'cover_'
@@ -123,6 +123,14 @@ bbox = d.textbbox((0, 0), TITLE, font=f)
 x = (1080 - w) / 2
 y_ink_bottom = 1440 - 216 - 24          # the ink ends 24 px above the bottom 15 % (y 1224)
 d.text((x, y_ink_bottom - bbox[3]), TITLE, font=f, fill=INK)
+if V2:
+    # the brief's small 「体重 ×512」, right-aligned between the band and the picture
+    fs = ImageFont.truetype(SERIF, 60)
+    fs.set_variation_by_axes([700])
+    w1, w2 = d.textlength('体重 ', font=fs), d.textlength('×512', font=fs)
+    x2 = 1015 - w2
+    d.text((x2 - w1, 470), '体重 ', font=fs, fill=INK)
+    d.text((x2, 470), '×512', font=fs, fill=(0x9E, 0x42, 0x1C))
 ok = margins_ok(p, 'cover_3x4', 65, 86, bottom=1440 - 216) and ok
 p.save(os.path.join(OUT, PRE + '3x4.jpg'), quality=94, subsampling=0)
 for n in (PRE + '4x3', PRE + '3x4'):

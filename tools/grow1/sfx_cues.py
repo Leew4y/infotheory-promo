@@ -30,7 +30,7 @@ for c in sorted(cues, key=lambda c: c['t']):
         bad.append(f'unknown kind {kind!r} at {c["t"]} ({", ".join(KINDS)})')
     if kind == 'stamp' and params.get('day') not in (1, 2, 3):
         bad.append(f'stamp at {c["t"]}: day {params.get("day")!r} (1, 2 or 3)')
-days = [c['day'] for c in out if c['kind'] == 'stamp' and c.get('day') in (1, 2, 3)]
+days = [c['day'] for c in out if c['kind'] == 'stamp' and c.get('day') in (1, 2, 3) and not c.get('extra')]  # extra: a stamp that is not a counter step
 if len(set(days)) != len(days):
     bad.append(f'a day is stamped more than once: {days}')
 if not out:

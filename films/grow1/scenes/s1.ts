@@ -21,7 +21,8 @@ import lock from '../narration.lock.json';
 import {
   STILL, grid, pic, picW, calcTag, person, column, RIDE, GROUND, counter, COUNTER, GRID,
   ob, box, cubes, weight, gauge, endCard, tailCard, commentCard, type Obl,
-  IDENT, zoomView, type View, building, floorOf, FLOOR_M, SILL_M, table, bowl, book, potAndCan, bubble, whorl, shirtSeams, crowd,
+  IDENT, type View, building, floorOf, FLOOR_M, SILL_M, table, bowl, book, potAndCan, bubble, whorl, shirtSeams, crowd,
+  windowView, rubberStamp,
 } from '../kit';
 
 // ------------------------------------------------------------------------------------------------ numbers (literal)
@@ -66,9 +67,10 @@ const NB: Neighbour[] = [
 const TOWER_X = 300;
 const TOWER_H = [600, 560, 225];
 const DROP = 0.15, DROP_T = 0.3;
-/** The close-up of the 5th-floor window: the panel and its magnification. */
-const PANEL = { x0: 520, y0: 80, x1: 1540, y1: 1000 };
-const CLOSE: View = zoomView(920, 230, 1040, 520, 3.4);
+/** The close-up of the 5th-floor window (a front view from inside): the panel, px per metre, the floor's y, the
+ *  window's centre x, the neighbour's x. */
+const PANEL = { x0: 128, y0: 80, x1: 1640, y1: 1000 };
+const CLOSE = { s: 400, floor: 975, cx: 1080, nb: 470 };
 
 // ------------------------------------------------------------------------------------------------ beats
 
@@ -77,8 +79,8 @@ interface Beats {
   x8: number; kg: number; cube: number; L: number; Wd: number; D: number; all: number;
   sec: number; w2: number; d2: number; x4: number; wts: number; fall: number; cm: number; r2: number; carry2: number;
   again2: number; pop3: number; again3: number;
-  x512: number; t3584: number; cm3: number; r8: number;
-  top5: number; close: number; pop5: number;
+  x512: number; t3584: number; cm3: number; x8s: number; r8: number;
+  top5: number; close: number; pop5: number; sorry: number; apol: number;
   col: number; two: number; two2: number; you: number; one: number; eight: number; eight2: number; seven: number;
   ask: number; card: number; tail: number;
 }
@@ -104,8 +106,8 @@ function beats(): Beats {
   const [l2d, l2e, l2f] = [span('s1-2', 3), span('s1-2', 4), span('s1-2', 5)];
   const [l3a, l3b, , l3d, l3e] = voParts('s1-3', ['截面只算', '宽', '和', '厚：', '4 倍。']);
   const [l4a, l4b, l4c, l4d] = voParts('s1-4', ['8 倍的体重，', '压在 4 倍的截面上：', '每平方厘米，', '扛两倍。']);
-  const [l8a, l8b, l8c] = voParts('s1-8b', ['512 倍，', '35.84 吨。', '每平方厘米，', '8 倍。']);
-  const [g5a] = voParts('g5b', ['头顶到了 5 楼。', '5 楼的邻居，', '我替你道过歉了。']);
+  const [l8a, l8b, l8c, l8d] = voParts('s1-8b', ['512 倍，', '35.84 吨。', '每平方厘米，', '8 倍。']);
+  const [g5a, g5b, g5c] = voParts('g5b', ['头顶到了 5 楼。', '5 楼的邻居，', '我替你道过歉了。']);
   const [lAa, lAb, lAc, lAd, lAe] = voParts('s1-10', ['两倍，', '就是今天的你，', '背着另一个你。', '8 倍，', '背着七个。']);
   const [, , , l9d] = voParts('g9', ['第几天，', '骨头', '扛不住？', '正片里算。']);
   return {
@@ -119,9 +121,12 @@ function beats(): Beats {
     // the ×2 pointer rises in the pause before 扛两倍 (the pause after it holds the day-2 stamp)
     r2: frUp(spanEnd('s1-4', 2) + 0.03),
     again2: vo('s1-5'), pop3: frUp(spanEnd('s1-5', 0) + 0.04), again3: vo('s1-7'),
-    x512: l8a, t3584: l8b, cm3: l8c, r8: frUp(spanEnd('s1-8b', 3) + 0.03),
-    top5: g5a, close: g5a + 0.62, pop5: fr((spanEnd('g5b', 0) + span('g5b', 1)) / 2),
-    col: vo('s1-10') - 0.06, two: lAa, two2: frUp(spanEnd('s1-10', 0) + 0.03), you: lAb, one: lAc, eight: lAd,
+    x512: l8a, t3584: l8b, cm3: l8c, x8s: Math.max(l8d, span('s1-8b', 3)), r8: frUp(spanEnd('s1-8b', 3) + 0.03),
+    top5: g5a, close: spanEnd('g5b', 0) - 0.12, pop5: fr((spanEnd('g5b', 0) + span('g5b', 1)) / 2),
+    // 「已道歉」 lands once 我替你道过歉了 has been said (its sound in the pause after); the close-up stays a little into
+    // s1-10 so the stamp can be seen, then the column comes in
+    sorry: Math.max(g5c, span('g5b', 2)), apol: frUp(spanEnd('g5b', 2) + 0.04),
+    col: vo('s1-10') + 0.35, two: lAa, two2: frUp(spanEnd('s1-10', 0) + 0.03), you: lAb, one: lAc, eight: lAd,
     eight2: frUp(spanEnd('s1-10', 3) + 0.03), seven: lAe,
     // the comment card once the question has been asked (after 扛不住？), the end card on 正片里算
     ask: fr(spanEnd('g9', 2) + 0.06), card: l9d,
@@ -237,11 +242,14 @@ function gaugeMoves(): [number, number, number, number][] {
   return [
     [B.r2, B.r2 + 0.26, 1, 2],
     [B.stamp[1] + 0.7, B.stamp[1] + 1.0, 2, 4],
-    [B.r8, B.r8 + 0.14, 4, 8],
+    // 8 倍 (s1-8b): from the word, arriving in the pause after it, where the ticks are
+    [B.x8s, B.r8 + 0.14, 4, 8],
     // while the close-up hides it, back to today's 1
     [B.close + 0.5, B.close + 0.6, 8, 1],
-    [B.two2, B.two2 + 0.16, 1, 2],
-    [B.eight2, B.eight2 + 0.12, 2, 8],
+    // the ending (brief: "你"背着一个 -> ×2, 叠到 7 个 -> ×8): ×2 as the first rider lands (silent: inside speech), ×8
+    // from 8 倍 to the pause after it (ticks there)
+    [B.one + 0.05, B.one + 0.4, 1, 2],
+    [B.eight, B.eight2 + 0.12, 2, 8],
   ];
 }
 const GAUGE_LABEL: Record<number, string> = { 2: '×2', 4: '×4', 8: '×8' };
@@ -263,6 +271,7 @@ function gaugeState(lt: number): { v: number; label: string | null; la: number }
 
 /** The building, the neighbours, the reference and the grown silhouette, through a view (main or close-up). */
 function world(lt: number, v: View, a: number, c: { s: number; hw: number; day: number; since: number }, close: boolean, labelA = 1): void {
+  // (close: the earlier section close-up; the close-up is now windowView, in the scene)
   if (a <= 0.002) return;
   const s = c.s, gh = c.hw * s, gx = grownX(gh);
   const Yb = (m: number) => GROUND - m * s;
@@ -314,7 +323,7 @@ function seamsK(lt: number, d: number): number {
 /** When the bubble of a floor's neighbour pops (its day, then out with the next stamp). */
 function bubbleState(lt: number, floor: number): { u: number; a: number } {
   if (floor === 2) return { u: lt - B.pop2, a: dayA(1, B.pop2, lt, 0.01) };
-  if (floor === 3) return { u: lt - B.pop3, a: dayA(2, B.pop3, lt, 0.01) };
+  if (floor === 3) return { u: lt - B.stamp[1] - 0.6, a: dayA(2, B.stamp[1] + 0.6, lt, 0.01) };
   return { u: lt - B.pop5, a: sstep(B.pop5, B.pop5 + 0.01, lt) };
 }
 
@@ -322,12 +331,16 @@ function bubbleState(lt: number, floor: number): { u: number; a: number } {
 
 const S = narratedScene({
   name: 's1', kind: 'page', lead: 0, gap: 0.2, tail: 1.5, ...STILL,
+  // g5b's captions are the scene's own (below): one per phrase, each from where it is spoken, so the line's last phrase
+  // (the punchline) is not on screen before it is said
+  shown: ['g5b'],
   draw(lt) {
     background();
     grid();
     const out = 1 - sstep(B.tail, B.tail + 0.2, lt);
     // the main view leaves on s1-10's 两倍 (the column of "你" comes in); the close-up covers it during g5b
-    const mv = (1 - sstep(B.col, B.col + 0.3, lt)) * out;
+    // (and it stays hidden once the close-up panel is opaque, so nothing shows through while the panel fades out)
+    const mv = (1 - sstep(B.col, B.col + 0.3, lt)) * (1 - sstep(B.close + 0.3, B.close + 0.33, lt)) * out;
     const closeA = sstep(B.close, B.close + 0.3, lt) * (1 - sstep(B.col, B.col + 0.3, lt)) * out;
     const c = cam(lt);
     const s = c.s, gh = c.hw * s, gx = grownX(gh), d = c.day;
@@ -348,13 +361,14 @@ const S = narratedScene({
       const b = bubbleState(lt, nb.floor);
       if (b.a <= 0.002 || mv <= 0.002) continue;
       const head = GROUND - ((nb.floor - 1) * FLOOR_M + nb.h) * s;
-      bubble(nb.x + 20, head - 62, nb.text, nb.x + 6, head - 6, b.u, b.a * mv);
+      const txt = nb.floor === 2 && lt >= B.carry2 ? '？？' : nb.text;
+      bubble(nb.x + 30, head - 70, txt, nb.x + 6, head - 6, b.u, b.a * mv);
     }
 
     // ---- zone D: the head readout (height, 头顶：N 楼) and the clothes label, right of the silhouette
     const rx = gx + 0.168 * gh + 28, headY = GROUND - gh;
-    const hA = (d === 0 ? 1 : dayA(d, B.stamp[d - 1] + 0.75, lt)) * mv * (1 - closeA);
-    const hT = d === 1 ? B.h34 : d === 0 ? 0 : B.stamp[d - 1] + 0.75;
+    const hA = (d === 0 ? 1 : dayA(d, B.stamp[d - 1] + 0.6, lt)) * mv * (1 - closeA);
+    const hT = d === 1 ? B.h34 : d === 0 ? 0 : B.stamp[d - 1] + 0.6;
     const ha = hA * sstep(hT, hT + 0.2, lt);
     if (ha > 0.002) {
       ctx.save();
@@ -367,23 +381,23 @@ const S = narratedScene({
       ctx.lineTo(rx - 12, headY);
       ctx.stroke();
       ctx.restore();
-      pic(HEIGHT[d], rx, headY + 20, { size: 60, a: ha, weight: 600 });
+      pic(HEIGHT[d], rx, headY + 22, { size: 66, a: ha, weight: 600 });
     }
     if (d > 0) {
-      const tT = [0, B.top2, B.stamp[1] + 0.95, B.top5][d];
+      const tT = [0, B.top2, B.stamp[1] + 0.6, B.top5][d];
       const ta2 = dayA(d, tT, lt, 0.2) * mv * (1 - closeA);
       // day 3: a line lower, clear of the gauge's heading (its head is near the top of the picture)
-      pic(`头顶：${HEAD_FLOOR[d]} 楼`, rx, headY + (d === 3 ? 200 : 140), { size: 54, a: ta2, weight: 600, font: F.body });
-      const ca = dayA(d, d === 1 ? B.all : B.stamp[d - 1] + 0.85, lt) * mv * (1 - closeA);
+      pic(`头顶：${HEAD_FLOOR[d]} 楼`, rx, headY + (d === 3 ? 236 : 146), { size: 70, a: ta2, weight: 700, font: F.body });
+      const ca = dayA(d, d === 1 ? B.all : B.stamp[d - 1] + (d === 2 ? 1.0 : 0.85), lt) * mv * (1 - closeA);
       if (ca > 0.002) {
         const cy = GROUND - 0.5 * gh;
-        pic('衣服', rx, cy, { size: 52, a: ca, weight: 600, font: F.body });
-        pic(SHIRTS[d], rx, cy + 64, { size: 52, a: ca, weight: 600 });
+        pic('衣服', rx, cy, { size: 58, a: ca, weight: 600, font: F.body });
+        pic(SHIRTS[d], rx, cy + 70, { size: 58, a: ca, weight: 600 });
       }
     }
 
-    // ---- zone A: the counter and the weight line
-    const ta = mv;
+    // ---- zone A: the counter and the weight line (covered by the close-up)
+    const ta = mv * (1 - closeA);
     counter(DAY[d], c.since, ta);
     const qa = ta * (1 - sstep(B.x8 - 0.01, B.x8, lt));
     const W0 = picW('体重', QS, 600, F.body);
@@ -406,7 +420,7 @@ const S = narratedScene({
     }
     // the answer per day: 体重 ×N, = mass 「算」 (day 2 only on screen: s1-6 is not spoken), = N 个你 with the crowd
     const st = B.stamp;
-    const tN = [0, B.x8, st[1] + 0.45, B.x512], tM = [0, B.kg, st[1] + 0.65, B.t3584], tP = [0, 0, st[1] + 0.85, B.t3584 + 0.55];
+    const tN = [0, B.x8, st[1] + 0.75, B.x512], tM = [0, B.kg, st[1] + 0.9, B.t3584], tP = [0, 0, st[1] + 1.0, B.t3584 + 0.55];
     for (let k = 1; k <= 3; k++) {
       const na = ta * dayA(k, tN[k], lt, 0.2);
       if (na > 0.002) pic(TIMES[k], COUNTER.x + W0 + 22, 330 - (1 - eout(clamp((lt - tN[k]) / 0.3))) * 10, { size: QS, a: na, weight: 600 });
@@ -422,7 +436,12 @@ const S = narratedScene({
           pic(PEOPLE[k], COUNTER.x, 520, { size: 56, a: pa, weight: 600, font: F.body });
           const fill = eio(clamp((lt - tP[k]) / (k === 2 ? 0.35 : 0.6)));
           if (k === 2) crowd(COUNTER.x + 4, 552, 8, 8, 64, 30, 26, 34, pa, fill);
-          else crowd(COUNTER.x, 552, 32, 16, 512, 18, 11, 21, pa, fill);
+          else {
+            // 512 = 8 blocks of day 2's 64 (8 x 8 each), 4 across, 2 down
+            let n = 0;
+            for (let b = 0; b < 8; b++) n += crowd(COUNTER.x + (b % 4) * 90, 552 + Math.floor(b / 4) * 136, 8, 8, 64, 13, 9.5, 15, pa, clamp(fill * 8 - b));
+            if (fill >= 1 && n !== 512) throw new Error(`grow1: ${n} 个你, not 512`);
+          }
         }
       }
     }
@@ -448,7 +467,9 @@ const S = narratedScene({
       pic(den, fx, 826, { size: 60, a: fa, weight: 600, align: 'right' });
     }
 
-    // ---- the close-up of the 5th-floor window (g5b): the head top with its whorl above the sill, the neighbour, 「……」
+    // ---- the close-up (g5b): the 5th floor from inside, facing its window; outside, filling the bottom of the window,
+    // the top of the grown head with its whorl (13.6 m: 0.7 m above the 12.9 m sill); the neighbour with the watering
+    // can; 「……」 in the pause; after 我替你道过歉了 a red 「已道歉」 stamp on the glass
     if (closeA > 0.002) {
       ctx.save();
       ctx.globalAlpha = closeA;
@@ -457,23 +478,17 @@ const S = narratedScene({
       ctx.roundRect(PANEL.x0, PANEL.y0, PANEL.x1 - PANEL.x0, PANEL.y1 - PANEL.y0, 10);
       ctx.fill();
       ctx.clip();
-      // the paper's grid, magnified
+      // the paper's grid, magnified 2.5 times: a close-up
+      const pitch = GRID.pitch * 2.5;
       ctx.strokeStyle = C.rule;
       ctx.lineWidth = GRID.minorW;
       ctx.globalAlpha = closeA * GRID.minorA;
       ctx.beginPath();
-      for (let i = 0; i <= 30; i++) {
-        const x = CLOSE.x(i * GRID.pitch), y = CLOSE.y(i * GRID.pitch);
-        if (x > PANEL.x0 && x < PANEL.x1) { ctx.moveTo(x, PANEL.y0); ctx.lineTo(x, PANEL.y1); }
-        if (y > PANEL.y0 && y < PANEL.y1) { ctx.moveTo(PANEL.x0, y); ctx.lineTo(PANEL.x1, y); }
-      }
+      for (let x = PANEL.x0 + pitch / 2; x < PANEL.x1; x += pitch) { ctx.moveTo(x, PANEL.y0); ctx.lineTo(x, PANEL.y1); }
+      for (let y = PANEL.y0 + pitch / 2; y < PANEL.y1; y += pitch) { ctx.moveTo(PANEL.x0, y); ctx.lineTo(PANEL.x1, y); }
       ctx.stroke();
-      ctx.restore();
-      ctx.save();
-      ctx.beginPath();
-      ctx.roundRect(PANEL.x0, PANEL.y0, PANEL.x1 - PANEL.x0, PANEL.y1 - PANEL.y0, 10);
-      ctx.clip();
-      world(lt, CLOSE, closeA, c, true);
+      ctx.globalAlpha = 1;
+      const nb = windowView(PANEL.x0, PANEL.x1, CLOSE.floor, CLOSE.s, CLOSE.cx, CLOSE.nb, closeA);
       ctx.restore();
       ctx.save();
       ctx.globalAlpha = closeA;
@@ -483,10 +498,10 @@ const S = narratedScene({
       ctx.roundRect(PANEL.x0, PANEL.y0, PANEL.x1 - PANEL.x0, PANEL.y1 - PANEL.y0, 10);
       ctx.stroke();
       ctx.restore();
-      pic('5 楼', PANEL.x0 + 28, CLOSE.y(GROUND - 15 * s) + 74, { size: 50, a: closeA, weight: 600, font: F.body });
-      const nb = NB[2], b = bubbleState(lt, 5);
-      const head = CLOSE.y(GROUND - (4 * FLOOR_M + nb.h) * s);
-      bubble(CLOSE.x(nb.x) + 40, head - 70, nb.text, CLOSE.x(nb.x) + 10, head - 8, b.u, b.a * closeA);
+      pic('5 楼', PANEL.x0 + 32, PANEL.y0 + 80, { size: 60, a: closeA, weight: 600, font: F.body });
+      const b = bubbleState(lt, 5);
+      bubble(nb.hx + 80, nb.hy - 92, NB[2].text, nb.hx + 22, nb.hy - 12, b.u, b.a * closeA);
+      rubberStamp('已道歉', CLOSE.cx + 170, 240, 96, -8, lt - B.apol, closeA * sstep(B.apol, B.apol + 0.01, lt));
     }
 
     // ---- the column of "你" (s1-10, v1's ending): today's "你", one rider on 背着另一个你, seven on 背着七个
@@ -542,8 +557,11 @@ const S = narratedScene({
 
     // ---- g9: the comment card after the question, the end card on 正片里算; the tail: 核算单
     endCard(620, 560 + (1 - eout(clamp((lt - B.card) / 0.4))) * 10, sstep(B.card, B.card + 0.35, lt) * out);
-    commentCard(620, 742, lt - B.ask, sstep(B.ask, B.ask + 0.15, lt) * out);
     tailCard(lt - B.tail - CARD_IN);
+    // 「你押第几天？」 under the 核算单, once g9 has been said, to the end
+    const cu = lt - B.tail - CARD_IN - 0.25;
+    commentCard(166, 948, cu, sstep(0, 0.15, cu));
+    endCard(720, 948, sstep(0, 0.2, cu));
   },
 });
 
@@ -555,8 +573,19 @@ B = beats();
 const cues: Sfx[] = [
   // day 3's sound 8 ms after its frame: s1-7's last syllable ends 20 ms before the frame, the measurement wants more
   [B.stamp[0], 'stamp', { day: 1 }], [B.stamp[1], 'stamp', { day: 2 }], [B.stamp[2] + 0.008, 'stamp', { day: 3 }],
-  [B.r2, 'gauge', { dur: 0.24 }], [B.r8, 'gauge', { dur: 0.12 }], [B.two2, 'gauge', { dur: 0.14 }], [B.eight2, 'gauge', { dur: 0.08 }],
-  [B.pop2, 'pop'], [B.pop3, 'pop'], [B.pop5, 'pop'],
+  [B.r2, 'gauge', { dur: 0.24 }], [B.r8, 'gauge', { dur: 0.12 }], [B.eight2, 'gauge', { dur: 0.08 }],
+  // day 2's 「！」 has no pause of its own (it comes with 头顶：3 楼 while 再翻一倍 is said): no pop
+  [B.pop2, 'pop'], [B.pop5, 'pop'],
+  // 「已道歉」: a stamp sound (day 1's) in the pause after g5b; `extra`: not a counter step
+  [B.apol, 'stamp', { day: 1, extra: 1 }],
   [frUp(B.tail + CARD_IN), 'end'],
 ];
 S.sfx = cues;
+// g5b's captions (the line is `shown`: the engine gives it none): 头顶到了 5 楼 through the pause, then 5 楼的邻居, then
+// the punchline from where it is spoken, the English split the same way (so it does not give the punchline away)
+S.subs.push(
+  [B.top5, span('g5b', 1), '头顶到了 5 楼', 'Your head reaches the fifth floor.'],
+  [span('g5b', 1), B.sorry, '5 楼的邻居', 'The neighbour on the fifth floor:'],
+  [B.sorry, vo('s1-10'), '我替你道过歉了', 'I have apologised to them for you.'],
+);
+S.subs.sort((p, q) => p[0] - q[0]);

@@ -13,7 +13,7 @@
  * picture text >= 46 px (notes >= 34 px), nothing right of x = 1653 (Douyin's buttons), nothing in the top and bottom
  * 60 px; pic() enforces this for every text it draws (it throws, so a frame that breaks it fails to render).
  */
-import { ctx, text, measure, rgba, C, F, clamp, lerp, sstep, eout } from '../../engine';
+import { ctx, text, measure, rgba, C, F, clamp, lerp, sstep, eout, mulberry } from '../../engine';
 
 export type P = [number, number];
 
@@ -657,12 +657,12 @@ export function building(o: BuildingOpts): void {
   if (la <= 0.002) return;
   for (let k = 1; k <= FLOORS; k++) {
     const yFloor = Y((k - 1) * FLOOR_M), yCeil = Y(k * FLOOR_M);
-    const y = Math.max(yCeil + 58, 150), x = X(x0) + 16;
-    const w = picW(`${k} 楼`, 50, 600, F.body);
+    const y = Math.max(yCeil + 64, 150), x = X(x0) + 16;
+    const w = picW(`${k} 楼`, 56, 600, F.body);
     if (y > yFloor - 60 || y < 112 || y > 1010) continue;  // only where the floor's own room shows under the label
     if (o.room && !o.room(x, y - 46, x + w, y + 6)) continue;
     const hi = k === o.hiFloor ? (o.hiA ?? 0) : 0;
-    pic(`${k} 楼`, x, y, { size: 50, a: la, weight: 600, font: F.body, color: mix(C.fg2, C.accent, hi) });
+    pic(`${k} 楼`, x, y, { size: 56, a: la, weight: 600, font: F.body, color: mix(C.fg2, C.accent, hi) });
   }
 }
 
@@ -762,7 +762,7 @@ export function potAndCan(x: number, y: number, hx: number, hy: number, s: numbe
 export function bubble(x: number, y: number, s: string, tx: number, ty: number, u: number, a = 1): void {
   if (a <= 0.002 || u < 0) return;
   const k = 0.6 + 0.4 * eout(clamp(u / 0.18));
-  const size = 60, w = Math.max(96, picW(s, size, 700, F.body) + 44) * k, h = 86 * k;
+  const size = 76, w = Math.max(116, picW(s, size, 700, F.body) + 52) * k, h = 104 * k;
   ctx.save();
   ctx.globalAlpha = a;
   ctx.fillStyle = C.bg;
@@ -815,7 +815,7 @@ export function shirtSeams(cx: number, footY: number, h: number, n: number, a = 
   const x0 = cx - 0.098 * h, x1 = cx + 0.098 * h, y0 = footY - 0.84 * h, y1 = footY - 0.47 * h;
   ctx.globalAlpha = a;
   ctx.strokeStyle = C.bg;
-  ctx.lineWidth = clamp(h * 0.0045, 1.4, 2.8);
+  ctx.lineWidth = clamp(h * 0.0075, 2.2, 4.2);
   ctx.beginPath();
   for (let i = 1; i < n; i++) {
     const x = lerp(x0, x1, i / n), y = lerp(y0, y1, i / n);
@@ -839,4 +839,104 @@ export function crowd(x0: number, top: number, cols: number, rows: number, n: nu
     person(x0 + dx * (c + 0.5), top + dy * r + h, h, { a });
   }
   return shown;
+}
+
+/**
+ * The close-up of v2 (g5b): the 5th floor seen from inside, facing its window (a front view, s px per metre, the floor
+ * at `floor`): the wall, the window from the sill (0.9 m) up, a flower pot on the sill; outside, filling the bottom of the
+ * window, the top of the grown head (13.6 m tall: its top 0.7 m above the sill, radius 0.06 of its height) with its
+ * whorl; inside, the neighbour (a line drawing, 1.7 m) holding the watering can. Pure line drawing on paper; nothing
+ * broken. Returns where the neighbour's head top is (for the bubble).
+ */
+export function windowView(x0: number, x1: number, floor: number, s: number, cx: number, nbX: number, a = 1): { hx: number; hy: number } {
+  const sill = floor - SILL_M * s, wl = cx - 0.75 * s, wr = cx + 0.75 * s;
+  const headR = 0.06 * 13.6 * s, headTop = sill - (13.6 - 12.9) * s, hcy = headTop + headR;
+  ctx.save();
+  ctx.globalAlpha = a;
+  // outside, through the window: the head's top, only above the sill and inside the frame
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(wl, -10000, wr - wl, sill + 10000);
+  ctx.clip();
+  ctx.fillStyle = C.fg;
+  ctx.beginPath();
+  ctx.arc(cx, hcy, headR, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  whorl(cx + 0.04 * headR, headTop + 0.3 * headR, 0.24 * headR, a);
+  // the window: frame, a transom high up, the sill board with its edge, two glints on the glass
+  ctx.strokeStyle = C.fg;
+  ctx.lineWidth = 4;
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(wl, -10); ctx.lineTo(wl, sill);
+  ctx.moveTo(wr, -10); ctx.lineTo(wr, sill);
+  ctx.moveTo(wl, sill - 1.15 * s); ctx.lineTo(wr, sill - 1.15 * s);
+  ctx.stroke();
+  ctx.fillStyle = C.bg;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.rect(wl - 0.08 * s, sill, wr - wl + 0.16 * s, 0.07 * s);
+  ctx.fill();
+  ctx.stroke();
+  ctx.strokeStyle = rgba(C.fg2, 0.45);
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (const [gx, gy] of [[wl + 0.2 * s, sill - 1.45 * s], [wr - 0.35 * s, sill - 1.3 * s]]) {
+    ctx.moveTo(gx, gy); ctx.lineTo(gx + 0.16 * s, gy - 0.16 * s);
+    ctx.moveTo(gx + 0.06 * s, gy + 0.05 * s); ctx.lineTo(gx + 0.2 * s, gy - 0.09 * s);
+  }
+  ctx.stroke();
+  // the floor and its skirting
+  ctx.strokeStyle = C.fg;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(x0, floor); ctx.lineTo(x1, floor);
+  ctx.stroke();
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(x0, floor - 0.1 * s); ctx.lineTo(x1, floor - 0.1 * s);
+  ctx.stroke();
+  ctx.restore();
+  // the neighbour, the pot on the sill, the can in hand (its spout towards the pot)
+  const h = 1.7 * s;
+  person(nbX, floor, h, { look: 'line', a });
+  potAndCan(wl + 0.22 * s, sill, nbX + 0.21 * h, floor - 0.5 * h, s, IDENT, a);
+  return { hx: nbX, hy: floor - h };
+}
+
+/** A rubber stamp (as 「假设」 in the band): red frame and text, turned `deg` degrees, worn ink; centre (x, y); u:
+ *  seconds since it landed (it lands from 1.3x to full size in 0.12 s). */
+export function rubberStamp(s: string, x: number, y: number, size: number, deg: number, u: number, a = 1): void {
+  if (a <= 0.002 || u < 0) return;
+  const k = 1 + 0.3 * (1 - eout(clamp(u / 0.12)));
+  const ls = size * 0.15, padX = size * 0.3, padY = size * 0.2, frame = Math.max(4, size * 0.09);
+  const tw = picW(s, size, 800, F.body, ls) - ls;
+  const w = tw + 2 * padX + 2 * frame, h = size * 1.08 + 2 * padY + 2 * frame;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate((deg * Math.PI) / 180);
+  ctx.scale(k, k);
+  ctx.globalAlpha = a * 0.93;
+  ctx.strokeStyle = C.accent;
+  ctx.lineWidth = frame;
+  ctx.beginPath();
+  ctx.roundRect(-w / 2 + frame / 2, -h / 2 + frame / 2, w - frame, h - frame, frame);
+  ctx.stroke();
+  ctx.restore();
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate((deg * Math.PI) / 180);
+  ctx.scale(k, k);
+  pic(s, 0, size * 0.36, { size, weight: 800, font: F.body, color: C.accent, align: 'center', ls, a: a * 0.93 });
+  const rnd = mulberry(20261128);
+  ctx.fillStyle = C.bg;
+  for (let i = 0; i < 220; i++) {
+    const fx = (rnd() - 0.5) * w, fy = (rnd() - 0.5) * h, fr = 0.6 + rnd() * rnd() * 3.2;
+    ctx.globalAlpha = a * (0.25 + 0.55 * rnd());
+    ctx.beginPath();
+    ctx.ellipse(fx, fy, fr * 1.6, fr, rnd() * Math.PI, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
 }

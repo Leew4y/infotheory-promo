@@ -10,8 +10,8 @@ Cues: tools/grow1/sfx_cues.json (tools/grow1/sfx_cues.py from the scene's films/
   (a bare list, or {"cues": [...]}; "name" is accepted for "kind", "tick" for "gauge"). Per kind:
   - stamp {day}: the rubber stamp's impact at t (the counter step to that day). Synthesised: a low thump, a knock body
     (420/680 Hz on day 1, so a phone speaker plays it) and a short band-passed noise burst; no reverb. Day 1 is v1's
-    stamp (120 ms); days 2 and 3 are heavier: more and lower thump, a lower and longer knock, 150 and 180 ms, 0.7 and
-    1.4 dB more energy in the 300 Hz - 8 kHz band (what a phone plays) than day 1 (STAMPS). A stamp without a day is
+    stamp (120 ms); days 2 and 3 are heavier: more and lower thump, a lower and longer knock, 150 and 180 ms, 2.5 and
+    4.5 dB more energy in the 300 Hz - 8 kHz band (what a phone plays) than day 1 (STAMPS). A stamp without a day is
     day 1. A stamp too long for its pause has its tail cut (at least STAMP_MIN_LEN), printed.
   - gauge: the pressure gauge starts rising at t; optional "dur" (s the ticks are spread over, default 0.24) and "n"
     (ticks, default 3, fewer if they would be closer than GAUGE_STEP). Soft high ticks, each 22 ms, a little higher in
@@ -89,7 +89,7 @@ SR = mix.SR
 F32 = np.float32
 # levels in the mix, dB re the voice line RMS (mix.VOICE_RMS_DB, every line levelled to it)
 TICK_DB = -16.0  # RMS over each 22 ms tick
-POP_DB = -20.0   # RMS over the bubble pop's 60 ms
+POP_DB = -15.0   # RMS over the bubble pop's 60 ms (v2 review: -20 was likely lost on a phone speaker)
 # speech detection and the clearance rules
 FRAME = 0.005  # s
 VA_DB = -25.0  # a 5 ms frame is speech when its RMS is at least VOICE_RMS_DB + VA_DB
@@ -113,9 +113,9 @@ STAMPS = {
     1: dict(len=0.12, taper=0.04, thump=(95, 85, 0.012, 0.030, 0.45), body=((420, 680), (0.014, 0.009), (0.55, 0.32)),
             burst=(0.007, 1.1), slap=(0.0025, 0.33), phone=0.0),
     2: dict(len=0.15, taper=0.05, thump=(78, 92, 0.014, 0.042, 0.75), body=((385, 625), (0.018, 0.011), (0.58, 0.33)),
-            burst=(0.008, 1.1), slap=(0.0025, 0.30), phone=0.7),
+            burst=(0.008, 1.1), slap=(0.0025, 0.30), phone=2.5),
     3: dict(len=0.18, taper=0.06, thump=(64, 96, 0.016, 0.055, 1.0), body=((350, 575), (0.022, 0.013), (0.60, 0.34)),
-            burst=(0.009, 1.1), slap=(0.0025, 0.28), phone=1.4),
+            burst=(0.009, 1.1), slap=(0.0025, 0.28), phone=4.5),
 }
 STAMP_MIN_LEN = 0.10
 STAMP_LEN = STAMPS[1]['len']
