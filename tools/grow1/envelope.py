@@ -5,14 +5,14 @@
 Decodes films/grow1/narration/<id>.flac with ffmpeg (16 kHz mono), prints the RMS level in dB every 10 ms (line
 seconds), with a bar, between from_s and to_s (default: the whole line), and the local minima (dips between syllables).
 """
-import subprocess, sys
+import os, subprocess, sys
 import numpy as np
 
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 lid = sys.argv[1]
 a = float(sys.argv[2]) if len(sys.argv) > 2 else 0.0
 b = float(sys.argv[3]) if len(sys.argv) > 3 else 99.0
-src = rf'D:\promo-films-light\films\grow1\narration\{lid}.flac'
+src = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'films', 'grow1', 'narration', f'{lid}.flac')
 raw = subprocess.run(['ffmpeg', '-v', 'error', '-i', src, '-ac', '1', '-ar', '16000', '-f', 's16le', '-'], capture_output=True).stdout
 x = np.frombuffer(raw, np.int16).astype(np.float64) / 32768
 hop, win = 160, 400

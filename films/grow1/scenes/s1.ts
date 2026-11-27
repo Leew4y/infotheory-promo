@@ -1,4 +1,4 @@
-// The whole short (lines s1-1 .. s1-11; brief D:/demo/.cache/market-research/route/pilot_short_1.md). Drawn for the
+// The whole short (lines s1-1 .. s1-11; brief films/grow1/docs/pilot_short_1.md). Drawn for the
 // vertical cut (the picture is scaled to 1080 x 608 in the middle of a phone screen; the band above it holds the
 // 「假设」 stamp, the premise and the name plate, set by the composer): picture text >= 46 px, nothing right of
 // x = 1653. Frame 0 is complete: grid paper, the counter 「第 0 天」, the question 「体重变几倍？」, the 1.7 m "你"
@@ -10,7 +10,7 @@
 // the small diagrams (x 1150 .. 1500) and the pressure gauge (x 1590 .. 1632).
 //
 // Beats (scene clock = film clock; times from voParts, checked against the lock's speech spans and, inside a span,
-// against the line's energy envelope: D:/demo/.cache/grow1-tools/envelope.py):
+// against the line's energy envelope: tools/grow1/envelope.py):
 //  s1-1 你每天长高一倍。我算过了。 frame 0 as above; on 我算过了 a red pen underlines 变几倍？.
 //  stamp 1 (STAMP[0], in the silence between s1-1 and s1-2): 「第 1 天」 pressed in, the silhouette grows to 3.4 m while
 //       the camera pulls back (px per metre 353 -> 212; the ruler's ticks recomputed), an outline copy of the 1.7 m "你"
@@ -32,9 +32,9 @@
 //       8 倍 -> pointer 8; 背着七个 -> six more drop, the camera pulls back to fit the column of eight (「7 个」). Line
 //       drawings, all the same figure, no face, the carrier upright and unchanged.
 //  s1-11 正片里 -> the end card 「正片：《假如你每天长高一倍》」 (no date); gauge and column stay.
-//  tail (1.5 s after the voice): everything fades in 0.2 s and the tail card 核算单 comes in at once (all rows within
-//       0.4 s), so it stands still for about a second.
-// Sound cues (scene sfx, exported by --cues into cues.json; D:/demo/.cache/grow1-tools/sfx_cues.py turns that into
+//  tail (2 s after the voice): everything fades in 0.2 s and the tail card 核算单 comes in at once (all rows within
+//       0.4 s), so it stands still for about 1.6 s.
+// Sound cues (scene sfx, exported by --cues into cues.json; tools/grow1/sfx_cues.py turns that into
 // sfx_cues.json): 'stamp' on each counter step, 'gauge' where the pointer arrives (the next frame after the spoken
 // number ends), 'end' when the tail card comes in.
 import { background, narratedScene, ctx, C, F, clamp, lerp, sstep, eio, eout, ein, vo, voParts, type Sfx } from '../../../engine';
@@ -260,7 +260,7 @@ function gaugeState(lt: number): { v: number; label: string | null; la: number }
 // ------------------------------------------------------------------------------------------------ the scene
 
 const S = narratedScene({
-  name: 's1', kind: 'page', lead: 0, gap: 0.35, tail: 1.5, ...STILL,
+  name: 's1', kind: 'page', lead: 0, gap: 0.35, tail: 2.0, ...STILL,
   draw(lt) {
     background();
     grid();
@@ -316,12 +316,15 @@ const S = narratedScene({
 
     // ---- the column of "你" (s1-10): the bracket beside the riders and their count
     if (lt >= B.one) {
-      const k7 = sstep(B.seven + 0.75, B.seven + 0.95, lt);
-      const top = GROUND - tH * (1 + (k7 > 0.5 ? 7 : 1) * RIDE);
+      // 「1 个」 leaves as the six more riders start to drop; 「7 个」 comes in once they have landed (two labels, so the
+      // first never shows again while the second fades in)
+      const a1 = sstep(B.one + 0.35, B.one + 0.65, lt) * out * (1 - sstep(B.seven, B.seven + 0.15, lt));
+      const a7 = sstep(B.seven + 0.75, B.seven + 0.95, lt) * out;
       const bot = GROUND - tH * 0.835;
       const bx = TOWER_X + tH * 0.18 + 26;
-      const ba = sstep(B.one + 0.35, B.one + 0.65, lt) * out * (1 - sstep(B.seven, B.seven + 0.15, lt) * (1 - k7));
-      if (ba > 0.002) {
+      for (const [cnt, ba] of [[1, a1], [7, a7]] as const) {
+        if (ba <= 0.002) continue;
+        const top = GROUND - tH * (1 + cnt * RIDE);
         ctx.save();
         ctx.globalAlpha = ba;
         ctx.strokeStyle = C.fg2;
@@ -333,7 +336,7 @@ const S = narratedScene({
         ctx.lineTo(bx - 12, bot);
         ctx.stroke();
         ctx.restore();
-        pic(k7 > 0.5 ? '7 个' : '1 个', bx + 18, (top + bot) / 2 + 18, { size: 60, a: ba, weight: 600 });
+        pic(cnt === 7 ? '7 个' : '1 个', bx + 18, (top + bot) / 2 + 18, { size: 60, a: ba, weight: 600 });
       }
     }
     // 就是今天的你: the label right of the bottom figure, at its hips (below the bracket, which starts at its shoulders)
@@ -416,7 +419,7 @@ const S = narratedScene({
 
 B = beats();
 AGAIN = [B.again2, B.again3];
-// the beat table, for the check tools (D:/demo/.cache/grow1-tools/probe.ts); nothing reads it while drawing
+// the beat table, for the check tools (tools/grow1/probe.ts); nothing reads it while drawing
 (globalThis as unknown as { __beats: Beats }).__beats = B;
 // sound cues on the same beats: the three counter steps, each pointer arrival, the tail card
 const cues: Sfx[] = [

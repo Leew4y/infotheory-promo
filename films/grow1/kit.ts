@@ -1,6 +1,6 @@
 /**
  * Drawing pieces of 《长高一倍，体重变几倍？》 (pilot short 1 of the route 「离谱但精确」, narrator 核算员; brief:
- * D:/demo/.cache/market-research/route/pilot_short_1.md): the grid paper, the "你" figure (a solid silhouette or a
+ * films/grow1/docs/pilot_short_1.md): the grid paper, the "你" figure (a solid silhouette or a
  * line drawing, two poses), the height ruler whose ticks are recomputed from the camera scale, the day counter, the
  * 「算」 tag, the oblique cube / cross-section / weights diagrams, the vertical pressure gauge, the end card and the
  * tail card (核算单). Everything takes an alpha and draws nothing when it is about 0.
@@ -9,7 +9,7 @@
  * same red the vertical composer uses for the 「假设」 stamp in the band). Numbers in F.math (lining figures).
  *
  * Delivered only as a vertical cut: the 1920x1080 picture is scaled to 1080x608 at y = 610 of a 1080x1920 page, the
- * band above it and the captions below it come from the composer (D:/demo/.cache/grow1-tools/vertical.py). So:
+ * band above it and the captions below it come from the composer (tools/grow1/vertical.py). So:
  * picture text >= 46 px (notes >= 34 px), nothing right of x = 1653 (Douyin's buttons), nothing in the top and bottom
  * 60 px; pic() enforces this for every text it draws (it throws, so a frame that breaks it fails to render).
  */

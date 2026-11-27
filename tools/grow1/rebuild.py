@@ -5,19 +5,19 @@ the first failure:
 
 0. checks that every input exists before anything runs, and names all that are missing: the film's sources
    (film.ts, main.ts, kit.ts, scenes/index.ts and every scene it imports), narration.json, the lock and one FLAC per
-   locked line, the repository scripts, the sound (grow1-tools/sfx.py, audio/mix.py, the harp samples), the composer
-   and the seam check. Without grow1-tools/sfx_cues.json (written by the scene) the sound runs on its provisional cues
+   locked line, the repository scripts, the sound (tools/grow1/sfx.py, audio/mix.py, the harp samples), the composer
+   and the seam check. Without tools/grow1/sfx_cues.json (written by the scene) the sound runs on its provisional cues
    from the voice's pauses: said as a WARNING at the start and the end. --dry-run stops after this check.
 1. font subsets, build, timeline + sound cues + narration placements, validate --no-captions (0 errors), type check
-2. sound: grow1-tools/sfx.py --samples <folder> (out/grow1/music.wav: silent except the effects; no music under the
-   voice), the final mix (audio/mix.py, -16 LUFS -> out/grow1/master.wav), measurements (grow1-tools/sfx_measure.py);
+2. sound: tools/grow1/sfx.py --samples <folder> (out/grow1/music.wav: silent except the effects; no music under the
+   voice), the final mix (audio/mix.py, -16 LUFS -> out/grow1/master.wav), measurements (tools/grow1/sfx_measure.py);
    with --skip-sound the existing out/grow1/master.wav is used, and the run stops if it is older than the narration
    lock, sfx_cues.json or sfx.py
-3. the 16:9 picture without captions or audio (4 workers) to D:/demo/.cache/grow1-tools/build/pic.mp4
+3. the 16:9 picture without captions or audio (4 workers) to out/grow1/build/pic.mp4
 4. the vertical cut (vertical.py) with out/grow1/master.wav, then the seam check (seams.py) on it
 After each step the file it should have written is checked (exists and is new); each step's full output is kept in
-build/<step>.log, and its WARNING lines are repeated at the end. TEMP/TMP are set to
-D:/demo/.cache/tmp for every step. --samples defaults to the VSCO 2 CE folder the earlier films used.
+out/grow1/build/<step>.log, and its WARNING lines are repeated at the end. TEMP/TMP are set to
+.cache/tmp for every step. --samples defaults to films/grow1/audio/samples (the VSCO 2 CE harp notes the film uses).
 """
 import json
 import os
@@ -28,14 +28,14 @@ import time
 
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 sys.stderr.reconfigure(encoding='utf-8', errors='replace')
-REPO = r'D:\promo-films-light'
+REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))  # the repository root
 FILM = 'grow1'
-TOOLS = r'D:\demo\.cache\grow1-tools'
-TMP = r'D:\demo\.cache\tmp'
+TOOLS = os.path.dirname(os.path.abspath(__file__))
+TMP = os.path.join(REPO, '.cache', 'tmp')
 args = sys.argv[1:]
 SKIP_SOUND = '--skip-sound' in args
 DRY = '--dry-run' in args
-SAMPLES = r'D:\earthage-promo\audio\samples'
+SAMPLES = os.path.join(REPO, 'films', FILM, 'audio', 'samples')
 if '--samples' in args:
     SAMPLES = args[args.index('--samples') + 1]
     del args[args.index('--samples'):args.index('--samples') + 2]
@@ -45,7 +45,8 @@ if len(args) != 1 and not (DRY and not args):
 OUT = os.path.abspath(args[0]) if args else None
 F = os.path.join(REPO, 'films', FILM)
 O = os.path.join(REPO, 'out', FILM)
-PIC = os.path.join(TOOLS, 'build', 'pic.mp4')
+BUILD = os.path.join(O, 'build')
+PIC = os.path.join(BUILD, 'pic.mp4')
 TL = os.path.join(F, 'timeline.json')
 MASTER = os.path.join(O, 'master.wav')
 LOCK = os.path.join(F, 'narration.lock.json')
@@ -54,7 +55,9 @@ CUES = os.path.join(TOOLS, 'sfx_cues.json')
 MEASURE = os.path.join(TOOLS, 'sfx_measure.py')
 os.makedirs(TMP, exist_ok=True)
 os.makedirs(os.path.dirname(PIC), exist_ok=True)
-env = dict(os.environ, Path=r'D:\bun\bin;' + os.environ.get('Path', ''), TEMP=TMP, TMP=TMP)
+env = dict(os.environ, TEMP=TMP, TMP=TMP, TMPDIR=TMP)
+if sys.platform == 'darwin':  # Pillow's wheel loads fribidi (for raqm, used by vertical.py) from Homebrew
+    env['DYLD_FALLBACK_LIBRARY_PATH'] = ':'.join(filter(None, [env.get('DYLD_FALLBACK_LIBRARY_PATH'), '/opt/homebrew/lib']))
 warnings = []
 
 
@@ -70,7 +73,7 @@ def step(name, cmd, cwd=REPO, extra=None, makes=None):
     r = subprocess.run(cmd, cwd=cwd, env=dict(env, **(extra or {})), capture_output=True, text=True, encoding='utf-8',
                        errors='replace')
     text = r.stdout + r.stderr
-    open(os.path.join(TOOLS, 'build', f'{name}.log'), 'w', encoding='utf-8').write(text)
+    open(os.path.join(BUILD, f'{name}.log'), 'w', encoding='utf-8').write(text)
     lines = text.strip().splitlines()
     tail = '\n'.join(lines[-8:])
     warn = [ln for ln in lines[:-8] if 'WARNING' in ln or ln.startswith('warning')]
@@ -121,7 +124,9 @@ step('validate', ['bun', 'scripts/validate.ts', '--film', FILM, '--no-captions']
 step('tsc', ['bun', 'x', 'tsc', '--noEmit', '-p', '.'])
 # 2. sound and mix
 if not SKIP_SOUND:
-    step('sound', [sys.executable, SFX, '--samples', SAMPLES], makes=[os.path.join(O, 'music.wav')])
+    # --snap: a gauge tick that would touch a syllable moves into the nearest clear slot (s1-10's two gauge cues move
+    # about 20 ms, under one frame; sfx.py prints each move and writes out/grow1/sfx/cues_used.json)
+    step('sound', [sys.executable, SFX, '--snap', '--samples', SAMPLES], makes=[os.path.join(O, 'music.wav')])
     step('mix', [sys.executable, os.path.join('audio', 'mix.py'), '--film', FILM, '--music', f'out/{FILM}/music.wav'],
          makes=[MASTER])
     if os.path.exists(MEASURE):

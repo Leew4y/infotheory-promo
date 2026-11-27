@@ -1,6 +1,6 @@
 """Measurements of grow1's effects in the final master, after sfx.py and audio/mix.py:
 
-    python D:/demo/.cache/grow1-tools/sfx_measure.py
+    python tools/grow1/sfx_measure.py
 
 1. out/grow1/master.wav: integrated loudness, loudness range, true peak (ffmpeg ebur128), sample peak, samples at full
    scale; music.wav: true peak.

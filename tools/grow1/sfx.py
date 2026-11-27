@@ -1,11 +1,11 @@
 """Sound for the pilot short grow1 (《长高一倍，体重变几倍？》): no music under the voice, only effects.
 
-    python D:/demo/.cache/grow1-tools/sfx.py [--snap] [--mix] [--samples D:/earthage-promo/audio/samples]
+    python tools/grow1/sfx.py [--snap] [--mix] [--samples films/grow1/audio/samples]
         -> out/grow1/music.wav (the bed audio/mix.py expects: silent except the effects)
     python audio/mix.py --film grow1 --music out/grow1/music.wav        (from the repository root; --mix runs it)
-    python D:/demo/.cache/grow1-tools/sfx_measure.py                    (--mix runs it too)
+    python tools/grow1/sfx_measure.py                                  (--mix runs it too)
 
-Cues: D:/demo/.cache/grow1-tools/sfx_cues.json, written by the scene builder, film seconds:
+Cues: tools/grow1/sfx_cues.json, written by the scene builder, film seconds:
     [{"t": 2.62, "kind": "stamp"}, {"t": 15.30, "kind": "gauge"}, {"t": 35.07, "kind": "end"}]
   (a bare list, or {"cues": [...]}; "name" is accepted for "kind", "tick" for "gauge"). Per kind:
   - stamp: the rubber stamp's impact at t (the counter step). Synthesised: a low thump, a knock body at 420/680 Hz
@@ -52,15 +52,15 @@ import numpy as np
 from scipy.signal import butter, sosfilt
 
 TOOLS = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.environ.get('GROW1_REPO', 'D:/promo-films-light')
+ROOT = os.environ.get('GROW1_REPO', os.path.abspath(os.path.join(TOOLS, '..', '..')))
 FILM_ID = 'grow1'
 FILM = os.path.join(ROOT, 'films', FILM_ID)
 OUT = os.path.join(ROOT, 'out', FILM_ID)
 SFX_OUT = os.path.join(OUT, 'sfx')
 CUES_PATH = os.environ.get('GROW1_SFX_CUES') or os.path.join(TOOLS, 'sfx_cues.json')  # the env var only for tests
 PROVISIONAL_PATH = os.path.join(TOOLS, 'sfx_cues.provisional.json')
-SAMPLES_DEFAULT = 'D:/earthage-promo/audio/samples'
-SAMPLER_DIR = os.path.join(ROOT, 'films', 'metre', 'audio')  # sampler.py of the metre film (VSCO 2 CE player)
+SAMPLES_DEFAULT = os.path.join(ROOT, 'films', 'grow1', 'audio', 'samples')
+SAMPLER_DIR = TOOLS  # sampler.py, copied from the metre film (VSCO 2 CE player)
 
 sys.path.insert(0, os.path.join(ROOT, 'audio'))
 import mix  # noqa: E402  (audio/mix.py: the mixer's rate, levels, masks)

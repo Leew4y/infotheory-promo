@@ -3,16 +3,16 @@
  "style": "paper-dawn",
  "fps": 30,
  "bpm": 80,
- "frames": 1095,
- "duration": 36.5,
+ "frames": 1110,
+ "duration": 37,
  "scenes": [
   {
    "name": "s1",
    "kind": "page",
    "f0": 0,
-   "f1": 1095,
+   "f1": 1110,
    "start": 0,
-   "end": 36.5
+   "end": 37
   }
  ],
  "captions": [

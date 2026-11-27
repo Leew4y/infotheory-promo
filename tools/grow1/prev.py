@@ -5,7 +5,7 @@ other jobs build or export films/grow1 itself.
 
 Times are film seconds (the film is one scene, s1). Copies films/grow1 into a private film films/g1p (narration lines,
 the lock re-labelled for the private film, kit.ts, scenes), builds its font subset, builds it, renders the frames to
-D:/demo/.cache/grow1-wf/<tag>/tSSSS.SS.jpg (default tag "s1"), optionally runs validate (--no-captions, the picture as
+out/grow1/prev/<tag>/tSSSS.SS.jpg (default tag "s1"), optionally runs validate (--no-captions, the picture as
 exported) and probe.ts (every frame's text boxes: sizes, safe area, overlaps, display punctuation; and the beat
 table), and removes the private film, its build and its out folder. For every frame it also writes vSSSS.SS.jpg, a
 rough vertical mock (1080x1920: the 16:9 frame scaled to 1080x608 at y = 610 on paper with the grid continued, page
@@ -23,7 +23,7 @@ from PIL import Image, ImageDraw
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 
-REPO = r'D:\promo-films-light'
+REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))  # the repository root
 FILM = 'grow1'
 if len(sys.argv) < 2:
     sys.exit(__doc__)
@@ -38,11 +38,11 @@ if '--probe' in args:
 fid = 'g1p'
 src = os.path.join(REPO, 'films', FILM)
 dst = os.path.join(REPO, 'films', fid)
-out = os.path.join(r'D:\demo\.cache\grow1-wf', tag)
+out = os.path.join(REPO, 'out', FILM, 'prev', tag)
 TOOLS = os.path.dirname(os.path.abspath(__file__))
-TMP = r'D:\demo\.cache\tmp'
+TMP = os.path.join(REPO, '.cache', 'tmp')
 os.makedirs(TMP, exist_ok=True)
-env = dict(os.environ, Path=r'D:\bun\bin;' + os.environ.get('Path', ''), FILM=fid, TEMP=TMP, TMP=TMP)
+env = dict(os.environ, FILM=fid, TEMP=TMP, TMP=TMP, TMPDIR=TMP)
 
 
 def run(cmd):

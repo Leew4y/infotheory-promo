@@ -1,7 +1,7 @@
 /**
  * Every-frame text check of a built grow1 picture (validate samples five frames of the one scene; this looks at all).
  *
- *   bun probe.ts <film id> [step seconds, default 1/30]      (run from D:/promo-films-light; the film built in dist/<id>)
+ *   bun probe.ts <film id> [step seconds, default 1/30]      (run from the repository root; the film built in dist/<id>)
  *
  * For each frame time: the frame renders (the kit's pic() throws on a size or safe-area breach); every text box at
  * alpha >= 0.02 is inside x 96..1653, y 60..1020; picture text is >= 46 px (34 px only for the NOTES strings); two
@@ -9,7 +9,7 @@
  * ，、；：。. Prints the scene's beat table (globalThis.__beats) and the sound cues. Exit 1 on any finding.
  */
 import path from 'node:path';
-const REPO = 'D:/promo-films-light';
+const REPO = path.resolve(import.meta.dir, '..', '..');
 const { chromeArgs, findChrome, loadFilm, serveDist } = await import(path.join(REPO, 'scripts/chrome.ts'));
 const puppeteer = (await import(Bun.resolveSync('puppeteer-core', path.join(REPO, 'scripts')))).default;
 

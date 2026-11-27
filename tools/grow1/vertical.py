@@ -10,7 +10,7 @@ with a 360x640 copy beside it (-phone.png) and a 3x crop of each joint (-joints.
 printed (paper level and grid lines across both joints, contrast of the text on the paper under it, safe zones).
 --words adds words (one per line, UTF-8) that a Chinese caption line break should not cut to the list WORDS.
 
-Layout (1080x1920), after the metre composer (D:/demo/.cache/metre-tools/vertical.py): one sheet of grid paper. The
+Layout (1080x1920), after the metre composer (the sixth film's vertical.py): one sheet of grid paper. The
 band above the picture is the narrator band of the channel route (route.md section 6, pilot_short_1.md): the name
 plate 「核算员」 at the top right (ink, a thin ink frame, right edge at x 926); below it, at the left, the red stamp
 「假设」 (a rubber stamp: the film's red, a thick frame, turned 3 degrees, uneven ink) with the two premise lines
@@ -69,6 +69,10 @@ from scipy.ndimage import gaussian_filter, map_coordinates, maximum_filter1d, me
 
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+from PIL import features  # noqa: E402
+if not features.check_feature('raqm'):  # font features (lining figures, kerning) need Pillow's raqm layout
+    sys.exit('Pillow cannot load libraqm/fribidi. On macOS: brew install fribidi, then run with '
+             'DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/lib (rebuild.py sets it).')
 
 # ---------------------------------------------------------------- the band's words (pilot_short_1.md, route.md 3.3)
 PLATE_TEXT = '核算员'
@@ -116,11 +120,13 @@ BAND_TEXT_LIMIT = PIC_Y - TRACK - 10   # band text ends above the rows that foll
 CAP_STEPS = [(72, 14, 30, 39), (70, 12, 30, 38), (68, 12, 29, 37), (68, 10, 28, 36), (66, 10, 27, 35),
              (66, 8, 26, 34), (64, 8, 26, 32), (62, 6, 26, 31)]
 ZH_PX, ZH_WT, ZH_LS = 54, 600, 2
-# Chinese caption lines keep every mark of timeline.json, as the metre and night composers do (LINE_END_DROP = '')
-LINE_END_DROP = ''
+# A caption that wraps drops these marks at the end of its inner lines: on screen the line break is the pause
+# (AGENTS.md, display punctuation: a display line of 32 px or more does not end in ，、；：). The metre and night
+# composers kept every mark (LINE_END_DROP = '').
+LINE_END_DROP = '，、；：'
 EN_WT = 450
 
-FONTS = r'D:\promo-films-light\.cache\fonts'
+FONTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '.cache', 'fonts')
 SERIF = os.path.join(FONTS, 'NotoSerifSC[wght].ttf')
 GEL_I = os.path.join(FONTS, 'Gelasio-Italic[wght].ttf')
 FEAT = ['lnum', 'kern']       # lining figures: Gelasio sets old-style figures by default
@@ -538,7 +544,7 @@ def sstep(a, b, x):
 DEC_VF = (f'scale={W}:{PIC_H}:flags=lanczos+accurate_rnd+full_chroma_int:in_color_matrix=bt709:in_range=tv'
           ':out_range=pc,format=rgb24')
 FRAME_BYTES = W * PIC_H * 3
-WORK = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'build')   # ffmpeg's messages (decode*.log, encode.log)
+WORK = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'out', 'grow1', 'build')  # ffmpeg's messages (decode*.log, encode.log); out/ is not in git
 os.makedirs(WORK, exist_ok=True)
 os.makedirs(os.path.dirname(os.path.abspath(OUT)), exist_ok=True)
 
@@ -1207,7 +1213,8 @@ print(f'static layers ready in {time.perf_counter() - t_start:.1f} s; strips {ST
 
 def cap_alpha(a, b, T):
     fd = min(CAP_FADE, (b - a) / 4)
-    return sstep(a, a + fd, T) * (1 - sstep(b - fd, b, T))
+    rise = 1.0 if a <= 0 else sstep(a, a + fd, T)  # the first caption is up at frame 0 with the first word
+    return rise * (1 - sstep(b - fd, b, T))
 
 
 def active(f):
