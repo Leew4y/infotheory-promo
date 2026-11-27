@@ -1,0 +1,137 @@
+{
+ "film": "grow1",
+ "style": "paper-dawn",
+ "generator": {
+  "fonttools": "4.66.1",
+  "brotli": "1.2.0"
+ },
+ "charset": " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~×÷①②③④、。《》一七上下不两个了今体你倍假公再几区单压厘厚变另只各吨和回在天如宽就平形往我截扛接斤方是有核正每片状的着第算米翻背见论设评说过里重错长面高（），：；？",
+ "fonts": [
+  {
+   "family": "Noto Serif SC",
+   "role": "body",
+   "style": "normal",
+   "weight": "200 900",
+   "file": "NotoSerifSC-normal.woff2",
+   "sha256": "d26ceb55f6694caa82bb631c35e768ea420b371cd5edef51da96fcaa338d9acc",
+   "bytes": 90820,
+   "source": {
+    "file": "NotoSerifSC[wght].ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/notoserifsc/NotoSerifSC%5Bwght%5D.ttf",
+    "sha256": "050080d9255a86808f2945bffac582b31ef32bc36411ce29563b4961670c66f9"
+   },
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSE-NotoSerifSC.txt",
+   "chars": 179,
+   "missing": ""
+  },
+  {
+   "family": "Gelasio",
+   "role": "latin",
+   "style": "normal",
+   "weight": "400 700",
+   "file": "Gelasio-normal.woff2",
+   "sha256": "1b9d5e416f78b1be7efb63c9d2be568c5ce9574dfcc551943e14fdc78516af4c",
+   "bytes": 25172,
+   "source": {
+    "file": "Gelasio[wght].ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/gelasio/Gelasio%5Bwght%5D.ttf",
+    "sha256": "4daecea457258c9ebeb8bc99ed3fd24353618bfad3ea4b93fa0b5d0468fc04e4"
+   },
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSE-Gelasio.txt",
+   "chars": 97,
+   "missing": "①②③④、。《》一七上下不两个了今体你倍假公再几区单压厘厚变另只各吨和回在天如宽就平形往我截扛接斤方是有核正每片状的着第算米翻背见论设评说过里重错长面高（），：；？"
+  },
+  {
+   "family": "Gelasio",
+   "role": "latin",
+   "style": "italic",
+   "weight": "400 700",
+   "file": "Gelasio-italic.woff2",
+   "sha256": "1465253d59eab89ebc177cbd843603293743ccdbae5c7640e8162af38437d279",
+   "bytes": 29456,
+   "source": {
+    "file": "Gelasio-Italic[wght].ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/gelasio/Gelasio-Italic%5Bwght%5D.ttf",
+    "sha256": "52559e845a4d33514e5f93bb9ae7dbeae1894a53f2c565a15f18af40cd337c09"
+   },
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSE-Gelasio.txt",
+   "chars": 97,
+   "missing": "①②③④、。《》一七上下不两个了今体你倍假公再几区单压厘厚变另只各吨和回在天如宽就平形往我截扛接斤方是有核正每片状的着第算米翻背见论设评说过里重错长面高（），：；？"
+  },
+  {
+   "family": "STIX Two Text",
+   "role": "math",
+   "style": "normal",
+   "weight": "400 700",
+   "file": "STIXTwoText-normal.woff2",
+   "sha256": "808bb99b7cbf8c374c0e06d82221bd57f3d70134a005abef0f31c59ec267de38",
+   "bytes": 30484,
+   "source": {
+    "file": "STIXTwoText[wght].ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/stixtwotext/STIXTwoText%5Bwght%5D.ttf",
+    "sha256": "7962b8b7811e6a896c9a91a0bccbb5241047770eb24d4997c5cb5fe21d5c0df2"
+   },
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSE-STIXTwoText.txt",
+   "chars": 97,
+   "missing": "①②③④、。《》一七上下不两个了今体你倍假公再几区单压厘厚变另只各吨和回在天如宽就平形往我截扛接斤方是有核正每片状的着第算米翻背见论设评说过里重错长面高（），：；？"
+  },
+  {
+   "family": "STIX Two Text",
+   "role": "math",
+   "style": "italic",
+   "weight": "400 700",
+   "file": "STIXTwoText-italic.woff2",
+   "sha256": "09ba85e522e88d585c0136bcfaf1817902af94a2ad9fa529ebd3c123e4338a6b",
+   "bytes": 34036,
+   "source": {
+    "file": "STIXTwoText-Italic[wght].ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/stixtwotext/STIXTwoText-Italic%5Bwght%5D.ttf",
+    "sha256": "88c0e2e316eaff56eddc9e51e4850317e2a1e490bbf758b2dec4793aedba9c74"
+   },
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSE-STIXTwoText.txt",
+   "chars": 97,
+   "missing": "①②③④、。《》一七上下不两个了今体你倍假公再几区单压厘厚变另只各吨和回在天如宽就平形往我截扛接斤方是有核正每片状的着第算米翻背见论设评说过里重错长面高（），：；？"
+  },
+  {
+   "family": "Inconsolata",
+   "role": "mono",
+   "style": "normal",
+   "weight": "200 900",
+   "file": "Inconsolata-normal.woff2",
+   "sha256": "e412f606821d0be75ac6f7f02d21b5677013d028dbc1c021ed30f39b9d77760c",
+   "bytes": 51424,
+   "source": {
+    "file": "Inconsolata[wdth,wght].ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/inconsolata/Inconsolata%5Bwdth%2Cwght%5D.ttf",
+    "sha256": "23ded25b447074d00659392bf9b1123d89df55cb07b0ad9bfef3366d199b5fcb"
+   },
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSE-Inconsolata.txt",
+   "chars": 97,
+   "missing": "①②③④、。《》一七上下不两个了今体你倍假公再几区单压厘厚变另只各吨和回在天如宽就平形往我截扛接斤方是有核正每片状的着第算米翻背见论设评说过里重错长面高（），：；？"
+  },
+  {
+   "family": "STIX Two Math",
+   "role": "fallback",
+   "style": "normal",
+   "weight": "400",
+   "file": "STIXTwoMath-normal.woff2",
+   "sha256": "5d38ed2e8fe9c0697bb77074e73285768f354819d335ecfb467a0388583e072f",
+   "bytes": 22416,
+   "source": {
+    "file": "STIXTwoMath-Regular.ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/stixtwomath/STIXTwoMath-Regular.ttf",
+    "sha256": "562551b15b836e6e01d1b7350909baf3c8c8d83260c1190fbf4544333e6936de"
+   },
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSE-STIXTwoMath.txt",
+   "chars": 101,
+   "missing": "、。《》一七上下不两个了今体你倍假公再几区单压厘厚变另只各吨和回在天如宽就平形往我截扛接斤方是有核正每片状的着第算米翻背见论设评说过里重错长面高（），：；？"
+  }
+ ]
+}

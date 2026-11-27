@@ -1,0 +1,116 @@
+{
+ "film": "grow1",
+ "style": "paper-dawn",
+ "fps": 30,
+ "bpm": 80,
+ "frames": 1095,
+ "duration": 36.5,
+ "scenes": [
+  {
+   "name": "s1",
+   "kind": "page",
+   "f0": 0,
+   "f1": 1095,
+   "start": 0,
+   "end": 36.5
+  }
+ ],
+ "captions": [
+  {
+   "a": 0,
+   "b": 1.79,
+   "zh": "你每天长高一倍",
+   "en": "You grow twice as tall every day."
+  },
+  {
+   "a": 1.79,
+   "b": 2.78,
+   "zh": "我算过了",
+   "en": "I ran the numbers."
+  },
+  {
+   "a": 2.78,
+   "b": 5.34,
+   "zh": "体重 8 倍，560 公斤",
+   "en": "Eight times the weight: 560 kg."
+  },
+  {
+   "a": 5.34,
+   "b": 8.08,
+   "zh": "长、宽、厚，各翻一倍",
+   "en": "Length, width and depth each double."
+  },
+  {
+   "a": 8.08,
+   "b": 11.21,
+   "zh": "截面只算宽和厚：4 倍",
+   "en": "A cross-section counts only width and depth: four times."
+  },
+  {
+   "a": 11.21,
+   "b": 16.88,
+   "zh": "8 倍的体重，压在 4 倍的截面上：每平方厘米，扛两倍",
+   "en": "Eight times the weight on four times the cross-section: every square centimetre carries twice as much."
+  },
+  {
+   "a": 16.88,
+   "b": 18.15,
+   "zh": "再翻一倍",
+   "en": "Double again."
+  },
+  {
+   "a": 18.15,
+   "b": 20.389,
+   "zh": "64 倍，4.48 吨",
+   "en": "64 times: 4.48 tonnes."
+  },
+  {
+   "a": 20.389,
+   "b": 22.82,
+   "zh": "每平方厘米，4 倍",
+   "en": "Four times per square centimetre."
+  },
+  {
+   "a": 22.82,
+   "b": 23.89,
+   "zh": "再翻一倍",
+   "en": "Double again."
+  },
+  {
+   "a": 23.89,
+   "b": 26.72,
+   "zh": "512 倍，35.84 吨",
+   "en": "512 times: 35.84 tonnes."
+  },
+  {
+   "a": 26.72,
+   "b": 27.49,
+   "zh": "8 倍",
+   "en": "Eight times."
+  },
+  {
+   "a": 27.49,
+   "b": 28.55,
+   "zh": "说回你",
+   "en": "Back to you."
+  },
+  {
+   "a": 28.55,
+   "b": 31.83,
+   "zh": "两倍，就是今天的你，背着另一个你",
+   "en": "Twice is you today carrying another you."
+  },
+  {
+   "a": 31.83,
+   "b": 33.56,
+   "zh": "8 倍，背着七个",
+   "en": "Eight times is carrying seven."
+  },
+  {
+   "a": 33.56,
+   "b": 35.48,
+   "zh": "正片里，接着往下算",
+   "en": "The full episode keeps counting."
+  }
+ ]
+}

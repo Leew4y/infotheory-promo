@@ -1,0 +1,87 @@
+{
+ "voice": "zh-female-yujie",
+ "lines": [
+  {
+   "id": "s1-1",
+   "scene": "s1",
+   "text": "你每天长高一倍。我算过了。",
+   "read": "你每天[zh][ǎng]高一倍。我算过了。",
+   "en": "You grow twice as tall every day. I ran the numbers.",
+   "pause": 0.4,
+   "take": 1
+  },
+  {
+   "id": "s1-2",
+   "scene": "s1",
+   "text": "体重 8 倍，560 公斤。长、宽、厚，各翻一倍。",
+   "read": "体重<strong>八倍</strong>，五百六十公斤。[ch][áng]、宽、厚，各翻一倍。",
+   "en": "Eight times the weight: 560 kg. Length, width and depth each double.",
+   "take": 4
+  },
+  {
+   "id": "s1-3",
+   "scene": "s1",
+   "text": "截面只算宽和厚：4 倍。",
+   "read": "截面只算宽和厚：<strong>四倍</strong>。",
+   "en": "A cross-section counts only width and depth: four times.",
+   "take": 1
+  },
+  {
+   "id": "s1-4",
+   "scene": "s1",
+   "text": "8 倍的体重，压在 4 倍的截面上：每平方厘米，扛两倍。",
+   "read": "八倍的体重，压在四倍的截面上：每平方厘米，[k][áng]<strong>两倍</strong>。",
+   "en": "Eight times the weight on four times the cross-section: every square centimetre carries twice as much."
+  },
+  {
+   "id": "s1-5",
+   "scene": "s1",
+   "text": "再翻一倍。",
+   "en": "Double again."
+  },
+  {
+   "id": "s1-6",
+   "scene": "s1",
+   "text": "64 倍，4.48 吨。每平方厘米，4 倍。",
+   "read": "六十四倍，四点四八吨。每平方厘米，<strong>四倍</strong>。",
+   "en": "64 times: 4.48 tonnes. Four times per square centimetre."
+  },
+  {
+   "id": "s1-7",
+   "scene": "s1",
+   "text": "再翻一倍。",
+   "en": "Double again.",
+   "take": 1
+  },
+  {
+   "id": "s1-8",
+   "scene": "s1",
+   "text": "512 倍，35.84 吨。8 倍。",
+   "read": "五百一十二倍，三十五点八四吨。<strong>八倍</strong>。",
+   "en": "512 times: 35.84 tonnes. Eight times.",
+   "take": 2
+  },
+  {
+   "id": "s1-9",
+   "scene": "s1",
+   "text": "说回你。",
+   "en": "Back to you.",
+   "take": 3
+  },
+  {
+   "id": "s1-10",
+   "scene": "s1",
+   "text": "两倍，就是今天的你，背着另一个你。8 倍，背着七个。",
+   "read": "两倍，就是今天的你，[b][ēi]着另一个你。八倍，[b][ēi]着<strong>七个</strong>。",
+   "en": "Twice is you today carrying another you. Eight times is carrying seven.",
+   "take": 1
+  },
+  {
+   "id": "s1-11",
+   "scene": "s1",
+   "text": "正片里，接着往下算。",
+   "en": "The full episode keeps counting.",
+   "take": 4
+  }
+ ]
+}

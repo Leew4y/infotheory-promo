@@ -9,6 +9,8 @@
  *   frame out of range, repeated, already written or not a JPEG is refused and fails the job. --transport dataurl
  *   uses the older path (the data URL returned over the DevTools protocol), for comparison.
  *                         [--audio out/<id>/music.wav | --noaudio] [--deadline <seconds>]
+ *     --no-captions: the picture without captions (?captions=0), for a layout that sets them itself (a vertical cut
+ *     from timeline.json's captions).
  *   bun scripts/export.ts --film <id> --shots 5,20.5,60 [--dir out/<id>/shots]  write single frames (JPEG) for checking
  *   bun scripts/export.ts --film <id> --cues [films/<id>/cues.json]          dump the sound-effect cue sheet for the score
  *   bun scripts/export.ts --film <id> --timeline [films/<id>/timeline.json]  dump the resolved timeline (scene frames / seconds)
@@ -314,7 +316,7 @@ async function launch(id: number, chrome: string, url: string, fps: () => number
   const page = await browser.newPage();
   page.on('pageerror', (e: unknown) => console.error(`worker ${id} page error:`, e instanceof Error ? e.message : String(e)));
   page.on('console', (m) => { if (m.type() === 'error') console.error(`worker ${id} console.error:`, m.text()); });
-  await loadFilm(page, url, FILM, STYLE ?? '');
+  await loadFilm(page, url, FILM, STYLE ?? '', 60_000, flag('no-captions') ? '&captions=0' : '');
   const frame = async (t: number): Promise<Buffer> => {
     const durl: string = await page.evaluate((t, f, k) => window.__frame(t, f, k), t, fps(), DRAFT ? 1 : 3);
     return Buffer.from(durl.slice(durl.indexOf(',') + 1), 'base64');

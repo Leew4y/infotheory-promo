@@ -22,7 +22,7 @@
  */
 import { cv, recordText, setCoverage, type TextBox } from './draw';
 import { contrastAt, type ContrastBox } from './inspect';
-import { frame, needsAt, prepare } from './frame';
+import { frame, needsAt, prepare, SUBS } from './frame';
 import { prefetch, setStrict } from './media';
 import { allNotes, type Note } from './notes';
 import { lap, perfOn, perfReport } from './perf';
@@ -48,7 +48,7 @@ declare global {
     __film: string;
     __style: string;
     __styles: string[];
-    __timeline: () => { film: string; style: string; fps: number; bpm: number; frames: number; duration: number; scenes: { name: string; kind: string; f0: number; f1: number; start: number; end: number }[] };
+    __timeline: () => { film: string; style: string; fps: number; bpm: number; frames: number; duration: number; scenes: { name: string; kind: string; f0: number; f1: number; start: number; end: number }[]; captions: { a: number; b: number; zh: string; en: string }[] };
     __gpu: () => string;
     /** The film's punctuation rule ('display', or '' when it draws text as written). */
     __punctuation: () => string;
@@ -161,6 +161,7 @@ export function boot(o: BootOptions): void {
   window.__timeline = () => ({
     film: film().id, style: sid, fps: FPS, bpm: film().bpm, frames: FRAMES, duration: TOTAL,
     scenes: SC.map((s) => ({ name: s.name, kind: s.kind, f0: s.f0, f1: s.f1, start: s.t0, end: s.t0 + s.d })),
+    captions: SUBS().map((c) => ({ a: c.a, b: c.b, zh: c.zh, en: c.en })),
   });
   // text boxes of the frame at t (no motion blur), for scripts/validate.ts
   // the same motion-blur sub-frames as __frame (the export)

@@ -1,9 +1,12 @@
 /**
  * Static checks of a built film, for people and agents.
  *
- *   just build <id> && bun scripts/validate.ts --film <id> [--style <id>] [--dist dist/<id>] [--json]
+ *   just build <id> && bun scripts/validate.ts --film <id> [--style <id>] [--dist dist/<id>] [--json] [--no-captions]
  *
  * Without --style every style of the film is checked (the page's __styles, default first); with it, that one.
+ * --no-captions checks the picture as `export.ts --no-captions` renders it (?captions=0): the page draws no captions,
+ * so they are neither laid out nor contrast-checked, for a film whose captions are set outside the picture (a vertical
+ * cut composed from timeline.json).
  * - page load: the page renders the requested film; film and scene declarations satisfy FilmSpec / SceneSpec
  *   (engine/schema.ts); no page errors
  * - timeline: scenes start at 0, are contiguous (no gap, no overlap) and end at the film's duration
@@ -34,7 +37,7 @@ import { checkPlan } from './plan-check';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const argv = Bun.argv.slice(2);
-const VALUED = ['film', 'style', 'dist'], FLAGS = ['json'];
+const VALUED = ['film', 'style', 'dist'], FLAGS = ['json', 'no-captions'];
 for (let i = 0; i < argv.length; i++) {
   const k = argv[i].replace(/^--/, '');
   if (!argv[i].startsWith('--') || ![...VALUED, ...FLAGS].includes(k)) { console.error(`unknown argument: ${argv[i]}`); process.exit(2); }
@@ -101,7 +104,7 @@ try {
     let ready = false;
     try {
       // fails fast when the page throws (e.g. a declaration fails its schema), names no or another style, or is not ready
-      await loadFilm(page, server.url, FILM, id, 30_000);
+      await loadFilm(page, server.url, FILM, id, 30_000, argv.includes('--no-captions') ? '&captions=0' : '');
       ready = true;
     } catch (e) {
       err('page-load', 'page', `film did not load: ${e instanceof Error ? e.message : String(e)}`);

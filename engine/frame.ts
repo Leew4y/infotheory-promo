@@ -72,12 +72,15 @@ export function needsAt(T: number): MediaRef[] {
 export const prepare = (T: number): Promise<void> => ensure(needsAt(T));
 
 let subsCache: SubLine[] | null = null;
+/** ?captions=0: draw no captions (a layout that sets them itself, e.g. a vertical 9:16 cut, uses __timeline().captions). */
+const NO_CAPTIONS = typeof location !== 'undefined' && /[?&]captions=0(&|$)/.test(location.search);
 function overlays(T: number): void {
   const sc = sceneAt(T);
   const S = style();
   textRole('overlay');
   try { if (sc.kind === 'page' && sc.chapter && sc.ch) S.chapterLabel(T - sc.t0, sc.d, sc.chapter, sc.ch, film().chapters); } finally { textRole('scene'); }
   subsCache ??= SUBS();
+  if (NO_CAPTIONS) return;
   textRole('overlay');
   try { S.captions(T, subsCache); } finally { textRole('scene'); }
 }

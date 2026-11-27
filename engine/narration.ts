@@ -28,6 +28,11 @@ export interface NarrationLine {
   read?: string;
   /** Seconds after this line before the next one (default: the scene's gap). */
   pause?: number;
+  /**
+   * Which synthesis take (default 0). The voice samples, so another take of the same reading has other pauses and
+   * intonation; a take > 0 seeds synthesis with `<film>/<id>#<take>` instead of `<film>/<id>` (scripts/narrate.ts).
+   */
+  take?: number;
 }
 export interface NarrationScript { voice: string; lines: NarrationLine[] }
 export interface LockLine {
@@ -276,6 +281,15 @@ export function placeNarration(s: SceneDef, at: Record<string, number>): SceneDe
 
 /** Caption or line text reduced to what is said: letters, digits, CJK. */
 const bare = (s: string): string => (s.match(/[\p{L}\p{N}]/gu) ?? []).join('');
+/** CosyVoice3 markup a reading may carry (Fun-CosyVoice3: tokenizer special tokens): control tags such as [breath]
+ *  and <strong>…</strong>, which say nothing, and pinyin syllables such as [j][iào] or [è] (pronunciation
+ *  inpainting), each of which says one character of the text. */
+const VOICE_TAG = /<\/?[a-z]+>|\[(?:breath|quick_breath|noise|laughter|cough|clucking|accent|hissing|sigh|vocalized-noise|lipsmack|mn)\]/g;
+const PINYIN = /(?:\[(?:zh|ch|sh|[bpmfdtnlgkhjqxrzcsyw])\])?\[[a-zāáǎàēéěèīíǐìōóǒòūúǔùüǖǘǚǜ]+\]/g;
+/** The character a pinyin syllable leaves in a plain reading: any CJK character of the text matches it. */
+const PINYIN_SLOT = '囗';
+/** A reading with its voice markup taken out: tags removed, each pinyin syllable one PINYIN_SLOT. */
+export const plainReading = (read: string): string => read.replace(VOICE_TAG, '').replace(PINYIN, PINYIN_SLOT);
 /** Seconds a line's last caption stays after its speech ends (unless the next line or caption starts sooner). */
 export const CAPTION_HOLD = 0.5;
 /** How far a phrase boundary may move to reach a pause: this, or 15 % of the line, whichever is longer. */
@@ -295,17 +309,22 @@ const weight = (c: string): number => (/[A-Za-z]/.test(c) ? 0.25 : 1);
  * of this caption's first character; the first caption starts at its first character. Null when a caption's characters are not in the reading in order.
  */
 export function readingSplits(captions: string[], read: string): number[] | null {
-  const r = [...bare(read)];
+  const r = [...bare(plainReading(read))];
   const cum = [0];
   for (const c of r) cum.push(cum[cum.length - 1] + weight(c));
   const total = cum[r.length] || 1;
   let at = 0;
   const firsts: number[] = [], lasts: number[] = [];
+  // a pinyin syllable in the reading (PINYIN_SLOT) stands for whichever CJK character of the text it replaces
+  const find = (c: string, from: number): number => {
+    for (let k = from; k < r.length; k++) if (r[k] === c || (r[k] === PINYIN_SLOT && /[㐀-鿿]/.test(c))) return k;
+    return -1;
+  };
   for (const cap of captions) {
     const cs = [...bare(cap)].filter((c) => !/\p{N}/u.test(c)); // digits: the reading writes numbers out
     let first = -1;
     for (const c of cs) {
-      const k = r.indexOf(c, at);
+      const k = find(c, at);
       if (k < 0) return null;
       if (first < 0) first = k;
       at = k + 1;

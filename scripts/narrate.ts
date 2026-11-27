@@ -6,7 +6,8 @@
  * Reads film-plan.json's lines/voice when present, otherwise films/<film>/narration.json (NarrationScript), and voices/<voice>/voice.json
  * (prompt transcript, prompt file, source, licence). Each line is identified by a key: the hash of the adapter version,
  * backend, model (with its pinned revision), the voice prompt's sha256 and transcript, the reading, speed and seed
- * (from the line id). The caption text is not in the key: changing only the text updates the lock, not the audio.
+ * (from the line id and its optional take: another take samples the same reading again). The caption text is not in
+ * the key: changing only the text updates the lock, not the audio.
  *
  * Per line:
  *   - lock entry with the same key, audio file present with the lock's sha256: kept (text updated if it changed);
@@ -151,8 +152,14 @@ try {
   if (M.dir && !existsSync(path.join(M.dir, 'cosyvoice3.yaml'))) fail(`model not found in ${path.relative(ROOT, M.dir)}: run just tts-setup`);
 
   const voiceDir = path.join(ROOT, 'voices', script.voice);
-  const voice = readJson<{ text: string; file: string }>(path.join(voiceDir, 'voice.json'), `voice "${script.voice}"`);
+  // mode (optional): "cross_lingual" when the prompt's language is not the reading's (no transcript; text may be "");
+  // fade (optional): seconds of raised-cosine fade at the trimmed edges of every line. Both enter a line's key only
+  // when set, so the keys of voices without them (and their films' locks) are unchanged.
+  const voice = readJson<{ text: string; file: string; mode?: string; fade?: number }>(path.join(voiceDir, 'voice.json'), `voice "${script.voice}"`);
   if (typeof voice.text !== 'string' || typeof voice.file !== 'string' || voice.file !== path.basename(voice.file)) fail(`voices/${script.voice}/voice.json: needs text and a plain file name`);
+  if (voice.mode !== undefined && voice.mode !== 'zero_shot' && voice.mode !== 'cross_lingual') fail(`voices/${script.voice}/voice.json: mode is "zero_shot" or "cross_lingual"`);
+  if (voice.fade !== undefined && !(typeof voice.fade === 'number' && voice.fade > 0 && voice.fade <= 0.1)) fail(`voices/${script.voice}/voice.json: fade is seconds in (0, 0.1]`);
+  const voiceOpts = { ...(voice.mode ? { mode: voice.mode } : {}), ...(voice.fade ? { fade: voice.fade } : {}) };
   const voiceWav = path.join(voiceDir, voice.file);
   const voiceSha = sha256(readFileSync(voiceWav));
 
@@ -164,8 +171,10 @@ try {
   const todo: { id: string; read: string; seed: number; key: string }[] = [];
   for (const l of script.lines) {
     const read = l.read ?? l.text;
-    const seed = parseInt(sha256(`${FILM}/${l.id}`).slice(0, 8), 16);
-    const key = sha256(JSON.stringify({ adapter: ADAPTER_VERSION, backend, model: M.model, voice: voiceSha, prompt: voice.text, read, speed: 1, seed }));
+    // take 0 keeps the original seed (existing locks stay valid); another take samples the same reading again
+    if (l.take !== undefined && !(Number.isInteger(l.take) && l.take >= 0)) fail(`line "${l.id}": take must be a whole number >= 0`);
+    const seed = parseInt(sha256(`${FILM}/${l.id}${l.take ? `#${l.take}` : ''}`).slice(0, 8), 16);
+    const key = sha256(JSON.stringify({ adapter: ADAPTER_VERSION, backend, model: M.model, voice: voiceSha, prompt: voice.text, read, speed: 1, seed, ...voiceOpts }));
     const e = old?.lines[l.id];
     const file = P.audio(l.id);
     const intact = e && existsSync(file) && sha256(readFileSync(file)) === e.sha256;
@@ -184,7 +193,7 @@ try {
       mkdirSync(work, { recursive: true });
       const job = path.join(work, 'job.json');
       writeFileSync(job, JSON.stringify({
-        backend, model_dir: M.dir ?? '', src_dir: COSYVOICE_SRC, voice: { wav: voiceWav, text: voice.text },
+        backend, model_dir: M.dir ?? '', src_dir: COSYVOICE_SRC, voice: { wav: voiceWav, text: voice.text, ...voiceOpts },
         lines: todo.map((t) => ({ id: t.id, read: t.read, seed: t.seed, out: path.join(work, `${t.id}.wav`) })),
       }, null, 1));
       console.log(`synthesizing ${todo.length} line(s) with ${backend}...`);

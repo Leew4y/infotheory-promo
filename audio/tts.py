@@ -3,7 +3,8 @@
     python audio/tts.py <job.json>
 
 job.json: { "backend": "fake" | "cosyvoice3", "model_dir": ..., "src_dir": ... (cosyvoice3),
-            "voice": { "wav": <prompt wav>, "text": <its transcript> },
+            "voice": { "wav": <prompt wav>, "text": <its transcript>, "mode"?: "zero_shot" | "cross_lingual",
+                       "fade"?: <seconds of raised-cosine fade at both trimmed edges> },
             "lines": [ { "id", "read", "seed", "out" } ] }
 
 Each line's reading is synthesized and written to `out` as a 16-bit mono WAV at the backend's sample rate, with the
@@ -118,10 +119,15 @@ def cosyvoice3_backend(job):
     if model.frontend.text_frontend != '':
         raise SystemExit(f'tts: expected no text normaliser, CosyVoice loaded {model.frontend.text_frontend!r}')
     prompt = 'You are a helpful assistant.<|endofprompt|>' + job['voice']['text']
+    cross = job['voice'].get('mode') == 'cross_lingual'
 
     def synth(read, seed):
         set_all_random_seed(seed)
-        parts = [o['tts_speech'] for o in model.inference_zero_shot(read, prompt, job['voice']['wav'], stream=False)]
+        if cross:  # the prompt's language differs from the reading's: timbre from the prompt, no transcript
+            gen = model.inference_cross_lingual('You are a helpful assistant.<|endofprompt|>' + read, job['voice']['wav'], stream=False)
+        else:
+            gen = model.inference_zero_shot(read, prompt, job['voice']['wav'], stream=False)
+        parts = [o['tts_speech'] for o in gen]
         if not parts:
             raise SystemExit(f'tts: cosyvoice3 produced nothing for "{read}"')
         audio = torch.cat(parts, dim=1)[0].float().cpu().numpy()
@@ -140,10 +146,18 @@ def main():
     if job.get('backend') not in BACKENDS:
         raise SystemExit(f"tts: unknown backend {job.get('backend')!r} (one of {', '.join(BACKENDS)})")
     synth = BACKENDS[job['backend']](job)
+    fade = float(job.get('voice', {}).get('fade') or 0)
     for line in job['lines']:
         samples, rate = synth(line['read'], int(line['seed']))
         a, b = trim(samples, rate)
-        write_wav(line['out'], samples[a:b], rate)
+        out = samples[a:b]
+        if fade > 0:  # raised-cosine edges, so a cut inside a breath or a vowel does not click
+            k = min(len(out) // 2, int(fade * rate))
+            for i in range(k):
+                g = 0.5 - 0.5 * math.cos(math.pi * i / k)
+                out[i] *= g
+                out[-1 - i] *= g
+        write_wav(line['out'], out, rate)
         print(json.dumps({'id': line['id'], 'out': line['out'], 'rate': rate, 'samples': b - a}), flush=True)
 
 

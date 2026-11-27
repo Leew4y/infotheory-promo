@@ -2,7 +2,7 @@
 import { expect, test } from 'bun:test';
 import { defineFilm, FRAMES } from '../engine/film';
 import { scene } from '../engine/scene';
-import { narratedScene, narrationReport, captionWidth, placeNarration, readingSplits, sentences, sentenceSubs, splitCaption, spokenLength, syncSubs, useNarration, vo, type NarrationLock, type NarrationScript } from '../engine/narration';
+import { narratedScene, narrationReport, captionWidth, placeNarration, plainReading, readingSplits, sentences, sentenceSubs, splitCaption, spokenLength, syncSubs, useNarration, vo, type NarrationLock, type NarrationScript } from '../engine/narration';
 
 defineFilm({ id: 'narration-test', fps: 30, bpm: 80, chapters: 1 });
 const script: NarrationScript = {
@@ -91,6 +91,14 @@ test('caption boundaries are found in the reading: numbers written out, Latin wo
   expect(readingSplits(['要紧的是独立'], '公布不等于检验要紧的是独立')![0]).toBeCloseTo(7 / 13, 9);
   expect(readingSplits(['7 月，一份', '报告'], '七月，一份报告')![0]).toBe(0); // opens with a number read out
   expect(readingSplits(['不在', '这句话里'], '完全不同')).toBeNull();
+});
+
+test('voice markup in the reading: tags say nothing, a pinyin syllable says one character of the text', () => {
+  // 可这样的秒 (5) | 要观测一年以上才校得准 (11): [breath] and <strong> carry no weight, [j][iào] stands for 校
+  const r = readingSplits(['可这样的秒，', '要观测一年以上，才校得准。'], '[breath]可这样的秒，要观测<strong>一年以上</strong>，才[j][iào]得准。')!;
+  expect(r[0]).toBe(0);
+  expect(r[1]).toBeCloseTo(5 / 16, 9);
+  expect(plainReading('[breath]这[zh][ī]钟，偏[ch][ā]，[è]')).toBe('这囗钟，偏囗，囗');
 });
 
 test('captions split into phrases: one sentence each, balanced, cut only at punctuation or spaces (PR #9 review)', () => {
