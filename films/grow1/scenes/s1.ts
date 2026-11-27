@@ -93,7 +93,7 @@ interface Beats {
   x512: number; t3584: number; cm3: number; x8s: number; r8: number;
   top5: number; close: number; pop5: number; sorry: number; apol: number;
   col: number; two: number; two2: number; you: number; one: number; eight: number; eight2: number; seven: number;
-  ask: number; card: number; tail: number;
+  ask: number; bone: number; cant: number; card: number; tail: number;
 }
 let B: Beats;
 
@@ -140,7 +140,7 @@ function beats(): Beats {
     col: vo('s1-10') + 0.35, two: lAa, two2: frUp(spanEnd('s1-10', 0) + 0.03), you: lAb, one: lAc, eight: lAd,
     eight2: frUp(spanEnd('s1-10', 3) + 0.03), seven: lAe,
     // the comment card once the question has been asked (after 扛不住？), the end card on 正片里算
-    ask: fr(spanEnd('g9', 2) + 0.06), card: l9d,
+    ask: fr(spanEnd('g9', 2) + 0.06), bone: span('g9', 1), cant: span('g9', 2), card: l9d,
     tail: vo('g9') + LOCK['g9'].duration,
   };
 }
@@ -179,6 +179,8 @@ const CUBE: Obl = { x: 150, y: 880, u: 100 };
 /** The cross-section is seen more from above than the cube, so each cell's stack of weights stands clear of the others. */
 const TILE: Obl = { x: 150, y: 880, u: 110, dy: 0.58 };
 const SLAB = 0.16;
+/** g9's bone cell (one cell of the cross-section, right of the column). */
+const BONE: Obl = { x: 1130, y: 925, u: 110, dy: 0.58 };
 /** Weight width (px), stack step (px) and how high the weights hover before they fall (px). */
 const WW = 64, WSTEP = 44, HOVER = 140;
 /** The 8 weights: cell (i, k) and level m; m = 0 fall first. */
@@ -584,6 +586,26 @@ const S = narratedScene({
       }
       const ya = sstep(B.you, B.you + 0.3, lt) * colA;
       pic('今天的你', TOWER_X + tH * 0.18 + 28, GROUND - tH * 0.36 + 18, { size: 54, a: ya, font: F.body, weight: 600 });
+    }
+
+    // ---- g9 (第几天，骨头扛不住？): one cell of bone cross-section (day 1's block) carrying 8 weights, as the gauge and
+    // the column say (today's 1, times 8); on 扛不住 a red 「？」 beside the stack. Nothing breaks.
+    const ba = sstep(B.bone, B.bone + 0.25, lt) * out;
+    if (ba > 0.002) {
+      box(BONE, 0, 0, 0, 1, SLAB, 1, { a: ba, top: C.bg2 });
+      const [cx, cy] = ob(BONE, 0.5, SLAB, 0.5);
+      for (let m = 0; m < 8; m++) {
+        const t0 = B.bone + 0.08 + m * 0.07, p = clamp((lt - t0) / 0.2);
+        if (p <= 0) break;
+        weight(cx, cy - m * 30 - (1 - p * p) * 60, 46, ba * sstep(0, 0.3, p));
+      }
+      pic('骨头截面', BONE.x - 10, 1004, { size: 52, a: ba, weight: 600, font: F.body });
+      const qa = sstep(B.cant + 0.35, B.cant + 0.45, lt) * out;
+      if (qa > 0.002) {
+        const k = 1 + 0.3 * (1 - eout(clamp((lt - B.cant - 0.35) / 0.15)));
+        // beside the stack's top, under where the end card comes in
+        pic('？', cx + 62, 706, { size: 96 * k, a: qa, weight: 700, font: F.body, color: C.accent });
+      }
     }
 
     // ---- the gauge, from 每平方厘米 (s1-4); hidden by the close-up; back with the column
