@@ -7,7 +7,7 @@
    "text": "你每天长高一倍。我算过了。",
    "read": "你每天[zh][ǎng]高一倍。我算过了。",
    "en": "You grow twice as tall every day. I ran the numbers.",
-   "pause": 0.4,
+   "pause": 0.3,
    "take": 1
   },
   {
@@ -75,7 +75,7 @@
    "scene": "s1",
    "text": "两倍，就是今天的你，背着另一个你。8 倍，背着七个。",
    "read": "两倍，就是今天的你，[b][ēi]着另一个你。八倍，[b][ēi]着<strong>七个</strong>。",
-   "en": "Twice is you today carrying another you. Eight times is carrying seven.",
+   "en": "Twice means you today carrying another you. Eight times means carrying seven.",
    "take": 1
   },
   {

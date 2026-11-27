@@ -1,38 +1,53 @@
 [
  {
-  "t": 2.5,
-  "kind": "stamp"
+  "t": 2.4667,
+  "kind": "stamp",
+  "day": 1
  },
  {
-  "t": 16.5333,
-  "kind": "gauge"
+  "t": 5.4,
+  "kind": "pop"
  },
  {
-  "t": 17.8667,
-  "kind": "stamp"
+  "t": 17.7667,
+  "kind": "gauge",
+  "dur": 0.24
  },
  {
-  "t": 22.5,
-  "kind": "gauge"
+  "t": 19.0333,
+  "kind": "stamp",
+  "day": 2
  },
  {
-  "t": 23.6,
-  "kind": "stamp"
+  "t": 20.1667,
+  "kind": "pop"
  },
  {
-  "t": 27.1667,
-  "kind": "gauge"
+  "t": 21.0747,
+  "kind": "stamp",
+  "day": 3
  },
  {
-  "t": 29.1667,
-  "kind": "gauge"
+  "t": 25.6333,
+  "kind": "gauge",
+  "dur": 0.12
  },
  {
-  "t": 32.2667,
-  "kind": "gauge"
+  "t": 27.3667,
+  "kind": "pop"
  },
  {
-  "t": 35.1333,
+  "t": 30.7667,
+  "kind": "gauge",
+  "dur": 0.14
+ },
+ {
+  "t": 33.9,
+  "kind": "gauge",
+  "dur": 0.08
+ },
+ {
+  "t": 38.6,
   "kind": "end"
  }
 ]

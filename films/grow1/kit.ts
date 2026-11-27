@@ -497,24 +497,346 @@ export function endCard(x: number, y: number, a = 1): void {
   pic(s, x, y, { size, a, weight: 600, font: F.body });
 }
 
-/** The tail card's rows (the brief's 2-second version of the 核算单). */
-export const LEDGER = [
-  '① 假设：每天长高一倍，形状不变；今天 1.7 米、70 公斤',
-  '② 体重 ×8、×64、×512（算）',
-  '③ 截面 ×4、×16、×64（算）',
-  '④ 每平方厘米 = ② ÷ ③：×2、×4、×8（算）',
+/**
+ * The tail card's rows (v2, pilot_short_1_v2.md "尾卡"): [text, continuation?]. Row ① is set on two lines; its first
+ * line drops the ；(on screen the line break is the pause), the second is indented to the text after ①.
+ */
+export const LEDGER: [string, string?][] = [
+  ['① 假设：每天长高一倍，形状不变', '今天 1.7 米、70 公斤；一层楼按 3 米算'],
+  ['② 身高 3.4、6.8、13.6 米 → 头顶 2、3、5 楼（算）'],
+  ['③ 体重 ×8、×64、×512（算）'],
+  ['④ 截面 ×4、×16、×64（算）'],
+  ['⑤ 每平方厘米 = ③ ÷ ④：×2、×4、×8（算）'],
 ];
-/** The tail card (核算单, the brief's 2-second version); u: seconds since it starts (rows come in 0.04 s apart, each in 0.22 s). */
+/** The tail card (核算单); u: seconds since it starts (rows come in 0.04 s apart, each in 0.22 s). Rows 58 px (33 px
+ *  tall in the vertical page). */
 export function tailCard(u: number): void {
   if (u <= 0) return;
-  const x = 136;
+  const x = 136, size = 58, step = 86;
   const row = (i: number) => eout(clamp((u - i * 0.04) / 0.22));
-  pic('核算单', x, 196, { size: 72, a: row(0), weight: 700, font: F.body, ls: 6 });
+  pic('核算单', x, 158, { size: 72, a: row(0), weight: 700, font: F.body, ls: 6 });
   ctx.save();
   ctx.globalAlpha = row(0);
   ctx.fillStyle = C.accent;
-  ctx.fillRect(x, 226, 240 * eout(clamp(u / 0.35)), 6);
+  ctx.fillRect(x, 190, 240 * eout(clamp(u / 0.35)), 6);
   ctx.restore();
-  LEDGER.forEach((s, i) => pic(s, x, 336 + i * 116, { size: 58, a: row(i + 1), color: C.fg }));
-  pic('有错，评论区见', x, 336 + 4 * 116 + 36, { size: 46, a: row(5), color: C.muted, font: F.body });
+  let y = 286;
+  LEDGER.forEach(([s, more], i) => {
+    pic(s, x, y, { size, a: row(i + 1), color: C.fg });
+    if (more) {
+      y += step;
+      pic(more, x + picW('① ', size), y, { size, a: row(i + 1), color: C.fg });
+    }
+    y += step;
+  });
+  pic('有错，评论区见', x, y - 6, { size: 46, a: row(6), color: C.muted, font: F.body });
+}
+
+/** The comment card 「你押第几天？」 (route.md section 5: only after the question has been asked): a comment bubble with
+ *  a thin ink frame and a tail at its lower left; (x, y): its text's start and baseline; u: seconds since it came. */
+export function commentCard(x: number, y: number, u: number, a = 1): void {
+  if (a <= 0.002 || u <= 0) return;
+  const s = '你押第几天？', size = 64, w = picW(s, size, 600, F.body);
+  const k = 0.9 + 0.1 * eout(clamp(u / 0.2));
+  const x0 = x - 30, y0 = y - size - 24, bw = w + 60, bh = size + 54;
+  ctx.save();
+  ctx.translate(x0, y0 + bh);
+  ctx.scale(k, k);
+  ctx.translate(-x0, -(y0 + bh));
+  ctx.globalAlpha = a;
+  ctx.fillStyle = C.bg;
+  ctx.strokeStyle = C.fg;
+  ctx.lineWidth = 2.6;
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.roundRect(x0, y0, bw, bh, 18);
+  ctx.moveTo(x0 + 34, y0 + bh);
+  ctx.lineTo(x0 + 22, y0 + bh + 30);
+  ctx.lineTo(x0 + 66, y0 + bh);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+  pic(s, x0 + (x - x0) * k, y0 + bh + (y - y0 - bh) * k, { size: size * k < 46 ? 46 : size * k, a, weight: 600, font: F.body });
+}
+
+// ------------------------------------------------------------------------------------------------ v2: the building
+
+/**
+ * The picture's base layout is in frame px: the building's x fixed (a diagram: its width does not follow the camera),
+ * heights from metres (y = ground - m * s). A View maps base px to the screen: identity in the main view, a
+ * magnification about a focus point in the close-up of the 5th-floor window. Lengths scale by v.z; line widths and
+ * text sizes do not (so the close-up keeps thin ink lines and the picture's text sizes).
+ */
+export interface View { x: (bx: number) => number; y: (by: number) => number; z: number }
+export const IDENT: View = { x: (b) => b, y: (b) => b, z: 1 };
+export const zoomView = (fx: number, fy: number, px: number, py: number, z: number): View =>
+  ({ x: (b) => px + (b - fx) * z, y: (b) => py + (b - fy) * z, z });
+
+/** The building (pilot_short_1_v2.md "楼"): floors of 3 m (the band's 一层楼按 3 米算), five floors and a roof; on the
+ *  right wall a door on 1 楼 (2.1 m) and a window on every other floor, sill 0.9 m, top 2.4 m above its floor. */
+export const FLOOR_M = 3, FLOORS = 5, SILL_M = 0.9, WIN_TOP_M = 2.4, DOOR_M = 2.1;
+/** The floor (1 = 1 楼) that a height h (m) above the ground is in. */
+export const floorOf = (h: number): number => Math.floor(h / FLOOR_M) + 1;
+
+export interface BuildingOpts {
+  x0: number; x1: number; ground: number; s: number; v: View; a: number;
+  /** above this screen y the building's lines fade out (it goes on above the picture); -Infinity: no fade */
+  fadeTop?: number;
+  /** floor labels' alpha; the floor drawn red (the head's floor) and how red */
+  labelA?: number; hiFloor?: number; hiA?: number;
+  /** where a floor label may go (screen px): its whole box must pass */
+  room?: (x0: number, y0: number, x1: number, y1: number) => boolean;
+}
+/** The cutaway (a dollhouse section, line drawing): slabs, walls, the door, the windows, the roof, 「N 楼」 at the top
+ *  left of each floor. */
+export function building(o: BuildingOpts): void {
+  const { x0, x1, ground, s, v, a } = o;
+  if (a <= 0.002) return;
+  const fade = o.fadeTop ?? -Infinity;
+  const Y = (m: number) => v.y(ground - m * s), X = v.x;
+  const ink = (alpha: number): string | CanvasGradient => {
+    if (!Number.isFinite(fade)) return rgba(C.fg, alpha);
+    const g = ctx.createLinearGradient(0, fade, 0, fade + 90);
+    g.addColorStop(0, rgba(C.fg, 0));
+    g.addColorStop(1, rgba(C.fg, alpha));
+    return g;
+  };
+  const top = FLOORS * FLOOR_M;
+  const slab = Math.min(16, Math.max(7, 0.22 * s * v.z));
+  ctx.save();
+  ctx.globalAlpha = a;
+  // slabs (floors 2..FLOORS and the roof) as a light band between two ink lines
+  ctx.fillStyle = ink(0.14);
+  for (let k = 1; k <= FLOORS; k++) {
+    const y = Y(k * FLOOR_M);
+    ctx.fillRect(X(x0), y - slab, X(x1) - X(x0), slab);
+  }
+  ctx.strokeStyle = ink(1);
+  ctx.lineWidth = 2.6;
+  ctx.lineCap = 'butt';
+  ctx.beginPath();
+  for (let k = 1; k <= FLOORS; k++) {
+    const y = Y(k * FLOOR_M);
+    ctx.moveTo(X(x0), y); ctx.lineTo(X(x1), y);
+    ctx.moveTo(X(x0), y - slab); ctx.lineTo(X(x1), y - slab);
+  }
+  // the roof's parapet
+  const yr = Y(top) - slab;
+  ctx.moveTo(X(x0) - 10 * v.z, yr); ctx.lineTo(X(x1) + 10 * v.z, yr);
+  // left wall: solid; right wall: the door on 1 楼, a window on each floor above
+  ctx.moveTo(X(x0), Y(0)); ctx.lineTo(X(x0), yr);
+  ctx.moveTo(X(x1), Y(DOOR_M));
+  for (let k = 2; k <= FLOORS; k++) {
+    const f = (k - 1) * FLOOR_M;
+    ctx.lineTo(X(x1), Y(f + SILL_M));
+    ctx.moveTo(X(x1), Y(f + WIN_TOP_M));
+  }
+  ctx.lineTo(X(x1), yr);
+  ctx.stroke();
+  // the door's lintel, the windows' sills (out past the wall) and lintels, the glass as a thin line
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(X(x1) - 14 * v.z, Y(DOOR_M)); ctx.lineTo(X(x1) + 4 * v.z, Y(DOOR_M));
+  for (let k = 2; k <= FLOORS; k++) {
+    const f = (k - 1) * FLOOR_M;
+    ctx.moveTo(X(x1) - 16 * v.z, Y(f + SILL_M)); ctx.lineTo(X(x1) + 12 * v.z, Y(f + SILL_M));
+    ctx.moveTo(X(x1) - 10 * v.z, Y(f + WIN_TOP_M)); ctx.lineTo(X(x1) + 6 * v.z, Y(f + WIN_TOP_M));
+  }
+  ctx.stroke();
+  ctx.strokeStyle = typeof ink(1) === 'string' ? rgba(C.fg2, 0.7) : ink(0.7);
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  for (let k = 2; k <= FLOORS; k++) {
+    const f = (k - 1) * FLOOR_M;
+    ctx.moveTo(X(x1), Y(f + SILL_M)); ctx.lineTo(X(x1), Y(f + WIN_TOP_M));
+  }
+  ctx.stroke();
+  ctx.restore();
+  // 「N 楼」 at the top left of each floor (below its ceiling, or at the top of the picture when the ceiling is above it)
+  const la = (o.labelA ?? 1) * a;
+  if (la <= 0.002) return;
+  for (let k = 1; k <= FLOORS; k++) {
+    const yFloor = Y((k - 1) * FLOOR_M), yCeil = Y(k * FLOOR_M);
+    const y = Math.max(yCeil + 58, 150), x = X(x0) + 16;
+    const w = picW(`${k} 楼`, 50, 600, F.body);
+    if (y > yFloor - 60 || y < 112 || y > 1010) continue;  // only where the floor's own room shows under the label
+    if (o.room && !o.room(x, y - 46, x + w, y + 6)) continue;
+    const hi = k === o.hiFloor ? (o.hiA ?? 0) : 0;
+    pic(`${k} 楼`, x, y, { size: 50, a: la, weight: 600, font: F.body, color: mix(C.fg2, C.accent, hi) });
+  }
+}
+
+/** A table (top 0.75 m) from x0 to x1 standing on the floor at base y `floor`; returns the top's base y. */
+export function table(x0: number, x1: number, floor: number, s: number, v: View, a: number, topM = 0.75): number {
+  const top = floor - topM * s;
+  if (a <= 0.002) return top;
+  ctx.save();
+  ctx.globalAlpha = a;
+  ctx.strokeStyle = C.fg;
+  ctx.lineWidth = 2.4;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(v.x(x0), v.y(top)); ctx.lineTo(v.x(x1), v.y(top));
+  ctx.moveTo(v.x(x0 + 0.06 * s), v.y(top)); ctx.lineTo(v.x(x0 + 0.06 * s), v.y(floor));
+  ctx.moveTo(v.x(x1 - 0.06 * s), v.y(top)); ctx.lineTo(v.x(x1 - 0.06 * s), v.y(floor));
+  ctx.stroke();
+  ctx.restore();
+  return top;
+}
+
+/** A bowl of noodles with chopsticks on a table top (base px): bottom centre (x, y). */
+export function bowl(x: number, y: number, s: number, v: View, a: number): void {
+  if (a <= 0.002) return;
+  const r = 0.09 * s * v.z, X = v.x(x), Y = v.y(y);
+  ctx.save();
+  ctx.globalAlpha = a;
+  ctx.fillStyle = C.bg;
+  ctx.strokeStyle = C.fg;
+  ctx.lineWidth = 2.2;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(X - r, Y - r * 0.9);
+  ctx.quadraticCurveTo(X - r, Y, X, Y);
+  ctx.quadraticCurveTo(X + r, Y, X + r, Y - r * 0.9);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(X - r * 0.2, Y - r * 0.8); ctx.lineTo(X + r * 0.9, Y - r * 2.4);
+  ctx.moveTo(X + r * 0.05, Y - r * 0.8); ctx.lineTo(X + r * 1.2, Y - r * 2.2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** An open exercise book on a desk top (base px): bottom centre (x, y). */
+export function book(x: number, y: number, s: number, v: View, a: number): void {
+  if (a <= 0.002) return;
+  const w = 0.16 * s * v.z, X = v.x(x), Y = v.y(y);
+  ctx.save();
+  ctx.globalAlpha = a;
+  ctx.strokeStyle = C.fg;
+  ctx.lineWidth = 2.2;
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(X - w, Y - w * 0.12); ctx.lineTo(X, Y); ctx.lineTo(X + w, Y - w * 0.12);
+  ctx.moveTo(X, Y); ctx.lineTo(X, Y - w * 0.1);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** A flower pot on the window sill (base px): bottom centre (x, y), and a watering can held at (hx, hy), its spout
+ *  towards the pot. */
+export function potAndCan(x: number, y: number, hx: number, hy: number, s: number, v: View, a: number): void {
+  if (a <= 0.002) return;
+  const u = s * v.z, X = v.x(x), Y = v.y(y), HX = v.x(hx), HY = v.y(hy);
+  ctx.save();
+  ctx.globalAlpha = a;
+  ctx.fillStyle = C.bg;
+  ctx.strokeStyle = C.fg;
+  ctx.lineWidth = 2.2;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  // the pot and two leaves
+  ctx.beginPath();
+  ctx.moveTo(X - 0.08 * u, Y - 0.14 * u); ctx.lineTo(X + 0.08 * u, Y - 0.14 * u);
+  ctx.lineTo(X + 0.06 * u, Y); ctx.lineTo(X - 0.06 * u, Y); ctx.closePath();
+  ctx.fill(); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(X, Y - 0.14 * u); ctx.quadraticCurveTo(X - 0.02 * u, Y - 0.3 * u, X - 0.1 * u, Y - 0.34 * u);
+  ctx.moveTo(X, Y - 0.14 * u); ctx.quadraticCurveTo(X + 0.04 * u, Y - 0.26 * u, X + 0.11 * u, Y - 0.28 * u);
+  ctx.stroke();
+  // the can: a body, a handle on its left (in the hand), a spout to the right and up
+  const bw = 0.2 * u, bh = 0.16 * u;
+  ctx.beginPath();
+  ctx.rect(HX - bw * 0.1, HY - bh * 0.5, bw, bh);
+  ctx.fill(); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(HX + bw * 0.9, HY); ctx.lineTo(HX + bw * 1.7, HY - bh * 0.7);
+  ctx.moveTo(HX - bw * 0.1, HY - bh * 0.3); ctx.quadraticCurveTo(HX - bw * 0.35, HY, HX - bw * 0.1, HY + bh * 0.3);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** A neighbour's speech bubble with 「？」「！」「……」 (no faces: the bubble is the reaction): centre (x, y) on screen, its
+ *  tail to (tx, ty); u: seconds since it popped (it pops from 60 % to full in 0.18 s). */
+export function bubble(x: number, y: number, s: string, tx: number, ty: number, u: number, a = 1): void {
+  if (a <= 0.002 || u < 0) return;
+  const k = 0.6 + 0.4 * eout(clamp(u / 0.18));
+  const size = 60, w = Math.max(96, picW(s, size, 700, F.body) + 44) * k, h = 86 * k;
+  ctx.save();
+  ctx.globalAlpha = a;
+  ctx.fillStyle = C.bg;
+  ctx.strokeStyle = C.fg;
+  ctx.lineWidth = 2.6;
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.ellipse(x, y, w / 2, h / 2, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  // the tail: a small wedge from the bubble's rim towards (tx, ty)
+  const ang = Math.atan2(ty - y, tx - x), bx = x + Math.cos(ang) * w * 0.42, by = y + Math.sin(ang) * h * 0.42;
+  const ex = bx + (tx - bx) * 0.5, ey = by + (ty - by) * 0.5, nx = -Math.sin(ang) * 9 * k, ny = Math.cos(ang) * 9 * k;
+  ctx.beginPath();
+  ctx.moveTo(bx + nx, by + ny); ctx.lineTo(ex, ey); ctx.lineTo(bx - nx, by - ny);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+  pic(s, x, y + size * 0.36 * k, { size: Math.max(46, size * k), a, weight: 700, font: F.body, align: 'center' });
+}
+
+/** The hair whorl (发旋) on top of a solid head: a paper-coloured spiral, centre (x, y), radius r (screen px). */
+export function whorl(x: number, y: number, r: number, a = 1): void {
+  if (a <= 0.002 || r < 3) return;
+  ctx.save();
+  ctx.globalAlpha = a;
+  ctx.strokeStyle = C.bg;
+  ctx.lineWidth = Math.max(1.6, r * 0.14);
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  for (let i = 0; i <= 60; i++) {
+    const t = i / 60, ang = -Math.PI / 2 + t * Math.PI * 3.4, rr = r * (0.12 + 0.88 * t);
+    const px = x + Math.cos(ang) * rr, py = y + Math.sin(ang) * rr * 0.7;
+    if (i) ctx.lineTo(px, py);
+    else ctx.moveTo(px, py);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** Seams of a shirt sewn from n × n shirts (衣服按面积 ×4、×16、×64): paper-coloured lines over the torso of a standing
+ *  silhouette (person() on (cx, footY), h px), clipped to its outline; k (0..1) draws them in. */
+export function shirtSeams(cx: number, footY: number, h: number, n: number, a = 1, k = 1): void {
+  if (a <= 0.002 || n < 2 || k <= 0) return;
+  ctx.save();
+  ctx.beginPath();
+  STAND.forEach(([x, y], i) => (i ? ctx.lineTo(cx + x * h, footY - y * h) : ctx.moveTo(cx + x * h, footY - y * h)));
+  ctx.closePath();
+  ctx.clip();
+  const x0 = cx - 0.098 * h, x1 = cx + 0.098 * h, y0 = footY - 0.84 * h, y1 = footY - 0.47 * h;
+  ctx.globalAlpha = a;
+  ctx.strokeStyle = C.bg;
+  ctx.lineWidth = clamp(h * 0.0045, 1.4, 2.8);
+  ctx.beginPath();
+  for (let i = 1; i < n; i++) {
+    const x = lerp(x0, x1, i / n), y = lerp(y0, y1, i / n);
+    ctx.moveTo(x, y0); ctx.lineTo(x, lerp(y0, y1, k));
+    ctx.moveTo(x0, y); ctx.lineTo(lerp(x0, x1, k), y);
+  }
+  // the hem
+  ctx.moveTo(x0, y1); ctx.lineTo(x1, y1);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** A sheet of tiny "你" (solid silhouettes), cols × rows, top left (x0, top), each h px tall, steps dx / dy; `n` must
+ *  equal cols × rows (the brief's 64 / 512 个你); k (0..1) fills them in row by row. Returns the number drawn. */
+export function crowd(x0: number, top: number, cols: number, rows: number, n: number, h: number, dx: number, dy: number, a = 1, k = 1): number {
+  if (cols * rows !== n) throw new Error(`grow1 kit: crowd ${cols} x ${rows} is not ${n}`);
+  if (a <= 0.002 || k <= 0) return 0;
+  const shown = Math.round(n * clamp(k));
+  for (let i = 0; i < shown; i++) {
+    const c = i % cols, r = Math.floor(i / cols);
+    person(x0 + dx * (c + 0.5), top + dy * r + h, h, { a });
+  }
+  return shown;
 }
