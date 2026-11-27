@@ -1,7 +1,13 @@
 """The two covers of the film "grow1" (《长高一倍，体重变几倍？》), JPEG q94:
 
-    python tools/grow1/covers.py [out folder, default films/grow1/delivery]
+    python tools/grow1/covers.py [--v2] [out folder, default films/grow1/delivery]
         -> cover_4x3.jpg (1440 x 1080), cover_3x4.jpg (1080 x 1440), and -phone.jpg copies at feed size for checking
+           (--v2: cover_v2_4x3.jpg, cover_v2_3x4.jpg for v2, pilot_short_1_v2.md; v1's covers are left as they are)
+
+--v2: the 4:3 cover is tools/grow1/cover_scene_v2.ts (the title 「第 3 天」「头顶到 5 楼」, 「体重 ×512」, the stamp, the
+three premise lines, the plate and the film's close-up of the 5th-floor window); the 3:4 cover's picture is the film's
+own frame at V2_T (the close-up with 「……」, the day-3 weight line and crowd at the left; the film must be built), set
+through vertical.py as below, with the title 「第 3 天，头顶到 5 楼」.
 
 Copies films/grow1 into a private film films/g1c whose only scene is tools/grow1/cover_scene.ts (no narration),
 builds its font subset and the film, shoots two frames and removes the copy, its build and its out folder:
@@ -25,9 +31,13 @@ from PIL import Image, ImageDraw, ImageFont, features
 REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 TOOLS = os.path.dirname(os.path.abspath(__file__))
 FILM, FID = 'grow1', 'g1c'
-OUT = os.path.abspath(sys.argv[1]) if len(sys.argv) > 1 else os.path.join(REPO, 'films', FILM, 'delivery')
-WORK = os.path.join(REPO, 'out', FILM, 'covers')
-TITLE = '长高一倍，体重变几倍？'
+V2 = '--v2' in sys.argv[1:]
+ARGS = [a for a in sys.argv[1:] if a != '--v2']
+OUT = os.path.abspath(ARGS[0]) if ARGS else os.path.join(REPO, 'films', FILM, 'delivery')
+V2_T = 27.6
+WORK = os.path.join(REPO, 'out', FILM, 'covers_v2' if V2 else 'covers')
+TITLE = '第 3 天，头顶到 5 楼' if V2 else '长高一倍，体重变几倍？'
+PRE = 'cover_v2_' if V2 else 'cover_'
 SERIF = os.path.join(REPO, '.cache', 'fonts', 'NotoSerifSC[wght].ttf')
 INK = (0x1A, 0x19, 0x17)
 env = dict(os.environ, FILM=FID)
@@ -54,18 +64,24 @@ try:
         f"selectStyle([style]);\nexport default defineFilm({{ id: '{FID}', fps: 30, bpm: 80, chapters: 0, punctuation: 'display' }});\n")
     shutil.rmtree(os.path.join(dst, 'scenes'))
     os.makedirs(os.path.join(dst, 'scenes'))
-    shutil.copy(os.path.join(TOOLS, 'cover_scene.ts'), os.path.join(dst, 'scenes', 'cover.ts'))
+    shutil.copy(os.path.join(TOOLS, 'cover_scene_v2.ts' if V2 else 'cover_scene.ts'), os.path.join(dst, 'scenes', 'cover.ts'))
     open(os.path.join(dst, 'scenes', 'index.ts'), 'w', encoding='utf-8').write("import './cover';\n")
     run(['bun', 'scripts/fonts.ts', '--film', FID])
     run(['bunx', 'vite', 'build'])
-    run(['bun', 'scripts/export.ts', '--film', FID, '--shots', '0.5,1.5', '--dir', WORK, '--no-captions'])
+    run(['bun', 'scripts/export.ts', '--film', FID, '--shots', '0.5' if V2 else '0.5,1.5', '--dir', WORK, '--no-captions'])
 finally:
     shutil.rmtree(dst, ignore_errors=True)
     shutil.rmtree(os.path.join(REPO, 'dist', FID), ignore_errors=True)
     shutil.rmtree(os.path.join(REPO, 'out', FID), ignore_errors=True)
 
 shots = sorted(f for f in os.listdir(WORK) if f.startswith('t') and f.endswith('.jpg'))
-fa, fb = (os.path.join(WORK, f) for f in shots[:2])
+fa, fb = os.path.join(WORK, shots[0]), (os.path.join(WORK, shots[1]) if len(shots) > 1 else None)
+if V2:
+    # the film's own frame for the 3:4 picture (the film as last built: dist/grow1)
+    film_dir = os.path.join(WORK, 'film')
+    shutil.rmtree(film_dir, ignore_errors=True)
+    run(['bun', 'scripts/export.ts', '--film', FILM, '--shots', str(V2_T), '--dir', film_dir, '--no-captions'])
+    fb = os.path.join(film_dir, sorted(os.listdir(film_dir))[0])
 
 
 def margins_ok(im, name, mx, my, bottom=None):
@@ -84,7 +100,7 @@ def margins_ok(im, name, mx, my, bottom=None):
 # 4:3
 c43 = Image.open(fa).convert('RGB').crop((240, 0, 1680, 1080))
 ok = margins_ok(c43, 'cover_4x3', 86, 65)
-c43.save(os.path.join(OUT, 'cover_4x3.jpg'), quality=94, subsampling=0)
+c43.save(os.path.join(OUT, PRE + '4x3.jpg'), quality=94, subsampling=0)
 
 # 3:4: the picture through the composer
 clip = os.path.join(WORK, 'pic34.mp4')
@@ -96,7 +112,8 @@ json.dump({'film': FID, 'fps': 30, 'frames': 60, 'duration': 2.0, 'captions': []
 page = os.path.join(WORK, 'page34.png')
 print(run([sys.executable, os.path.join(TOOLS, 'vertical.py'), clip, tl, os.path.join(WORK, 'none.wav'), page,
            '--sample', '1.0']).strip().splitlines()[-1])
-p = Image.open(page).convert('RGB').crop((0, 136, 1080, 1576))
+Y0 = 98 if V2 else 136   # v2's band has its plate higher (vertical.py: frame from y 184), 86 px under the cover's top
+p = Image.open(page).convert('RGB').crop((0, Y0, 1080, Y0 + 1440))
 d = ImageDraw.Draw(p)
 size = 86
 f = ImageFont.truetype(SERIF, size)
@@ -107,8 +124,8 @@ x = (1080 - w) / 2
 y_ink_bottom = 1440 - 216 - 24          # the ink ends 24 px above the bottom 15 % (y 1224)
 d.text((x, y_ink_bottom - bbox[3]), TITLE, font=f, fill=INK)
 ok = margins_ok(p, 'cover_3x4', 65, 86, bottom=1440 - 216) and ok
-p.save(os.path.join(OUT, 'cover_3x4.jpg'), quality=94, subsampling=0)
-for n in ('cover_4x3', 'cover_3x4'):
+p.save(os.path.join(OUT, PRE + '3x4.jpg'), quality=94, subsampling=0)
+for n in (PRE + '4x3', PRE + '3x4'):
     im = Image.open(os.path.join(OUT, n + '.jpg'))
     im.resize((im.width // 3, im.height // 3), Image.LANCZOS).save(os.path.join(WORK, n + '-phone.jpg'), quality=90)
 print('covers ->', OUT, '' if ok else '(MARGIN CHECK FAILED)')

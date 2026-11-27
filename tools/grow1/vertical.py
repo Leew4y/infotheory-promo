@@ -1205,7 +1205,7 @@ for grp in groups:
                                (f'-{grp[-1]}' if len(grp) > 1 else '') + ' en'),
                          caps[grp[0]]['a'], caps[grp[-1]]['b'], grp))
 
-problems = caption_problems(caps)
+problems = caption_problems(caps) if caps else []  # no captions at all: a picture-only page (the covers)
 print(f'{len(caps)} captions (zh step, gap, en px, en step; ink bottom); narration.json:'
       f' {"every line, in order" if not problems else "MISMATCH"}')
 for k, (c, L) in enumerate(zip(caps, lays)):
