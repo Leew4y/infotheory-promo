@@ -67,6 +67,17 @@ const NB: Neighbour[] = [
 const TOWER_X = 300;
 const TOWER_H = [600, 560, 225];
 const DROP = 0.15, DROP_T = 0.3;
+/**
+ * The hook cut (built with VITE_GROW1_HOOK=1; the plain v2 build is unchanged): a cold open. From frame 0 to HOOK_HOLD
+ * the picture is day 3's result (the building, the 13.6 m silhouette beside it with its whorl and 8 x 8 seams, 「第 3 天」
+ * 「头顶到 5 楼」), then it rewinds to day 0 by HOOK_END (the counter ticking 3-2-1-0, a rewind mark), before 我算过了.
+ * Picture only: the voice, the timeline, the captions and the sound are v2's.
+ */
+const HOOK = import.meta.env.VITE_GROW1_HOOK === '1';
+const HOOK_HOLD = 1.2, HOOK_END = 1.7;
+/** 1 while the cold open shows day 3, easing to 0 (day 0) by HOOK_END; always 0 in the plain build. */
+const hookK = (lt: number): number => (HOOK ? 1 - eio(clamp((lt - HOOK_HOLD) / (HOOK_END - HOOK_HOLD))) : 0);
+
 /** The close-up of the 5th-floor window (a front view from inside): the panel, px per metre, the floor's y, the
  *  window's centre x, the neighbour's x. */
 const PANEL = { x0: 128, y0: 80, x1: 1640, y1: 1000 };
@@ -138,6 +149,8 @@ function beats(): Beats {
 
 /** px per metre and the grown figure's world height at time lt (days 0..3). */
 function cam(lt: number): { s: number; hw: number; day: number; since: number } {
+  const k = hookK(lt);
+  if (k > 0) return { s: SCALE[0] * Math.pow(SCALE[3] / SCALE[0], k), hw: HW[0] * Math.pow(HW[3] / HW[0], k), day: 0, since: Infinity };
   let s = SCALE[0], hw = HW[0], day = 0, since = Infinity;
   for (let n = 1; n <= 3; n++) {
     const ts = B.stamp[n - 1];
@@ -307,6 +320,12 @@ function world(lt: number, v: View, a: number, c: { s: number; hw: number; day: 
   person(v.x(gx), v.y(GROUND), gh * v.z, { look: 'solid', a });
   const d = c.day, sa = d ? a * seamsA(lt, d) : 0;
   if (sa > 0.002) shirtSeams(v.x(gx), v.y(GROUND), gh * v.z, SEAMS[d], sa, seamsK(lt, d));
+  const hk = hookK(lt);
+  if (hk > 0.002) {
+    shirtSeams(v.x(gx), v.y(GROUND), gh * v.z, 8, a * hk, 1);
+    const r = 0.06 * gh * v.z;
+    whorl(v.x(gx), v.y(GROUND - 0.94 * gh) - 0.6 * r, 0.4 * r, a * hk);
+  }
   if (d === 3) {
     const r = 0.06 * gh * v.z;
     whorl(v.x(gx), v.y(GROUND - 0.94 * gh) - 0.6 * r, 0.4 * r, a * sstep(B.stamp[2] + 0.6, B.stamp[2] + 0.9, lt));
@@ -367,7 +386,7 @@ const S = narratedScene({
 
     // ---- zone D: the head readout (height, 头顶：N 楼) and the clothes label, right of the silhouette
     const rx = gx + 0.168 * gh + 28, headY = GROUND - gh;
-    const hA = (d === 0 ? 1 : dayA(d, B.stamp[d - 1] + 0.6, lt)) * mv * (1 - closeA);
+    const hA = (d === 0 ? 1 - sstep(0, 0.25, hookK(lt)) : dayA(d, B.stamp[d - 1] + 0.6, lt)) * mv * (1 - closeA);
     const hT = d === 1 ? B.h34 : d === 0 ? 0 : B.stamp[d - 1] + 0.6;
     const ha = hA * sstep(hT, hT + 0.2, lt);
     if (ha > 0.002) {
@@ -398,10 +417,28 @@ const S = narratedScene({
 
     // ---- zone A: the counter and the weight line (covered by the close-up)
     const ta = mv * (1 - closeA);
-    counter(DAY[d], c.since, ta);
-    const qa = ta * (1 - sstep(B.x8 - 0.01, B.x8, lt));
+    const hk = hookK(lt);
+    counter(hk > 0 ? String(Math.round(3 * hk)) : DAY[d], c.since, ta);
+    const qOff = 1 - sstep(0.2, 0.4, hk);
+    const qa = ta * (1 - sstep(B.x8 - 0.01, B.x8, lt)) * qOff;
+    if (hk > 0.002) {
+      pic('头顶到 5 楼', COUNTER.x, 336, { size: 84, a: ta * sstep(0.6, 0.8, hk), weight: 700, font: F.body });
+      // the rewind mark: two red triangles pointing back, while the picture rewinds
+      const rw = Math.sin(Math.PI * clamp((lt - HOOK_HOLD) / (HOOK_END - HOOK_HOLD)));
+      if (rw > 0.002) {
+        ctx.save();
+        ctx.globalAlpha = rw * ta;
+        ctx.fillStyle = C.accent;
+        for (const x0 of [548, 516]) {
+          ctx.beginPath();
+          ctx.moveTo(x0 + 30, 150); ctx.lineTo(x0, 180); ctx.lineTo(x0 + 30, 210); ctx.closePath();
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+    }
     const W0 = picW('体重', QS, 600, F.body);
-    pic('体重', COUNTER.x, 330, { size: QS, a: ta, weight: 600, font: F.body });
+    pic('体重', COUNTER.x, 330, { size: QS, a: ta * qOff, weight: 600, font: F.body });
     pic('变几倍？', COUNTER.x + W0, 330, { size: QS, a: qa, weight: 600, font: F.body });
     // 我算过了: a red pen under 变几倍？
     const pen = eout(clamp((lt - B.q) / 0.45));
