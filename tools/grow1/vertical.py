@@ -11,13 +11,15 @@ printed (paper level and grid lines across both joints, contrast of the text on 
 --words adds words (one per line, UTF-8) that a Chinese caption line break should not cut to the list WORDS.
 
 Layout (1080x1920), after the metre composer (the sixth film's vertical.py): one sheet of grid paper. The
-band above the picture is the narrator band of the channel route (route.md section 6, pilot_short_1.md): the name
-plate 「核算员」 at the top right (ink, a thin ink frame, right edge at x 926); below it, at the left, the red stamp
-「假设」 (a rubber stamp: the film's red, a thick frame, turned 3 degrees, uneven ink) with the two premise lines
-「每天长高一倍，形状不变」「今天 1.7 米、70 公斤」 beside it, and under the stamp the small note
-「前提是假的，每个数都标了出处或算法。」. No film title, no rules at the joints: the picture (scaled to 1080x608 at
-y = 610) sits on the same sheet. Captions from y = 1266, centred in the column x 70-930 (the right 150 px stay free for
-the app's buttons), ending above y = 1560. Every band element is inside y 150-1560, x 40-930.
+band above the picture is the narrator band of the channel route (route.md section 6, pilot_short_1_v2.md): the name
+plate 「核算员」 at the top right (ink, a thin ink frame, right edge at x 926, ink from y 200); below it the three
+premise lines 「每天长高一倍，形状不变」「今天 1.7 米、70 公斤」「一层楼按 3 米算」 (46 px, 64 px apart, ink from y 290,
+left edge 36 px right of the stamp), at the left beside them the red stamp 「假设」 (a rubber stamp: the film's red, a
+thick frame, turned 3 degrees, uneven ink) centred on the three lines, and under both the small note
+「前提是假的，每个数都标了出处或算法。」 (32 px). No film title, no rules at the joints: the picture (scaled to 1080x608
+at y = 610) sits on the same sheet. Captions from y = 1266, centred in the column x 70-930 (the right 150 px stay free
+for the app's buttons), ending above y = 1560. Every band element is inside y 150-1560, x 40-930, and the band's text
+ends above y 560 (the rows below follow the picture's edge).
 
 How the page is made one sheet of grid paper. The paper: as in the metre composer (the engine's picture vignette
 divided out, one page vignette over 1080x1920, the band's paper continued from the picture's measured paper colour
@@ -49,10 +51,14 @@ what is left of the edge change follows into the band over 40 rows (at most EDGE
 picture (bt709, lanczos) and encodes the result: libx264 slow, crf 19, maxrate 12M, High@4.1, yuv420p bt709, 30 fps,
 AAC 256k stereo, +faststart.
 
-Captions: Chinese in Noto Serif SC 600 in ink (C.fg), English in Gelasio Italic with lining figures in C.fg2, sizes
+Captions: the timeline's (engine/frame.ts SUBS under the film's display punctuation: one sentence per caption, its
+Chinese without a trailing ，、；：。; ？！ stay), checked against films/grow1/narration.json: the captions in order
+are the narration lines' text, whole, with only those marks and spaces left out at their ends; otherwise the script
+stops. Chinese in Noto Serif SC 600 in ink (C.fg), English in Gelasio Italic with lining figures in C.fg2, sizes
 and line breaking as in the metre composer (a number stays with its unit word, Chinese or Latin, a date never splits
-across lines, no line starts with closing punctuation). Each caption fades in and out over 0.15 s (less for a caption
-shorter than 0.6 s). Where consecutive captions carry the same English, the English is set once and stays.
+across lines, no line starts with closing punctuation; a wrapped line drops a final ，、；：). Each caption fades in
+and out over 0.15 s (less for a caption shorter than 0.6 s). Where consecutive captions carry the same English, the
+English is set once and stays.
 """
 import json
 import math
@@ -77,7 +83,7 @@ if not features.check_feature('raqm'):  # font features (lining figures, kerning
 # ---------------------------------------------------------------- the band's words (pilot_short_1.md, route.md 3.3)
 PLATE_TEXT = '核算员'
 STAMP_TEXT = '假设'
-PREMISE = ('每天长高一倍，形状不变', '今天 1.7 米、70 公斤')
+PREMISE = ('每天长高一倍，形状不变', '今天 1.7 米、70 公斤', '一层楼按 3 米算')
 NOTE = '前提是假的，每个数都标了出处或算法。'
 
 # ---------------------------------------------------------------- geometry
@@ -98,22 +104,22 @@ FADE_FLOOR = 0.02             # fitted fade amounts below this are noise (grain 
 CAP_FADE = 0.15               # caption fade in after a and out before b (s); at most a quarter of a short caption
 PAD = 4                       # margin of a text layer's crop
 
-# the band (page px): name plate top right, stamp + premise lines, the note under the stamp
+# the band (page px): name plate top right; the premise lines under it, the stamp left of them; the note under both
 BAND_X0 = 70                  # left edge of the stamp and the note
 PLATE_RIGHT = 926             # right edge of the plate's frame (Douyin's buttons are right of x 930)
-PLATE_INK_TOP = 238           # top of the plate name's ink
+PLATE_INK_TOP = 200           # top of the plate name's ink (its frame from y 184)
 PLATE_PX, PLATE_WT, PLATE_LS = 44, 600, 10
 PLATE_PAD_X, PLATE_PAD_Y, PLATE_FRAME = 26, 16, 2
-STAMP_TOP = 340               # top of the stamp's frame (before turning)
 STAMP_PX, STAMP_WT, STAMP_LS = 80, 800, 12
 STAMP_PAD_X, STAMP_PAD_Y, STAMP_FRAME, STAMP_RADIUS = 22, 14, 7, 7
 STAMP_ANGLE = 3.0             # degrees, counter-clockwise
 STAMP_INK = 0.93              # the stamp's opacity where the ink is full
 PREM_PX, PREM_WT, PREM_LS = 46, 600, 2
-PREM_GAP = 36                 # stamp frame's right edge to the premise lines
-PREM_STEP = 68                # line step of the two premise lines
+PREM_GAP = 36                 # stamp frame's right edge to the premise lines' ink
+PREM_INK_TOP = 290            # top of the first premise line's ink (32 px under the plate's frame)
+PREM_STEP = 64                # line step of the premise lines (em box to em box)
 NOTE_PX, NOTE_WT, NOTE_LS = 32, 500, 1
-NOTE_GAP = 26                 # stamp frame's bottom to the note's ink top
+NOTE_GAP = 30                 # the lower of the stamp's frame and the premise lines' ink, to the note's ink top
 BAND_TEXT_LIMIT = PIC_Y - TRACK - 10   # band text ends above the rows that follow the picture's edge
 
 # (Chinese line step, gap to the English, English size, English line step), tried in order until the caption fits
@@ -152,9 +158,11 @@ LINE_WIN = 2                  # columns / rows kept on each side of a detected l
 LATTICE_TOL = 0.6             # px: a line further than this from the fitted lattice is not part of the grid
 
 # ---------------------------------------------------------------- arguments
-# words of this film's captions that a Chinese line break should not cut (films/grow1/timeline.json, 16 captions)
-WORDS = ('每天', '长高', '一倍', '算过', '体重', '公斤', '各翻', '截面', '只算', '每平方厘米', '平方厘米', '厘米',
-         '两倍', '再翻', '今天', '就是', '背着', '另一个', '七个', '正片', '接着', '往下算')
+# words of this film's captions that a Chinese line break should not cut (films/grow1/narration.json, 11 lines, 18
+# captions)
+WORDS = ('每天', '长高', '一倍', '算过', '头顶', '到了', '体重', '公斤', '各翻', '截面', '只算', '每平方厘米', '平方厘米',
+         '厘米', '两倍', '再翻', '邻居', '道过歉', '今天', '就是', '背着', '另一个', '七个', '第几天', '骨头', '扛不住',
+         '正片')
 args = [a for a in sys.argv[1:]]
 SAMPLE = None
 if '--sample' in args:
@@ -449,6 +457,28 @@ def wrap_en(text, f, maxw):
         if spans:
             return [line_str(i, j) for i, j in spans], sum(bcost(j) for _, j in spans[:-1])
     raise SystemExit(f'English caption does not fit: {text}')
+
+
+NARRATION = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'films', 'grow1', 'narration.json')
+CAP_DROP = '，、；：。'                # engine/util.ts displayText: what a display caption drops at its end
+
+
+def caption_problems(caps):
+    """The captions against films/grow1/narration.json: read in order they must spell every line's text, whole, with
+    only CAP_DROP marks and spaces left out where a caption ends (engine: sentences, displayText). Returns problems."""
+    lines = json.load(open(NARRATION, encoding='utf-8'))['lines']
+    text = ''.join(L['text'] for L in lines)
+    pos, out = 0, []
+    for k, c in enumerate(caps):
+        zh = c['zh']
+        j = text.find(zh, pos)
+        if j < 0 or text[pos:j].strip(' ' + CAP_DROP):
+            out.append(f'caption {k} "{zh}" is not the next text of narration.json (expected near "{text[pos:pos + 16]}")')
+            return out
+        pos = j + len(zh)
+    if text[pos:].strip(' ' + CAP_DROP):
+        out.append(f'narration.json text not shown in any caption: "{text[pos:]}"')
+    return out
 
 
 def same_text(lines, original, dropped=''):
@@ -946,13 +976,35 @@ def put_centred(d, boxes, label, s, cx, y, f, fill, ls=0):
     put(d, boxes, label, s, cx - (b[0] + b[2]) / 2, y, f, fill, ls)
 
 
-def stamp_geometry():
-    """The stamp's frame (x0, y0, x1, y1) before turning, and the ink box of its text."""
+def stamp_size():
+    """The stamp frame's width and height (before turning) and the ink box of its text."""
     fs = font(SERIF, STAMP_PX, STAMP_WT)
     b = ink_box(STAMP_TEXT, fs, STAMP_LS)
-    w = (b[2] - b[0]) + 2 * (STAMP_PAD_X + STAMP_FRAME)
-    h = (b[3] - b[1]) + 2 * (STAMP_PAD_Y + STAMP_FRAME)
-    return (BAND_X0, STAMP_TOP, BAND_X0 + w, STAMP_TOP + h), b
+    return (b[2] - b[0]) + 2 * (STAMP_PAD_X + STAMP_FRAME), (b[3] - b[1]) + 2 * (STAMP_PAD_Y + STAMP_FRAME), b
+
+
+def premise_rows():
+    """The premise lines: [(text, x, y, ink box)] with (x, y) where draw_str puts them (the ink's left edge PREM_GAP
+    right of the stamp's frame, the first line's ink top at PREM_INK_TOP, PREM_STEP from em box to em box), and the
+    block's ink top and bottom."""
+    w, _, _ = stamp_size()
+    fp = font(SERIF, PREM_PX, PREM_WT)
+    x = BAND_X0 + w + PREM_GAP
+    top = PREM_INK_TOP - ink_box(PREMISE[0], fp, PREM_LS)[1]
+    rows = []
+    for k, s in enumerate(PREMISE):
+        b = ink_box(s, fp, PREM_LS)
+        rows.append((s, x - b[0], top + k * PREM_STEP, b))
+    return rows, min(y + b[1] for _, _, y, b in rows), max(y + b[3] for _, _, y, b in rows)
+
+
+def stamp_geometry():
+    """The stamp's frame (x0, y0, x1, y1) before turning, centred on the premise lines' ink, and the ink box of its
+    text."""
+    w, h, b = stamp_size()
+    _, ink_top, ink_bot = premise_rows()
+    y0 = int(round((ink_top + ink_bot) / 2 - h / 2))
+    return (BAND_X0, y0, BAND_X0 + w, y0 + h), b
 
 
 def paint_stamp(canvas):
@@ -990,26 +1042,21 @@ def paint_stamp(canvas):
 
 
 def paint_premise(canvas):
-    """The two premise lines beside the stamp, PREM_STEP apart (em box to em box), the pair centred on the stamp's
-    frame; left edge PREM_GAP right of the frame."""
+    """The premise lines beside the stamp (premise_rows)."""
     d, boxes = ImageDraw.Draw(canvas), []
-    (x0, y0, x1, y1), b = stamp_geometry()
     fp = font(SERIF, PREM_PX, PREM_WT)
-    b0, b1 = ink_box(PREMISE[0], fp, PREM_LS), ink_box(PREMISE[1], fp, PREM_LS)
-    ink_top, ink_bot = b0[1], PREM_STEP + b1[3]          # the pair's ink, em top of line 1 at 0
-    ytop = (y0 + y1) / 2 - (ink_top + ink_bot) / 2
-    x = x1 + PREM_GAP
-    put(d, boxes, 'premise', PREMISE[0], x - b0[0], ytop, fp, FG, PREM_LS)
-    put(d, boxes, 'premise', PREMISE[1], x - b1[0], ytop + PREM_STEP, fp, FG, PREM_LS)
+    for s, x, y, _ in premise_rows()[0]:
+        put(d, boxes, 'premise', s, x, y, fp, FG, PREM_LS)
     return boxes
 
 
 def paint_note(canvas):
+    """The note under the stamp and the premise lines, its ink NOTE_GAP under the lower of the two, left at BAND_X0."""
     d, boxes = ImageDraw.Draw(canvas), []
     (x0, y0, x1, y1), b = stamp_geometry()
     fn = font(SERIF, NOTE_PX, NOTE_WT)
     bn = ink_box(NOTE, fn, NOTE_LS)
-    put(d, boxes, 'note', NOTE, x0 - bn[0], y1 + NOTE_GAP - bn[1], fn, FG2, NOTE_LS, small=True)
+    put(d, boxes, 'note', NOTE, x0 - bn[0], max(y1, premise_rows()[2]) + NOTE_GAP - bn[1], fn, FG2, NOTE_LS, small=True)
     return boxes
 
 
@@ -1158,8 +1205,9 @@ for grp in groups:
                                (f'-{grp[-1]}' if len(grp) > 1 else '') + ' en'),
                          caps[grp[0]]['a'], caps[grp[-1]]['b'], grp))
 
-problems = []
-print(f'{len(caps)} captions (zh step, gap, en px, en step; ink bottom):')
+problems = caption_problems(caps)
+print(f'{len(caps)} captions (zh step, gap, en px, en step; ink bottom); narration.json:'
+      f' {"every line, in order" if not problems else "MISMATCH"}')
 for k, (c, L) in enumerate(zip(caps, lays)):
     exact = same_text(L['zl'], c['zh'], LINE_END_DROP) and same_text(L['el'], c.get('en', ''))
     print(f'  [{k:2d}] {c["a"]:7.3f}-{c["b"]:7.3f}  {L["step"]}  bottom {L["bottom"]:.0f}'

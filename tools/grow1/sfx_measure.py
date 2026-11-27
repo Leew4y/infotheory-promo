@@ -15,7 +15,8 @@
    to FWD_GAP after, all re the voice level); the distance to the nearest speech frame each side; where it overlaps
    speech, its level re the voice in the worst 1/3-octave band (sfx.band_worst). Verdict per effect.
 4. Spectrograms of the master: out/grow1/sfx/spectrogram.png (whole film, log frequency 50 Hz - 16 kHz, effects marked
-   above, voiced spans below) and zooms.png (0.4 s each side of every stamp, gauge rise and the end motif).
+   above, voiced spans below) and zooms.png (0.45 s each side of every stamp, gauge rise and bubble pop, and the end
+   motif).
 Writes out/grow1/sfx/measure.json and the stems out/grow1/sfx/stems/{voice,fx}_in_master.wav.
 """
 import json
@@ -69,7 +70,7 @@ LUT_ANCHORS = [(0, 0, 4), (28, 16, 68), (79, 18, 123), (129, 37, 129), (181, 54,
 _xs = np.linspace(0, 1, len(LUT_ANCHORS))
 LUT = np.stack([np.interp(np.linspace(0, 1, 256), _xs, [c[k] for c in LUT_ANCHORS]) for k in range(3)], 1).astype(np.uint8)
 FMIN, FMAX = 50.0, 16000.0
-KIND_COL = {'stamp': (230, 40, 40), 'tick': (60, 200, 230), 'end': (90, 220, 90)}
+KIND_COL = {'stamp': (230, 40, 40), 'tick': (60, 200, 230), 'pop': (240, 200, 60), 'end': (90, 220, 90)}
 
 
 def spec(x, t0, t1, width, height, nfft, hop, top_db, range_db=90.0):
@@ -230,7 +231,7 @@ def main():
         else:
             verdict = 'MASKS SPEECH'
             fails.append(f"{ev['kind']} {ev['t']}")
-        row = {'kind': ev['kind'], 't': ev['t'], 'start': s0, 'end': s1, 'length_ms': round((s1 - s0) * 1000, 1),
+        row = {'kind': ev['kind'], **({'day': ev['day']} if 'day' in ev else {}), 't': ev['t'], 'start': s0, 'end': s1, 'length_ms': round((s1 - s0) * 1000, 1),
                'rms_db_re_voice': round(lv, 2), 'band_300_8k_db_re_voice': round(band, 2), 'peak_dBFS': round(pk, 2),
                'voice_level_dBFS': round(vref, 2), 'gain_at_effect_re_voice_db': round(20 * math.log10(g_ev / g_v), 2),
                'voice_100ms_before_db': (None if w_before < -120 else round(w_before, 1)), 'voice_during_db': (None if w_during < -120 else round(w_during, 1)), 'voice_100ms_after_db': (None if w_after < -120 else round(w_after, 1)),
@@ -240,7 +241,7 @@ def main():
             row['rms_after_last_line_db_re_voice'] = round(db(rms(fm[int(levels['away_window_s'][0] * SR):])) - vref, 2)
         res['events'].append(row)
         f1 = lambda v: 'silent' if v < -120 else f'{v:+6.1f}'  # noqa: E731
-        print(f"   {ev['kind']:5s} {ev['t']:7.3f} {row['length_ms']:6.0f} {lv:+6.1f} {band:+6.1f} {pk:+7.1f}   | {row['gain_at_effect_re_voice_db']:+5.2f} dB"
+        print(f"   {ev['kind'] + str(ev.get('day', '')):6s}{ev['t']:7.3f} {row['length_ms']:6.0f} {lv:+6.1f} {band:+6.1f} {pk:+7.1f}   | {row['gain_at_effect_re_voice_db']:+5.2f} dB"
               f"      | {f1(w_before)} / {f1(w_during)} / {f1(w_after)} / {f1(loud5)}          | {gap_b} / {gap_a}"
               f"  | {'-' if worst is None else f'{worst:+.1f}'} | {verdict}")
     # under each line: the effects re the voice
@@ -256,14 +257,14 @@ def main():
     mono = master.mean(axis=0)
     top = db(np.max(np.abs(mono))) - 6
     im = picture(mono, 0, n / SR, 2400, 520, 2048, 256, top, events, all_spans,
-                 'grow1 master.wav  (red: stamp, cyan: gauge tick, green: end motif; white: voiced spans)', 1.0, font)
+                 'grow1 master.wav  (red: stamp, cyan: gauge tick, yellow: bubble pop, green: end motif; white: voiced spans)', 1.0, font)
     im.save(os.path.join(SFX_OUT, 'spectrogram.png'))
     groups = []
     for ev in events:
         if ev['kind'] == 'tick' and groups and groups[-1][0] == 'tick' and ev['t'] - groups[-1][2] < 0.5:
             groups[-1][2] = ev['end']
             continue
-        groups.append([ev['kind'], ev['start'], ev['end']])
+        groups.append([ev['kind'] + str(ev.get('day', '')), ev['start'], ev['end']])
     tiles = []
     for kind, a, b in groups:
         c = (a + b) / 2 if kind != 'end' else a + 0.4

@@ -6,13 +6,15 @@ the first failure:
 0. checks that every input exists before anything runs, and names all that are missing: the film's sources
    (film.ts, main.ts, kit.ts, scenes/index.ts and every scene it imports), narration.json, the lock and one FLAC per
    locked line, the repository scripts, the sound (tools/grow1/sfx.py, audio/mix.py, the harp samples), the composer
-   and the seam check. Without tools/grow1/sfx_cues.json (written by the scene) the sound runs on its provisional cues
-   from the voice's pauses: said as a WARNING at the start and the end. --dry-run stops after this check.
-1. font subsets, build, timeline + sound cues + narration placements, validate --no-captions (0 errors), type check
+   and the seam check. Without tools/grow1/sfx_cues.json the sound runs on its provisional cues from the voice's
+   pauses: said as a WARNING at the start and the end. --dry-run stops after this check.
+1. font subsets, build, timeline + sound cues + narration placements, the scene's sound cues turned into
+   tools/grow1/sfx_cues.json (sfx_cues.py films/grow1/cues.json: stamp {day}, gauge, pop, end; rewritten only when they
+   change), validate --no-captions (0 errors), type check
 2. sound: tools/grow1/sfx.py --samples <folder> (out/grow1/music.wav: silent except the effects; no music under the
    voice), the final mix (audio/mix.py, -16 LUFS -> out/grow1/master.wav), measurements (tools/grow1/sfx_measure.py);
    with --skip-sound the existing out/grow1/master.wav is used, and the run stops if it is older than the narration
-   lock, sfx_cues.json or sfx.py
+   lock, sfx_cues.json or sfx.py (checked again after the cues step)
 3. the 16:9 picture without captions or audio (4 workers) to out/grow1/build/pic.mp4
 4. the vertical cut (vertical.py) with out/grow1/master.wav, then the seam check (seams.py) on it
 After each step the file it should have written is checked (exists and is new); each step's full output is kept in
@@ -119,7 +121,11 @@ if DRY:
 step('fonts', ['bun', 'scripts/fonts.ts', '--film', FILM], makes=[os.path.join(F, 'fonts', 'paper-dawn', 'manifest.json')])
 step('build', ['bunx', 'vite', 'build'], extra={'FILM': FILM}, makes=[os.path.join(REPO, 'dist', FILM, 'index.html')])
 step('timeline', ['bun', 'scripts/export.ts', '--film', FILM, '--cues', '--timeline', '--narration'],
-     makes=[TL, os.path.join(O, 'narration.cues.json')])
+     makes=[TL, os.path.join(O, 'narration.cues.json'), os.path.join(F, 'cues.json')])
+# the sound follows the picture: the scene's cues (films/grow1/cues.json) -> tools/grow1/sfx_cues.json
+step('sfx-cues', [sys.executable, os.path.join(TOOLS, 'sfx_cues.py'), os.path.join(F, 'cues.json')], makes=[])
+if SKIP_SOUND and os.path.getmtime(MASTER) < os.path.getmtime(CUES):
+    sys.exit(f'{MASTER} is older than {CUES} (the sound cues of the scene changed): run without --skip-sound')
 step('validate', ['bun', 'scripts/validate.ts', '--film', FILM, '--no-captions'])  # the picture as exported (step 3)
 step('tsc', ['bun', 'x', 'tsc', '--noEmit', '-p', '.'])
 # 2. sound and mix
