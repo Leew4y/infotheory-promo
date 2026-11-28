@@ -57,6 +57,10 @@ B = dict(
     two=sp('s1-10', 0), you=sp('s1-10', 1), one=sp('s1-10', 2), eight=sp('s1-10', 3), seven=sp('s1-10', 4),
     q9=sp('g9', 0), bone=sp('g9', 1), cant=sp('g9', 2), card=sp('g9', 3), tail=START['g9'] + LOCK['g9']['duration'],
 )
+X8CUT = 5.87            # the cut from the section to the 8 little "你" (the uncle's 「？」 up from 5.40)
+PUSH0, PUSH1 = B['close'] - 0.06, B['close'] + 0.39   # the push-in to the 5th-floor window
+HOOK_END, REW0 = 1.7, 1.0                            # hook cut: day 3 to 1.0 s, the rewind 1.0-1.7 s
+SPEECH = [(START[i] + a, START[i] + b) for i in START for a, b in LOCK[i]['spans']]
 # the captions, phrase by phrase from the speech spans (each shown from where it is spoken, to the next)
 CAPS = [
     (0.0, '你每天长高一倍'), (sp('s1-1', 1), '我算过了'),
@@ -235,10 +239,9 @@ def hud_at(d, t):
     if t >= B['tail']:
         return
     d.rounded_rectangle((x0, y0, x1, y1), 22, fill=INK, outline=PAPER, width=5)
-    hook_day3 = HOOK and t < 1.2
-    if t < ST[0] and not hook_day3 and not (HOOK and t < 1.7):
+    if t < ST[0] and not (HOOK and t < HOOK_END):
         # day 0: the 「假设」 stamp lands (0-0.3 s), the premise
-        t_in = t - 1.7 if HOOK else t
+        t_in = t - HOOK_END if HOOK else t
         k = 1 + 0.5 * (1 - ease(t_in / 0.25))
         cx, cy = x0 + 106, y0 + 76
         w, h = 168 * k, 98 * k
@@ -247,18 +250,15 @@ def hud_at(d, t):
         text(d, (x0 + 220, y0 + 20), '每天长高一倍，形状不变', 44, sw=0)
         text(d, (x0 + 220, y0 + 88), '今天 1.7 米、70 公斤；一层楼按 3 米算', 33, sw=0, fill=(207, 202, 192), weight=700)
         return
-    if HOOK and t < 1.7:
-        day = 3 if t < 1.2 else REWIND_DAY(t)
+    if HOOK and t < HOOK_END:
+        day = 3 if t < REW0 else REWIND_DAY(t)
         state = dict(day=day, height={3: '13.6 米', 2: '6.8 米', 1: '3.4 米', 0: '1.7 米'}[day],
                      top={3: '5 楼', 2: '3 楼', 1: '2 楼', 0: None}[day])
-        if t >= 1.2:                                   # the rewind sign, right end of the bar
-            for k in (0, 1):
-                xr = x1 - 40 - k * 34
-                d.polygon([(xr, y0 + 104), (xr, y0 + 144), (xr - 34, y0 + 124)], fill=REDC)
+        text(d, (x0 + 26, y0 + 102), '假设：每天长高一倍，形状不变', 40, sw=0, fill=(207, 202, 192))
     else:
         state = hud_state(t)
     day = state['day']
-    dtxt = f'第 {day} 天'
+    dtxt = '今天' if day == 'today' else f'第 {day} 天'
     if day == '?':
         dtxt = '第 ? 天' if int(t * 4) % 2 == 0 else '第   天'
     since = min((t - s for s in ST if t >= s), default=9)
@@ -289,13 +289,14 @@ def hud_at(d, t):
         text(d, (cx, y0 + 108), '每平方厘米', 34, sw=0, fill=(207, 202, 192), weight=700)
         cx += d.textlength('每平方厘米', font=font(34, 700)) + 12
         full = int(load); part = load - full
+        on = (120, 114, 108) if state.get('load_label') == '×?' else REDC     # the last day's load, greyed
         for i in range(8):
-            fill = REDC if i < full else (60, 58, 68)
+            fill = on if i < full else (60, 58, 68)
             d.rectangle((cx + i * pitch, y0 + 114, cx + i * pitch + 18, y0 + 146), fill=fill)
             if i == full and part > 0:
-                d.rectangle((cx + i * pitch, y0 + 146 - 32 * part, cx + i * pitch + 18, y0 + 146), fill=REDC)
+                d.rectangle((cx + i * pitch, y0 + 146 - 32 * part, cx + i * pitch + 18, y0 + 146), fill=on)
         if state.get('load_label'):
-            text(d, (cx + 8 * pitch + 6, y0 + 100), state['load_label'], 44, sw=0, fill=REDC)
+            text(d, (cx + 8 * pitch + 6, y0 + 100), state['load_label'], 44, sw=0, fill=on if on != REDC else REDC)
 
 
 def lerp_load(t, moves, v0=1.0):
@@ -309,7 +310,7 @@ def lerp_load(t, moves, v0=1.0):
 def hud_state(t):
     """What the readout bar says at t (the storyboard's 读数栏 column)."""
     if t >= B['col']:
-        day = '?' if t >= B['q9'] else 0
+        day = '?' if t >= B['q9'] else 'today'
         load = lerp_load(t, [(B['one'] + 0.05, B['one'] + 0.4, 1, 2), (B['eight'], 33.875, 2, 8)])
         lab = {2: '×2', 8: '×8'}.get(round(load)) if abs(load - round(load)) < 0.05 and round(load) > 1 else None
         return dict(day=day, height='1.7 米', load=load, load_label=lab)
@@ -322,7 +323,7 @@ def hud_state(t):
         if t >= B['x512']:
             st['weight'] = '×512' + (' · 35.84 吨' if t >= B['t3584'] else '')
         st['load'] = lerp_load(t, [(B['x8s'], 25.633, 4, 8)], 4)          # full at the tick (25.633)
-        st['load_label'] = '×8' if t >= 25.633 else '×4'
+        st['load_label'] = '×8' if t >= 25.633 else ('×?' if t < B['x8s'] else None)
         return st
     if t >= ST[1]:
         st = dict(day=2)
@@ -332,8 +333,8 @@ def hud_state(t):
             st['top'] = '3 楼'
         if t >= ST[1] + 0.8:
             st['weight'] = '×64 · 4.48 吨'
-        st['load'] = lerp_load(t, [(ST[1] + 0.85, ST[1] + 1.15, 2, 4)], 2)
-        st['load_label'] = '×4' if t >= ST[1] + 1.15 else '×2'
+        st['load'] = lerp_load(t, [(B['again2'] + 0.89, B['again3'], 2, 4)], 2)   # 20.12-20.35, after 「再翻一倍」
+        st['load_label'] = '×4' if t >= B['again3'] else ('×?' if t < B['again2'] + 0.89 else None)
         return st
     st = dict(day=1)
     if t >= B['h34']:
@@ -360,7 +361,8 @@ def panel_at(im, d, t, card=False):
         dy = -6
     if B['sorry'] + 0.1 <= t < B['sorry'] + 0.8:
         dy = 18
-    b = bust().image(6)
+    talking = any(a <= t < b_ for a, b_ in SPEECH) and int(t * 10) % 2 == 0
+    b = bust('talk' if talking else 'deadpan').image(6)
     im.paste(b, (x0 + 14, y1 - 8 - b.height + dy), b)
     for s0 in ST + [B['apol']]:
         if s0 - 0.15 <= t < s0 + 0.35:
@@ -385,13 +387,13 @@ def panel_at(im, d, t, card=False):
 
 def scene_at(t):
     """(canvas, zoom, painter(d, im)) for time t."""
-    if HOOK and t < 1.2:
+    if HOOK and t < REW0:
         return hook_day3(t)
-    if HOOK and t < 1.7:
+    if HOOK and t < HOOK_END:
         return rewind(t)
     if t < ST[0]:
         return day0(t)
-    if t < B['x8']:
+    if t < X8CUT:
         return day1_section(t)
     if t < B['kg']:
         return eight_you(t)
@@ -411,9 +413,9 @@ def scene_at(t):
         return day3_building(t)
     if t < B['cm3']:
         return crowd512(t)
-    if t < B['close']:
+    if t < PUSH0:
         return day3_building(t)
-    if t < B['close'] + 0.24:
+    if t < PUSH1:
         return push_in(t)
     if t < B['col']:
         return window_close(t)
@@ -421,7 +423,7 @@ def scene_at(t):
 
 
 def day0(t):
-    c, z, boxes, gy = street(t, cat_turn=t >= 0.8)
+    c, z, boxes, gy = street(t, z=5, cat_turn=t >= 0.8)
     # "你" steps out of the door (0.3-1.2 s) and stops under the building
     door_x = 4 + (100 - 4) - 24
     u = ease((t - 0.3) / 0.9)
@@ -438,9 +440,9 @@ def day1_section(t):
     gy = GY6
     lit = 2 if t >= B['top2'] else None
     ub = None
-    uf = 'neutral'
+    uf = 'surprised' if t >= B['top2'] + 0.1 else 'neutral'      # the uncle looks up as the head line comes in (4.4 s)
     if t >= B['pop2']:
-        ub, uf = ('??' if t >= B['carry2'] else '?'), 'surprised'
+        ub = '??' if t >= B['carry2'] else '?'
     c, z, floors, (x0, x1) = section6(t, lit=lit, uncle_face=uf, uncle_bubble=None)
     if ub:
         f2 = floors[1]; u = uncle(uf)
@@ -469,8 +471,8 @@ def eight_you(t):
     spots = [(0, 1, 0), (1, 1, 0), (0, 0, 0), (1, 0, 0), (0, 1, 1), (1, 1, 1), (0, 0, 1), (1, 0, 1)]
     placed = []
     for n, (i, j, l) in enumerate(spots):
-        t0 = B['x8'] + 0.09 * n
-        p = min(1, max(0, (t - t0) / 0.18))
+        t0 = X8CUT + 0.06 * n
+        p = min(1, max(0, (t - t0) / 0.16))
         if p > 0:
             placed.append((j, l, i, p))
     for j, l, i, p in sorted(placed, key=lambda q: (-q[0], q[1], q[2])):
@@ -479,7 +481,7 @@ def eight_you(t):
         c.blit(y1, x, round(foot - y1.h + 1 - (1 - p * p) * 50))
 
     def paint(d, im):
-        if t >= B['x8'] + 0.8:
+        if t >= X8CUT + 0.55:
             text(d, (540, 360), '= 8 个你', 66, sw=7, anchor='ma')
     return c, z, paint
 
@@ -521,8 +523,7 @@ def scale_560(t):
     def paint(d, im):
         text(d, (118 * z - 8, (top + 13) * z), f'{n}', 76, fill=(214, 248, 210), sw=0, anchor='rm')
         text(d, (118 * z, (top + 13) * z), '公斤', 46, fill=(214, 248, 210), sw=0, anchor='lm')
-        if t >= B['kg'] + 0.55:
-            text(d, (540, 380), '3.4 米的你', 58, sw=7, anchor='ma')
+        text(d, (540, 380), '3.4 米的你，踩上体重秤', 58, sw=7, anchor='ma')
     return c, z, paint
 
 
@@ -567,7 +568,7 @@ def cube_double(t):
         if t >= B['D']:
             text(d, ((x0 + 2 * s + s // 2 + 2) * z, (y0 - s // 4 - 2) * z), '厚', 64, sw=7, anchor='lm')
         if t >= B['all']:
-            text(d, (540, 380), '2×2×2 = 8', 84, sw=8, anchor='ma')
+            text(d, (540, 336), '2×2×2 = 8', 84, sw=8, anchor='ma')
     return c, z, paint
 
 
@@ -593,6 +594,18 @@ def xray(t):
     return c, 6, paint
 
 
+def bone_tile(c, x0, y0, x1, y1):
+    """One cell of bone cross-section seen from above (an ellipse: the magnifier's bone, flattened)."""
+    c.rect(x0 - 1, y0 - 1, x1 + 1, y1 + 1, 'a'); c.rect(x0, y0, x1, y1, 'C')
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    rx, ry = (x1 - x0) / 2 - 1, (y1 - y0) / 2 - 1
+    for y in range(y0, y1 + 1):
+        for x in range(x0, x1 + 1):
+            e = ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2
+            if e <= 1:
+                c.px(x, y, 'O' if e <= 0.16 else ('w' if e >= 0.72 else 'W'))
+
+
 def desk_tiles(t):
     """宽和厚 -> 4 倍; 8 倍的体重 hangs over the 4 cells, then falls, 2 a cell; 每平方厘米: one cell outlined red (12x).
     The cells are the bone's cross-section lying on 核算员's desk, seen from above."""
@@ -610,9 +623,7 @@ def desk_tiles(t):
         return cx0 + i * cw, yf - (j + 1) * ch + 1, cx0 + i * cw + cw - 2, yf - j * ch - 1
 
     for (i, j) in cells:
-        x0, y0, x1, y1 = cell_box(i, j)
-        c.rect(x0 - 1, y0 - 1, x1 + 1, y1 + 1, 'a'); c.rect(x0, y0, x1, y1, 'W')
-        c.rect((x0 + x1) // 2 - 2, (y0 + y1) // 2 - 1, (x0 + x1) // 2 + 2, (y0 + y1) // 2 + 1, 'w')   # the marrow
+        bone_tile(c, *cell_box(i, j))
     c.rect(cx0 - 1, yf, cx0 + (2 if kw else 1) * cw - 1, yf + 2, 'w'); c.hline(cx0 - 1, cx0 + (2 if kw else 1) * cw - 1, yf + 2, 'a')
     if t >= B['cm']:
         x0, y0, x1, y1 = cell_box(0, 0)
@@ -642,13 +653,17 @@ def desk_tiles(t):
     def paint(d, im):
         lab = '骨头截面 ×4' if (kw and kd and t >= B['x4']) else '骨头截面'
         text(d, (cx0 * z, (dy + 4) * z), lab, 56, sw=6)
-        if t >= B['wts']:
+        if kw and t < B['wts']:                       # 宽 doubles to the right, 厚 doubles to the back
+            text(d, ((cx0 + 2 * cw + 1) * z, (yf - ch // 2) * z), '宽 ×2', 50, sw=6, anchor='lm')
+        if kd and t < B['wts']:
+            text(d, ((cx0 + 2 * cw + 1) * z, (yf - 3 * ch // 2) * z), '厚 ×2', 50, sw=6, anchor='lm')
+        if t >= B['wts'] and not (LOAD_POPS[0][0] <= t < LOAD_POPS[0][1]):
             text(d, (cx0 * z, 334), '8 倍的体重', 60, sw=7)
     return c, z, paint
 
 
 def day2_street(t):
-    c, z, boxes, gy = street(t, kid_bang=B['kid'], uncle_bang=B['again3'] + 0.1, cat_turn=t >= B['again3'],
+    c, z, boxes, gy = street(t, z=5, kid_bang=B['kid'], uncle_bang=B['again3'] + 0.1, cat_turn=t >= B['again3'],
                              lit=3 if t >= B['kid'] else None)
     sx, sy = pop_scale(t, ST[1])
     g0 = grown(2); g = squash(g0, sx, sy)
@@ -676,41 +691,43 @@ def day3_building(t):
 
     def paint(d, im):
         floor_labels(d, z, gy, x0, hi=5 if lit else None)
-        if B['x512'] <= t < B['top5']:
+        if B['x512'] <= t < B['x512'] + 1.1:
             text(d, ((gx + 4) * z, (gy - 120) * z), '衣服：64 件拼 1 件', 44, sw=6)
     return c, z, paint
 
 
 def crowd512(t):
-    """35.84 吨 = 512 个你: eight blocks of 64 little "你" (8 x 8), the blocks filling in one after another (6x)."""
+    """35.84 吨 = 512 个你: eight blocks of 64 little "你" (8 x 8), the blocks filling in one after another (6x).
+    Each little one is 3 x 7 art px: hair, face, white shirt, blue trousers, like the big one."""
     z = 6
     c, gy = desk_room(z)
     c.rect(0, 0, c.w - 1, gy - 1, 'C')
-    tiny = Canvas(3, 6)
-    tiny.rect(0, 0, 2, 0, 'H'); tiny.rect(0, 1, 2, 1, 'S'); tiny.rect(0, 2, 2, 3, 'W'); tiny.px(0, 4, 'B'); tiny.px(2, 4, 'B'); tiny.px(0, 5, 'K'); tiny.px(2, 5, 'K')
+    tiny = Canvas(3, 7)
+    tiny.rect(0, 0, 2, 0, 'H'); tiny.rect(0, 1, 2, 2, 'S'); tiny.px(0, 1, 'H'); tiny.rect(0, 3, 2, 4, 'W'); tiny.px(0, 5, 'B'); tiny.px(2, 5, 'B'); tiny.px(0, 6, 'K'); tiny.px(2, 6, 'K')
+    BX, BY = [8 + k * 37 for k in range(4)], [58, 134]
     shown = 0
     for b in range(8):
         tb = B['t3584'] + 0.1 * b
         if t < tb:
             continue
         fill = ease((t - tb) / 0.25)
-        bx, by = 14 + (b % 4) * 40, 66 + (b // 4) * 64
-        c.rect(bx - 2, by - 2, bx + 32, by + 56, 'c')
+        bx, by = BX[b % 4], BY[b // 4]
+        c.rect(bx - 2, by - 2, bx + 32, by + 64, 'c')
         for i in range(64):
             if i >= fill * 64:
                 break
-            c.blit(tiny, bx + (i % 8) * 4, by + (i // 8) * 7)
+            c.blit(tiny, bx + (i % 8) * 4, by + (i // 8) * 8)
             shown += 1
     if t >= B['t3584'] + 1.1:
         assert shown == 512, shown
 
     def paint(d, im):
-        if t >= B['t3584'] + 0.9:
-            text(d, (540, 1170), '= 512 个你', 72, sw=7, anchor='ma')
         for b in range(8):
             if t >= B['t3584'] + 0.1 * b + 0.25:
-                bx, by = 14 + (b % 4) * 40, 66 + (b // 4) * 64
-                text(d, ((bx + 15) * z, (by + 58) * z), '64', 40, sw=6, anchor='ma')
+                bx, by = BX[b % 4], BY[b // 4]
+                text(d, ((bx + 15) * z, (by + 66) * z), '64', 38, sw=5, anchor='ma')
+        if t >= B['t3584'] + 0.9:
+            text(d, (468, 1252), '= 512 个你', 64, sw=7, anchor='ma')
     return c, z, paint
 
 
@@ -736,6 +753,11 @@ def window_close(t):
     for dx, dy in ((0, 0), (1, 0), (1, 1), (0, 2), (-1, 2), (-2, 1), (-2, 0), (-2, -1), (-1, -2), (0, -2), (1, -2), (2, -2), (3, -1), (3, 0), (3, 1)):
         c.px(cx + dx, top + 6 + dy, 'A')
     c.px(cx - 6, top - 1, 'H'); c.px(cx - 5, top - 2, 'H'); c.px(cx + 4, top - 1, 'H')
+    for x in range(wx0, wx1 + 1):                         # the forehead just above the sill, under a ragged fringe
+        if top + round((x - cx) ** 2 / (2 * R)) <= sill - 4:
+            c.vline(x, sill - 2, sill, 'S')
+            if x % 3 == 0:
+                c.px(x, sill - 2, 'H')
     c.rect(wx0 - 1, wtop - 1, wx0 - 1, sill, 'T'); c.rect(wx1 + 1, wtop - 1, wx1 + 1, sill, 'T'); c.hline(wx0 - 1, wx1 + 1, wtop - 1, 'T')
     c.rect(wx0 - 2, sill + 1, wx1 + 2, sill + 2, 'T')
     pot(c, wx0 + 1, sill + 1)
@@ -744,7 +766,7 @@ def window_close(t):
     if t >= B['pop5']:
         bubble(c, 12, gy - a.h - 1, '...')
     if t >= B['nb5']:      # a drop of sweat at the side of her head
-        c.rect(2, gy - a.h + 6, 2, gy - a.h + 8, 'L'); c.px(2, gy - a.h + 9, 'l')
+        c.rect(1, gy - a.h + 5, 2, gy - a.h + 9, 'L'); c.px(1, gy - a.h + 5, 'Z'); c.hline(1, 2, gy - a.h + 10, 'l')
 
     def paint(d, im):
         text(d, (40, 340), '5楼', 56, sw=6)
@@ -763,7 +785,7 @@ def window_close(t):
 def push_in(t):
     """The cut from the whole building to the window: the building page zoomed toward the 5th-floor window."""
     c, z, paint = day3_building(t)
-    return ('push', c, z, paint, ease((t - B['close']) / 0.24))
+    return ('push', c, z, paint, ease((t - PUSH0) / (PUSH1 - PUSH0)))
 
 
 def today(t):
@@ -782,16 +804,15 @@ def today(t):
     for k, p in enumerate(riders):
         y = gy - base.h + 1 - (k + 1) * 21 - round((1 - p * p) * 50)
         c.blit(base, bx, y)
-    cx = 176                                                       # the bone cell, right of the column
+    cx = 150                                                       # the bone cell, right of the column
     if t >= B['bone']:
-        c.rect(cx, gy - 4, cx + 24, gy - 1, 'W'); c.rect(cx - 1, gy - 5, cx + 25, gy - 5, 'a'); c.hline(cx, cx + 24, gy - 1, 'a')
-        c.vline(cx - 1, gy - 5, gy - 1, 'a'); c.vline(cx + 25, gy - 5, gy - 1, 'a')
+        bone_tile(c, cx, gy - 12, cx + 24, gy - 2)
         w = weight_spr()
         for n in range(8):
             t0 = B['bone'] + 0.05 * n
             p = min(1, max(0, (t - t0) / 0.16))
             if p > 0:
-                c.blit(w, cx + 7, round(gy - 5 - (n + 1) * (w.h - 1) - (1 - p * p) * 40))
+                c.blit(w, cx + 7, round(gy - 7 - (n + 1) * (w.h - 1) + 1 - (1 - p * p) * 40))
 
     def paint(d, im):
         n = len(riders)
@@ -802,24 +823,36 @@ def today(t):
         elif n == 7 and riders[-1] >= 1:
             text(d, ((bx - 3) * z, (gy - 29 - 4 * 21 + 10) * z), '背 7 个', 56, sw=6, anchor='rm')
         if t >= B['bone']:
-            text(d, ((cx + 12) * z, (gy - 5 - 8 * 9 - 14) * z), '一格骨头截面', 44, sw=6, anchor='mm')
+            text(d, ((cx + 27) * z, (gy - 19) * z), '← 一格', 42, sw=6, anchor='lm')
+            text(d, ((cx + 27) * z, (gy - 8) * z), '骨头截面', 42, sw=6, anchor='lm')
         if t >= B['cant'] + 0.35:
             k = 1 + 0.3 * (1 - ease((t - B['cant'] - 0.35) / 0.15))
-            text(d, (850, (gy - 50) * z), '？', int(110 * k), fill=REDC, sw=8, anchor='mm')
+            text(d, ((cx + 34) * z, (gy - 62) * z), '？', int(110 * k), fill=REDC, sw=8, anchor='mm')
     return c, z, paint
 
 
 def hook_day3(t):
-    """Hook cut, 0-1.2 s: day 3's whole building, the head line into 5 楼, 5 楼 lit (no 「……」, no whorl close-up)."""
-    return day3_building(B['top5'] + 0.5)
+    """Hook cut, 0-1.0 s: day 3's whole building; the red head line runs into 5 楼 (0-0.3 s), 5 楼 lights up, the
+    giant blinks at 0.6 s (no 「……」, no whorl close-up)."""
+    lit = 5 if t >= 0.3 else None
+    c, z, floors, (x0, x1), gy = building4(t, lit=lit)
+    g = grown(3, 'deadpan' if 0.6 <= t < 0.67 else 'neutral')
+    gx = 126
+    c.blit(g, gx, gy - g.h + 1)
+    n = ease(t / 0.3)
+    head_line(c, gx + 20, round(gx + 20 - (gx + 20 - x0) * n), gy - 8 * 28)
+
+    def paint(d, im):
+        floor_labels(d, z, gy, x0, hi=lit)
+    return c, z, paint
 
 
-REWIND_DAY = lambda t: 3 - min(3, int((t - 1.2) / 0.5 * 4))  # noqa: E731
+REWIND_DAY = lambda t: 3 - min(3, int((t - REW0) / (HOOK_END - REW0) * 4))  # noqa: E731
 
 
 def rewind(t):
-    """Hook cut, 1.2-1.7 s: rewinding. In the same building view the giant shrinks back a day every 0.125 s
-    (day 3, 2, 1, 0), the lit floor and the head line going down with it; a rewind sign in the readout bar.
+    """Hook cut, 1.0-1.7 s: rewinding. In the same building view the giant shrinks back a day every 0.175 s
+    (day 3, 2, 1, 0), the lit floor and the head line going down with it; a big rewind sign and the day in the middle.
     No full-frame alternation (no flashing)."""
     day = REWIND_DAY(t)
     lit = {3: 5, 2: 3, 1: 2, 0: None}[day]
@@ -832,6 +865,11 @@ def rewind(t):
 
     def paint(d, im):
         floor_labels(d, z, gy, x0, hi=lit)
+        d.rounded_rectangle((250, 700, 830, 900), 24, fill=INK, outline=PAPER, width=6)
+        for k in (0, 1):
+            xr = 380 - k * 70
+            d.polygon([(xr, 740), (xr, 860), (xr - 70, 800)], fill=REDC)
+        text(d, (420, 800), f'第 {day} 天', 100, fill=AMBER, sw=0, anchor='lm')
     return c, z, paint
 
 
@@ -856,9 +894,35 @@ def frame(t):
     if t >= B['tail']:
         tail_card(im, d, t)
         return im
+    load_pop(d, t)
     hud_at(d, t)
     panel_at(im, d, t, card=True)
     return im
+
+
+# (from, to, bar moves (a, b, from, to), the bar's start value): day 1 at 17.76, day 3 at 25.633, today at 33.875
+LOAD_POPS = [(B['r2'] - 0.06, B['r2'] + 0.85, (B['r2'], B['r2'] + 0.26, 1, 2), 1),
+             (B['x8s'] - 0.06, B['top5'], (B['x8s'], 25.633, 4, 8), 4),
+             (B['eight'] - 0.06, B['seven'], (B['eight'], 33.875, 2, 8), 2)]
+
+
+def load_pop(d, t):
+    """At each step of the load bar, the bar drawn big under the readout: 「每平方厘米」, 8 cells, 「×N」."""
+    for a, b, move, v0 in LOAD_POPS:
+        if a <= t < b:
+            v = lerp_load(t, [move], v0)
+            done = t >= move[1]
+            x0, y0, x1, y1 = 70, 360, 910, 600
+            d.rounded_rectangle((x0, y0, x1, y1), 24, fill=INK, outline=PAPER, width=6)
+            text(d, (x0 + 34, y0 + 22), '每平方厘米', 54, sw=0, fill=PAPER)
+            full, part = int(v), v - int(v)
+            for i in range(8):
+                cx = x0 + 34 + i * 66
+                d.rectangle((cx, y0 + 104, cx + 54, y0 + 206), fill=REDC if i < full else (60, 58, 68))
+                if i == full and part > 0:
+                    d.rectangle((cx, y0 + 206 - 102 * part, cx + 54, y0 + 206), fill=REDC)
+            if done:
+                text(d, (x1 - 30, y0 + 156), f'×{move[3]}', 120, sw=0, fill=REDC, anchor='rm')
 
 
 def tail_card(im, d, t):
@@ -868,6 +932,7 @@ def tail_card(im, d, t):
         d.line((0, y, 1080, y), fill=PAL['c'], width=2)
     text(d, (90, 300), '你押第几天？', 110, fill=INK, sw=0)
     text(d, (90, 450), '评论区写一个数，正片里算给你看', 46, fill=(95, 92, 85), sw=0, weight=700)
+    text(d, (90, 520), '正片：《假如你每天长高一倍》', 46, fill=REDC, sw=0)
     d.rounded_rectangle((70, 600, 930, 1220), 18, fill=PAPER, outline=INK, width=6)
     text(d, (110, 630), '核算单', 56, fill=INK, sw=0)
     rows = ['① 假设：每天长高一倍，形状不变', '　 今天 1.7 米、70 公斤，一层楼 3 米',

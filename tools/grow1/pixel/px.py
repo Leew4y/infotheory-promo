@@ -164,9 +164,12 @@ def _chibi(hair='short', hair_k='H', shirt='W', pants='B', glasses=False, face='
     # face (or the back of the head)
     if face == 'back':
         R(1, 2, 10, 12, hair_k); R(2, 12, 9, 12, hair_k); R(3, 2, 5, 2, hl); R(5, 13, 6, 13, 's')
-    elif face == 'deadpan':
+    elif face in ('deadpan', 'talk'):     # 'talk': deadpan with the mouth open (the narrator speaking)
         R(3, 7, 4, 7, 'K'); R(7, 7, 8, 7, 'K')
-        R(5, 10, 6, 10, 's')
+        if face == 'talk':
+            R(5, 10, 6, 11, 'r')
+        else:
+            R(5, 10, 6, 10, 's')
     elif face == 'surprised':
         R(3, 6, 4, 8, 'K'); R(7, 6, 8, 8, 'K'); P(3, 6, 'Z'); P(7, 6, 'Z')
         R(5, 10, 6, 11, 'K')
@@ -189,7 +192,7 @@ def _chibi(hair='short', hair_k='H', shirt='W', pants='B', glasses=False, face='
             c.rect(fx0 + 1, fy0 + 1, fx1 - 1, fy1 - 1, 'L')
             c.hline(fx0, fx1, fy0, 'K'); c.hline(fx0, fx1, fy1, 'K'); c.vline(fx0, fy0, fy1, 'K'); c.vline(fx1, fy0, fy1, 'K')
         c.hline(ox + 5 * k + (k // 2 if k > 1 else 0), ox + 6 * k - 1 + (k // 2 if k > 1 else 0), oy + 7 * k, 'K')
-        if face == 'deadpan':
+        if face in ('deadpan', 'talk'):
             for ex in (3, 7):
                 c.hline(ox + ex * k, ox + (ex + 2) * k - 1, oy + 7 * k + k // 2, 'K')
     # neck and body
