@@ -704,7 +704,7 @@ def crowd512(t):
     c.rect(0, 0, c.w - 1, gy - 1, 'C')
     tiny = Canvas(3, 7)
     tiny.rect(0, 0, 2, 0, 'H'); tiny.rect(0, 1, 2, 2, 'S'); tiny.px(0, 1, 'H'); tiny.rect(0, 3, 2, 4, 'W'); tiny.px(0, 5, 'B'); tiny.px(2, 5, 'B'); tiny.px(0, 6, 'K'); tiny.px(2, 6, 'K')
-    BX, BY = [8 + k * 37 for k in range(4)], [58, 134]
+    BX, BY = [8 + k * 37 for k in range(4)], [55, 130]
     shown = 0
     for b in range(8):
         tb = B['t3584'] + 0.1 * b
@@ -727,7 +727,7 @@ def crowd512(t):
                 bx, by = BX[b % 4], BY[b // 4]
                 text(d, ((bx + 15) * z, (by + 66) * z), '64', 38, sw=5, anchor='ma')
         if t >= B['t3584'] + 0.9:
-            text(d, (468, 1252), '= 512 个你', 64, sw=7, anchor='ma')
+            text(d, (468, 1220), '= 512 个你', 64, sw=7, anchor='ma')
     return c, z, paint
 
 
