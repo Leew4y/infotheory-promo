@@ -32,6 +32,16 @@ PAL = {
 }
 
 
+_KEYS = [None] + sorted(PAL)
+_KI = {k: i for i, k in enumerate(_KEYS)}
+_LUT = np.zeros((len(_KEYS), 4), np.uint8)
+for _k, _i in _KI.items():
+    if _k is not None:
+        _LUT[_i, :3] = PAL[_k]
+        _LUT[_i, 3] = 255
+_IDX = np.vectorize(_KI.__getitem__, otypes=[np.uint8])
+
+
 class Canvas:
     """W x H art pixels; each cell a palette key or None (empty)."""
 
@@ -44,10 +54,10 @@ class Canvas:
             self.g[y, x] = k
 
     def rect(self, x0, y0, x1, y1, k):
-        """Fill x0..x1, y0..y1 inclusive."""
-        for y in range(max(0, y0), min(self.h, y1 + 1)):
-            for x in range(max(0, x0), min(self.w, x1 + 1)):
-                self.g[y, x] = k
+        """Fill x0..x1, y0..y1 inclusive (clipped to the canvas)."""
+        x0, y0, x1, y1 = max(0, x0), max(0, y0), min(self.w - 1, x1), min(self.h - 1, y1)
+        if x0 <= x1 and y0 <= y1:
+            self.g[y0:y1 + 1, x0:x1 + 1] = k
 
     def hline(self, x0, x1, y, k):
         self.rect(x0, y, x1, y, k)
@@ -57,11 +67,21 @@ class Canvas:
 
     def blit(self, spr, x, y, flip=False):
         """Paste a sprite (Canvas) with its top-left at (x, y); empty cells are transparent."""
-        for j in range(spr.h):
-            for i in range(spr.w):
-                k = spr.g[j, spr.w - 1 - i if flip else i]
-                if k is not None:
-                    self.px(x + i, y + j, k)
+        g = spr.g[:, ::-1] if flip else spr.g
+        x, y = int(x), int(y)
+        sx0, sy0 = max(0, -x), max(0, -y)
+        sx1, sy1 = min(spr.w, self.w - x), min(spr.h, self.h - y)
+        if sx0 >= sx1 or sy0 >= sy1:
+            return
+        sub = g[sy0:sy1, sx0:sx1]
+        dst = self.g[y + sy0:y + sy1, x + sx0:x + sx1]
+        m = sub != None  # noqa: E711
+        dst[m] = sub[m]
+
+    def copy(self):
+        out = Canvas(self.w, self.h)
+        out.g = self.g.copy()
+        return out
 
     def outline(self, k='K'):
         """Add a 1-px outline (4-neighbour) around everything filled; returns a new canvas one pixel larger each side."""
@@ -77,11 +97,8 @@ class Canvas:
         return out
 
     def image(self, scale=6, bg=None):
-        a = np.zeros((self.h, self.w, 4), np.uint8)
-        for (y, x), k in np.ndenumerate(self.g):
-            if k is not None:
-                a[y, x, :3] = PAL[k]
-                a[y, x, 3] = 255
+        idx = _IDX(self.g)
+        a = _LUT[idx]
         im = Image.fromarray(a, 'RGBA')
         if bg is not None:
             base = Image.new('RGBA', im.size, bg + (255,))
@@ -92,7 +109,22 @@ class Canvas:
 
 # ---------------------------------------------------------------- Q-version people (about 2.6 heads)
 
-def chibi(hair='short', hair_k='H', shirt='W', pants='B', glasses=False, face='neutral', prop=None, apron=False, k=1):
+def chibi(*args, **kw):
+    """Cached: see _chibi."""
+    return _chibi_cached(args, tuple(sorted(kw.items()))).copy()
+
+
+_CACHE = {}
+
+
+def _chibi_cached(args, kw):
+    key = (args, kw)
+    if key not in _CACHE:
+        _CACHE[key] = _chibi(*args, **dict(kw))
+    return _CACHE[key]
+
+
+def _chibi(hair='short', hair_k='H', shirt='W', pants='B', glasses=False, face='neutral', prop=None, apron=False, k=1):
     """A front-facing Q-version person, 12 x 28 art px before the outline (k: a whole-number size factor for the
     giant, drawn at k times the size with the same 1-px outline). Returns an outlined, trimmed Canvas.
     face: 'neutral', 'deadpan' (flat eyes), 'surprised' (big eyes, o mouth), 'happy'.
