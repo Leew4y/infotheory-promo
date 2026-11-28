@@ -129,8 +129,10 @@ def chibi(hair='short', hair_k='H', shirt='W', pants='B', glasses=False, face='n
         R(3, 1, 4, 1, hl)
     elif hair == 'thin':
         R(1, 2, 10, 3, hair_k); R(0, 3, 0, 6, hair_k); R(11, 3, 11, 6, hair_k); R(3, 1, 8, 1, hair_k)
-    # face
-    if face == 'deadpan':
+    # face (or the back of the head)
+    if face == 'back':
+        R(1, 2, 10, 12, hair_k); R(2, 12, 9, 12, hair_k); R(3, 2, 5, 2, hl); R(5, 13, 6, 13, 's')
+    elif face == 'deadpan':
         R(3, 7, 4, 7, 'K'); R(7, 7, 8, 7, 'K')
         R(5, 10, 6, 10, 's')
     elif face == 'surprised':
@@ -142,7 +144,8 @@ def chibi(hair='short', hair_k='H', shirt='W', pants='B', glasses=False, face='n
     else:
         R(3, 7, 3, 8, 'K'); R(8, 7, 8, 8, 'K')
         R(5, 10, 6, 10, 's')
-    P(2, 9, 's'); P(9, 9, 's')   # cheeks
+    if face != 'back':
+        P(2, 9, 's'); P(9, 9, 's')   # cheeks
     if glasses and k == 1:  # at full-body size: grey frames, the eyes (black) inside them, a grey bridge
         for gx in (2, 7):
             R(gx, 6, gx + 2, 6, 'n'); R(gx, 8, gx + 2, 8, 'n'); P(gx, 7, 'n'); P(gx + 2, 7, 'n'); P(gx + 1, 7, 'K')
@@ -222,3 +225,20 @@ def kid(face='surprised'):
 def auntie(face='neutral'):
     """5 楼: hair in a bun, pink apron, a green watering can."""
     return chibi('bun', 'H', 'W', 'T', face=face, prop='can', apron=True)
+
+
+def cat():
+    """A ginger cat sitting, 10 x 9 (the 4 楼 neighbour)."""
+    c = Canvas(10, 9)
+    c.rect(1, 3, 7, 8, 'O'); c.rect(2, 0, 6, 4, 'O'); c.px(2, 0, None); c.px(6, 0, None); c.px(2, -1, 'O')
+    c.px(2, 0, 'O'); c.px(6, 0, 'O'); c.px(3, 2, 'K'); c.px(5, 2, 'K'); c.px(4, 3, 'r')
+    c.rect(8, 6, 9, 7, 'O'); c.px(9, 5, 'O'); c.rect(2, 5, 6, 5, 'o')
+    return trim(c).outline()
+
+
+def weight_spr():
+    """A cast-iron weight (砝码), 9 x 8, with a ring."""
+    c = Canvas(9, 8)
+    c.rect(0, 4, 8, 7, 'H'); c.rect(1, 3, 7, 3, 'H'); c.rect(3, 0, 5, 0, 'n'); c.px(2, 1, 'n'); c.px(6, 1, 'n'); c.px(2, 2, 'n'); c.px(6, 2, 'n')
+    c.hline(1, 7, 5, 'h')
+    return trim(c).outline()
