@@ -1,10 +1,20 @@
 """Takes of grow1's narration in voice H on this Mac, checked by speech recognition.
 
-    ~/envs/research/bin/python tools/grow1/voice_takes.py <out dir> <seeds, e.g. 1,2,3> [--style plain|chat] [--ids a,b]
+    ~/envs/research/bin/python tools/grow1/voice_takes.py <out dir> <seeds, e.g. 1,2,3> [--engine cosyvoice|indextts2|voxcpm2]
+        [--style <style>] [--ids a,b]
 
-Voice H's own reference recording is not on this Mac, so the voice is cloned (CosyVoice3-0.5B, MLX bundle, through the
-`speech` tool, full zero-shot: prompt tokens + features) from two of grow1's committed voice-H lines, s1-4 and g5b,
-joined with 0.3 s of silence, with their exact transcripts. Each take is trimmed of the silence before and after the
+Voice H's own reference recording is not on this Mac, so the voice is cloned (through the `speech` tool) from two of
+grow1's committed voice-H lines, s1-4 and g5b, joined with 0.3 s of silence. Engines (MLX bundles):
+- cosyvoice (default): CosyVoice3-0.5B, full zero-shot (prompt tokens + features, with the prompt's exact transcript);
+  styles plain, chat. The seed fixes the sampling.
+- indextts2: IndexTTS2 (fp16), cloned from the prompt audio; styles plain (emotion from the prompt), calm (the tool's
+  calm preset at weight 0.6). The tool has no seed for it and the same text gives the same audio, so the "seed" picks
+  the model's speaking rate instead (INDEX_RATES: take 1 at 1.0, 2 at 0.95, 3 at 0.9, 4 at 1.05).
+- voxcpm2: VoxCPM2 (int8). plain: continuation cloning (prompt audio + its transcript, the same clip as reference).
+  chat: reference-only cloning with a plain-Chinese style instruction (with continuation the tool reads the
+  instruction aloud: 44 of 44 takes on 2026-11-28). No seed either.
+A style other than plain is written into the take's style as <engine>-<style> (cosyvoice keeps plain / chat).
+Each take is trimmed of the silence before and after the
 speech (10 ms frames above -45 dBFS and the take's loudest frame - 30 dB; 30 ms kept), written as 24 kHz 16-bit mono,
 and transcribed with Qwen3-ASR 1.7B (8-bit, local). One JSON line per take goes to <out dir>/takes.jsonl:
 {id, seed, style, file, seconds, asr, match} where match compares the transcript with the line's text, punctuation and
@@ -23,7 +33,12 @@ BUNDLE = os.path.join(REPO, '.cache', 'tts', 'models', 'CosyVoice3-0.5B-MLX-bf16
 ASR = 'aufklarer/Qwen3-ASR-1.7B-MLX-8bit'
 REF_LINES = ('s1-4', 'g5b')
 REF_TEXT = '八倍的体重，压在四倍的截面上：每平方厘米，扛两倍。头顶到了五楼。五楼的邻居，我替你道过歉了。'
-STYLES = {'plain': None, 'chat': '请用自然的口语说，像在跟朋友聊天，不要播音腔。'}
+CHAT = '请用自然的口语说，像在跟朋友聊天，不要播音腔。'
+STYLES = {
+    'cosyvoice': {'plain': [], 'chat': ['--cosy-instruct', CHAT]},
+    'indextts2': {'plain': [], 'calm': ['--indextts2-emotion', 'calm', '--indextts2-emotion-weight', '0.6']},
+    'voxcpm2': {'plain': [], 'chat': ['--voxcpm2-instruct', '自然的口语，像跟朋友聊天，语速适中']},
+}
 
 # the spoken-style script (films/grow1/docs/voice_script_real.md), numbers written as they are read
 LINES = {
@@ -39,6 +54,7 @@ LINES = {
     's1-10': '扛两倍，就是你背着另一个你。扛八倍，背七个。',
     'g9': '第几天，骨头会扛不住？正片里，算给你看。',
 }
+INDEX_RATES = {1: 1.0, 2: 0.95, 3: 0.9, 4: 1.05}
 PUNCT = set('，。、；：？！—… ,.?!;:')
 
 
@@ -78,16 +94,23 @@ def trim(path):
     return len(y) / rate
 
 
-def synth(text, seed, style, ref, out):
-    cmd = ['speech', 'speak', '--engine', 'cosyvoice', '--language', 'chinese', '--cosy-bundle-dir', BUNDLE,
-           '--cosy-speech-tokenizer', os.path.join(BUNDLE, 'speech_tokenizer.safetensors'), '--voice-sample', ref,
-           '--cosy-reference-transcript', REF_TEXT, '--seed', str(seed), '-o', out]
-    if STYLES[style]:
-        cmd += ['--cosy-instruct', STYLES[style]]
-    p = subprocess.run(cmd + ['--', text], capture_output=True, text=True)
+def synth(text, seed, engine, style, ref, out):
+    cmd = ['speech', 'speak', '--engine', engine, '--language', 'chinese', '-o', out]
+    if engine == 'cosyvoice':
+        cmd += ['--cosy-bundle-dir', BUNDLE, '--cosy-speech-tokenizer', os.path.join(BUNDLE, 'speech_tokenizer.safetensors'),
+                '--voice-sample', ref, '--cosy-reference-transcript', REF_TEXT, '--seed', str(seed)]
+    elif engine == 'indextts2':
+        cmd += ['--voice-sample', ref, '--indextts2-speaking-rate', str(INDEX_RATES.get(seed, 1.0))]
+    elif engine == 'voxcpm2':
+        cmd += ['--voxcpm2-variant', 'int8', '--voxcpm2-ref-audio', ref]
+        if style == 'plain':           # with continuation the tool reads a style instruction aloud, so chat clones without it
+            cmd += ['--voxcpm2-prompt-audio', ref, '--voxcpm2-prompt-text', REF_TEXT]
+    p = subprocess.run(cmd + STYLES[engine][style] + ['--', text], capture_output=True, text=True)
     log = p.stdout + p.stderr
-    if p.returncode or 'prompt_token + prompt_feat' not in log:
-        sys.exit(f'speech failed or fell back to speaker-only cloning:\n{log[-2000:]}')
+    if p.returncode or not os.path.exists(out):
+        sys.exit(f'speech failed:\n{log[-2000:]}')
+    if engine == 'cosyvoice' and 'prompt_token + prompt_feat' not in log:
+        sys.exit(f'speech fell back to speaker-only cloning:\n{log[-2000:]}')
 
 
 def asr(path):
@@ -102,21 +125,25 @@ def main():
     out_dir = os.path.abspath(sys.argv[1])
     seeds = [int(s) for s in sys.argv[2].split(',')]
     args = sys.argv[3:]
+    engine = args[args.index('--engine') + 1] if '--engine' in args else 'cosyvoice'
     style = args[args.index('--style') + 1] if '--style' in args else 'plain'
+    if style not in STYLES.get(engine, {}):
+        sys.exit(f'unknown engine or style: {engine} {style}')
+    tag = style if engine == 'cosyvoice' else f'{engine}-{style}'
     ids = args[args.index('--ids') + 1].split(',') if '--ids' in args else list(LINES)
     os.makedirs(out_dir, exist_ok=True)
     ref = prompt(out_dir)
     with open(os.path.join(out_dir, 'takes.jsonl'), 'a', encoding='utf-8') as log:
         for i in ids:
             for seed in seeds:
-                f = os.path.join(out_dir, f'{i}_{style}_{seed}.wav')
-                synth(LINES[i], seed, style, ref, f)
+                f = os.path.join(out_dir, f'{i}_{tag}_{seed}.wav')
+                synth(LINES[i], seed, engine, style, ref, f)
                 secs = trim(f)
                 text = asr(f)
-                rec = dict(id=i, seed=seed, style=style, file=f, seconds=round(secs, 2), asr=text,
+                rec = dict(id=i, seed=seed, style=tag, file=f, seconds=round(secs, 2), asr=text,
                            match=bare(text) == bare(LINES[i]))
                 log.write(json.dumps(rec, ensure_ascii=False) + '\n'); log.flush()
-                print(f"{i:6s} {style:5s} seed {seed:3d}  {secs:5.2f} s  {'OK ' if rec['match'] else 'BAD'} {text}", flush=True)
+                print(f"{i:6s} {tag:5s} seed {seed:3d}  {secs:5.2f} s  {'OK ' if rec['match'] else 'BAD'} {text}", flush=True)
 
 
 if __name__ == '__main__':

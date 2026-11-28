@@ -1,6 +1,6 @@
 """Pick and join grow1's narration takes (from voice_takes.py) into audition files.
 
-    ~/envs/research/bin/python tools/grow1/voice_pick.py <takes dir>
+    ~/envs/research/bin/python tools/grow1/voice_pick.py <takes dir> [--styles a,b] [--natural]
 
 For every take: speaker similarity to voice H, the cosine between its WeSpeaker embedding (`speech embed-speaker`) and
 the mean embedding of grow1's 11 committed voice-H lines. Baselines printed for comparison: each committed line
@@ -14,6 +14,10 @@ takes are joined with the
 picture's gaps (0.3 s after the first line, 0.2 s after the others) into <takes dir>/audition_<style>.wav and .mp3,
 and the choice goes to <takes dir>/picked_<style>.json. A narration longer than TARGET s (the film's tail card starts at
 38.46 s) is played faster to TARGET with ffmpeg atempo (pitch kept); the factor is printed.
+--natural keeps each take as the engine made it (no pause shortening), joins with the gaps of ordinary speech (0.5 s
+after the first line, 0.35 s between the two 「再翻一倍」, 0.45 s elsewhere) and never speeds up: it shows the
+engine's own pace and how long the script runs at it (files get the suffix _natural). --styles limits the run to those
+styles.
 """
 import json
 import os
@@ -82,8 +86,17 @@ def shape(x, rate):
     return (np.clip(np.concatenate(out), -1, 1) * 32767).astype(np.int16)
 
 
+def gap(i, natural):
+    if natural:
+        return {'s1-1': 0.5, 's1-5': 0.35}.get(i, 0.45)
+    return 0.3 if i == 's1-1' else 0.2
+
+
 def main():
     d = os.path.abspath(sys.argv[1])
+    natural = '--natural' in sys.argv
+    only = sys.argv[sys.argv.index('--styles') + 1].split(',') if '--styles' in sys.argv else None
+    sfx = '_natural' if natural else ''
     cache = os.path.join(d, 'ref16k'); os.makedirs(cache, exist_ok=True)
     refs = {i: emb(as16k(os.path.join(REPO, 'films', 'grow1', 'narration', f'{i}.flac'), os.path.join(cache, f'{i}.wav'))) for i in ORDER}
     mean = np.mean(list(refs.values()), axis=0); mean /= np.linalg.norm(mean)
@@ -95,11 +108,13 @@ def main():
     print(f'baseline: voice-H lines vs the others {min(loo):.3f}-{max(loo):.3f} (mean {np.mean(loo):.3f}); male prompt {male:.3f}')
 
     takes = [json.loads(l) for l in open(os.path.join(d, 'takes.jsonl'), encoding='utf-8')]
+    if only:
+        takes = [t for t in takes if t['style'] in only]
     for t in takes:
         t['sim'] = float(emb(as16k(t['file'], os.path.join(cache, os.path.basename(t['file'])))) @ mean)
         text = ''.join(ch for ch in t['asr'] if ch not in PUNCT)
         x, r = read(t['file'])
-        t['shaped'] = shape(x, r)
+        t['shaped'] = x if natural else shape(x, r)
         t['shaped_s'] = len(t['shaped']) / r
         t['rate'] = len(text) / t['shaped_s'] if t['shaped_s'] else 0
     for style in sorted({t['style'] for t in takes}):
@@ -119,14 +134,14 @@ def main():
             picked[i] = best
             _, rate = read(best['file'])
             parts.append(best['shaped'])
-            parts.append(np.zeros(int(rate * (0.3 if i == 's1-1' else 0.2)), np.int16))
+            parts.append(np.zeros(int(rate * gap(i, natural)), np.int16))
             print(f'  {i:6s} seed {best["seed"]}  {best["seconds"]:5.2f} -> {best["shaped_s"]:5.2f} s  {best["rate"]:.2f} syl/s  sim {best["sim"]:.3f}  {best["asr"]}')
         y = np.concatenate(parts[:-1])
-        out = os.path.join(d, f'audition_{style}.wav')
+        out = os.path.join(d, f'audition_{style}{sfx}.wav')
         raw = out[:-4] + '_raw.wav'
         with wave.open(raw, 'wb') as w:
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(rate); w.writeframes(y.tobytes())
-        tempo = max(1.0, len(y) / rate / TARGET)
+        tempo = 1.0 if natural else max(1.0, len(y) / rate / TARGET)
         subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', raw, '-af', f'atempo={tempo:.4f}', '-c:a', 'pcm_s16le', out], check=True)
         subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', out, '-af', 'loudnorm=I=-16:TP=-1.5', '-ar', '44100', '-b:a', '192k', out[:-4] + '.mp3'], check=True)
         print(f'  {len(y) / rate:.2f} s joined, played {tempo:.3f}x -> {len(y) / rate / tempo:.2f} s')
@@ -135,10 +150,10 @@ def main():
         for i in ORDER:
             n = len(picked[i]['shaped']) / rate / tempo
             bounds[i] = (round(pos, 3), round(pos + n, 3))
-            pos += n + (0.3 if i == 's1-1' else 0.2) / tempo
-        json.dump(bounds, open(os.path.join(d, f'bounds_{style}.json'), 'w'), indent=1)
+            pos += n + gap(i, natural) / tempo
+        json.dump(bounds, open(os.path.join(d, f'bounds_{style}{sfx}.json'), 'w'), indent=1)
         json.dump({i: {k: picked[i][k] for k in ('seed', 'file', 'seconds', 'shaped_s', 'asr', 'sim')} for i in ORDER},
-                  open(os.path.join(d, f'picked_{style}.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+                  open(os.path.join(d, f'picked_{style}{sfx}.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
         print(f'  total {len(y) / rate:.2f} s of narration -> {out[:-4]}.mp3')
 
 
