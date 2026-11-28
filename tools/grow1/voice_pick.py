@@ -1,6 +1,6 @@
 """Pick and join grow1's narration takes (from voice_takes.py) into audition files.
 
-    ~/envs/research/bin/python tools/grow1/voice_pick.py <takes dir> [--styles a,b] [--natural]
+    ~/envs/research/bin/python tools/grow1/voice_pick.py <takes dir> [--styles a,b] [--natural] [--trim]
 
 For every take: speaker similarity to voice H, the cosine between its WeSpeaker embedding (`speech embed-speaker`) and
 the mean embedding of grow1's 11 committed voice-H lines. Baselines printed for comparison: each committed line
@@ -17,7 +17,8 @@ and the choice goes to <takes dir>/picked_<style>.json. A narration longer than 
 --natural keeps each take as the engine made it (no pause shortening), joins with the gaps of ordinary speech (0.5 s
 after the first line, 0.35 s between the two 「再翻一倍」, 0.45 s elsewhere) and never speeds up: it shows the
 engine's own pace and how long the script runs at it (files get the suffix _natural). --styles limits the run to those
-styles.
+styles. --trim uses the trimmed script (voice_takes.py: s1-3t, s1-4t, s1-8bt, s1-10t in place of s1-3, s1-4, s1-8b,
+s1-10); its files get the suffix _trim.
 """
 import json
 import os
@@ -29,6 +30,7 @@ import numpy as np
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 ORDER = ['s1-1', 'g1', 's1-2', 's1-3', 's1-4', 's1-5', 's1-7', 's1-8b', 'g5b', 's1-10', 'g9']
+TRIMMED = {'s1-3': 's1-3t', 's1-4': 's1-4t', 's1-8b': 's1-8bt', 's1-10': 's1-10t'}
 PUNCT = set('，。、；：？！—… ,.?!;:')
 TARGET = 38.2
 
@@ -96,7 +98,9 @@ def main():
     d = os.path.abspath(sys.argv[1])
     natural = '--natural' in sys.argv
     only = sys.argv[sys.argv.index('--styles') + 1].split(',') if '--styles' in sys.argv else None
-    sfx = '_natural' if natural else ''
+    trim = '--trim' in sys.argv
+    sfx = ('_natural' if natural else '') + ('_trim' if trim else '')
+    order = [TRIMMED.get(i, i) if trim else i for i in ORDER]
     cache = os.path.join(d, 'ref16k'); os.makedirs(cache, exist_ok=True)
     refs = {i: emb(as16k(os.path.join(REPO, 'films', 'grow1', 'narration', f'{i}.flac'), os.path.join(cache, f'{i}.wav'))) for i in ORDER}
     mean = np.mean(list(refs.values()), axis=0); mean /= np.linalg.norm(mean)
@@ -123,7 +127,7 @@ def main():
         sims = [t['sim'] for t in st]
         print(f'\n{style}: {sum(t["match"] for t in st)}/{len(st)} takes read right; similarity {min(sims):.3f}-{max(sims):.3f}; median rate {med:.2f} syl/s')
         picked, parts, rate = {}, [], None
-        for i in ORDER:
+        for i in order:
             ok = [t for t in st if t['id'] == i and t['match']]
             if i == 's1-7':           # the same words as s1-5: another seed, so the two are not one clip played twice
                 ok = [t for t in ok if t['seed'] != picked['s1-5']['seed']]
@@ -147,12 +151,12 @@ def main():
         print(f'  {len(y) / rate:.2f} s joined, played {tempo:.3f}x -> {len(y) / rate / tempo:.2f} s')
         pos = 0.0                                     # each line's start and end in the final file (for checks)
         bounds = {}
-        for i in ORDER:
+        for i in order:
             n = len(picked[i]['shaped']) / rate / tempo
             bounds[i] = (round(pos, 3), round(pos + n, 3))
             pos += n + gap(i, natural) / tempo
         json.dump(bounds, open(os.path.join(d, f'bounds_{style}{sfx}.json'), 'w'), indent=1)
-        json.dump({i: {k: picked[i][k] for k in ('seed', 'file', 'seconds', 'shaped_s', 'asr', 'sim')} for i in ORDER},
+        json.dump({i: {k: picked[i][k] for k in ('seed', 'file', 'seconds', 'shaped_s', 'asr', 'sim')} for i in order},
                   open(os.path.join(d, f'picked_{style}{sfx}.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
         print(f'  total {len(y) / rate:.2f} s of narration -> {out[:-4]}.mp3')
 

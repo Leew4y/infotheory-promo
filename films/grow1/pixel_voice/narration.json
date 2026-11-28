@@ -1,0 +1,77 @@
+{
+ "film": "grow1",
+ "cut": "pixel",
+ "engine": "IndexTTS2",
+ "model": "IndexTeam/IndexTTS-2 as the MLX bundle aufklarer/IndexTTS2-MLX-fp16",
+ "voice": "zh-female-yujie (voice H), cloned from grow1's committed v2 lines s1-4 + g5b (the original reference recording is not on this machine)",
+ "made_with": "tools/grow1/voice_takes.py, voice_pick.py --natural, tools/grow1/pixel/voice_lock.py",
+ "end": 38.443,
+ "lines": [
+  {
+   "id": "s1-1",
+   "text": "假如你每天长高一倍。我算过了。",
+   "said": "假如你每天长高一倍。我算过了。",
+   "pause": 0.5
+  },
+  {
+   "id": "g1",
+   "text": "第 1 天，3.4 米，头顶到 2 楼。",
+   "said": "第一天，三点四米，头顶到二楼。",
+   "pause": 0.45
+  },
+  {
+   "id": "s1-2",
+   "text": "长、宽、厚，各翻一倍，体重 8 倍，560 公斤。",
+   "said": "长、宽、厚，各翻一倍，体重八倍，五百六十公斤。",
+   "pause": 0.45
+  },
+  {
+   "id": "s1-3",
+   "text": "可骨头的截面，只有 4 倍。",
+   "said": "可骨头的截面，只有四倍。",
+   "pause": 0.45
+  },
+  {
+   "id": "s1-4",
+   "text": "8 倍压在 4 倍上，每平方厘米，扛两倍。",
+   "said": "八倍压在四倍上，每平方厘米，扛两倍。",
+   "pause": 0.45
+  },
+  {
+   "id": "s1-5",
+   "text": "再翻一倍。",
+   "said": "再翻一倍。",
+   "pause": 0.35
+  },
+  {
+   "id": "s1-7",
+   "text": "再翻一倍。",
+   "said": "再翻一倍。",
+   "pause": 0.45
+  },
+  {
+   "id": "s1-8b",
+   "text": "512 倍，35.84 吨，扛 8 倍。",
+   "said": "五百一十二倍，三十五点八四吨，扛八倍。",
+   "pause": 0.45
+  },
+  {
+   "id": "g5b",
+   "text": "头顶到了 5 楼。5 楼的阿姨，我替你道过歉了。",
+   "said": "头顶到了五楼。五楼的阿姨，我替你道过歉了。",
+   "pause": 0.95
+  },
+  {
+   "id": "s1-10",
+   "text": "扛两倍，就是背着另一个你。扛 8 倍，背七个。",
+   "said": "扛两倍，就是背着另一个你。扛八倍，背七个。",
+   "pause": 0.45
+  },
+  {
+   "id": "g9",
+   "text": "第几天，骨头会扛不住？正片里，算给你看。",
+   "said": "第几天，骨头会扛不住？正片里，算给你看。",
+   "pause": 0.0
+  }
+ ]
+}

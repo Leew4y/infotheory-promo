@@ -1,0 +1,90 @@
+{
+ "version": 2,
+ "film": "grow1",
+ "frames": 1199,
+ "fps": 30,
+ "placements": "0baec8efb56e3e81c37553f029a25ffa7e15be7091160a760337529287a69c3d",
+ "lock": "beeaaee902b4b04e5df304672b555629d4021a90ef083a1143db8f3aa96a8750",
+ "music": {
+  "path": "out/grow1/music.wav",
+  "external": false,
+  "sha256": "c6ef67f225d638795658cb91ac940ca6f5ef55d6ebc3fa3308d8260a42eaf702"
+ },
+ "master": "2b939ea16144278b1ead7653c7cd5fd95263cce984a4d7428eb6a13d6b2f83e8",
+ "voice": "films/grow1/pixel_voice",
+ "cues": [
+  {
+   "t": 2.8333,
+   "kind": "stamp",
+   "day": 1
+  },
+  {
+   "t": 6.3,
+   "kind": "pop"
+  },
+  {
+   "t": 18.2,
+   "kind": "stamp",
+   "day": 2
+  },
+  {
+   "t": 19.6,
+   "kind": "stamp",
+   "day": 3
+  },
+  {
+   "t": 27.8333,
+   "kind": "pop"
+  },
+  {
+   "t": 29.2667,
+   "kind": "stamp",
+   "day": 1
+  },
+  {
+   "t": 38.5667,
+   "kind": "end"
+  },
+  {
+   "t": 17.326,
+   "kind": "tick",
+   "cue_t": 17.326
+  },
+  {
+   "t": 17.386,
+   "kind": "tick",
+   "cue_t": 17.326
+  },
+  {
+   "t": 25.0333,
+   "kind": "tick",
+   "cue_t": 25.0333
+  },
+  {
+   "t": 25.0933,
+   "kind": "tick",
+   "cue_t": 25.0333
+  },
+  {
+   "t": 25.1533,
+   "kind": "tick",
+   "cue_t": 25.0333
+  },
+  {
+   "t": 31.006,
+   "kind": "tick",
+   "cue_t": 31.006
+  },
+  {
+   "t": 33.2667,
+   "kind": "tick",
+   "cue_t": 33.2667
+  },
+  {
+   "t": 33.3467,
+   "kind": "tick",
+   "cue_t": 33.2667
+  }
+ ],
+ "made_with": "tools/grow1/pixel/sound.py (tools/grow1/sfx.py, audio/mix.py)"
+}

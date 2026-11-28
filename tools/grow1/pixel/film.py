@@ -2,9 +2,10 @@
 
     ~/envs/research/bin/python tools/grow1/pixel/film.py [--hook] [--shots t1,t2,...] [--out file.mp4]
 
-Without --shots: every frame (30 fps, the locked timeline's 1199 frames) piped to ffmpeg with v2's final mix
-(films/grow1/audio/master.wav: the voice and the effects, whose times this picture follows) into out/grow1_pixel.mp4
-(out/grow1_pixel_hook.mp4 with --hook). With --shots: PNG frames into out/grow1/pixel_shots/.
+Without --shots: every frame (30 fps, v2's timeline length, 1199 frames) piped to ffmpeg with the pixel cut's own mix
+(films/grow1/audio/master_pixel.wav, tools/grow1/pixel/sound.py: the new voice, films/grow1/pixel_voice/, and the
+effects at CUES) into out/grow1_pixel.mp4 (out/grow1_pixel_hook.mp4 with --hook). With --shots: PNG frames into
+out/grow1/pixel_shots/. The beats follow the new voice's lock: its line starts, speech spans and a few word onsets.
 Layout and numbers as tools/grow1/pixel/scenes2.py: a top readout bar (y 150-318), the scene standing on y 1320, the
 narrator's panel (y 1332-1548). frame(t) is a pure function of t.
 """
@@ -25,17 +26,21 @@ from scenes2 import grown, floor_labels, head_line, INK, AMBER, PAPER, REDC  # n
 FPS = 30
 TL = json.load(open(os.path.join(REPO, 'films', 'grow1', 'timeline.json'), encoding='utf-8'))
 NFR = TL['frames']
-LOCK = json.load(open(os.path.join(REPO, 'films', 'grow1', 'narration.lock.json'), encoding='utf-8'))['lines']
-NAR = json.load(open(os.path.join(REPO, 'films', 'grow1', 'narration.json'), encoding='utf-8'))['lines']
+# the pixel cut's own narration (the new voice): tools/grow1/pixel/voice_lock.py
+VOICE = os.path.join(REPO, 'films', 'grow1', 'pixel_voice')
+LOCK = json.load(open(os.path.join(VOICE, 'narration.lock.json'), encoding='utf-8'))['lines']
+NAR = json.load(open(os.path.join(VOICE, 'narration.json'), encoding='utf-8'))['lines']
+MASTER = os.path.join(REPO, 'films', 'grow1', 'audio', 'master_pixel.wav')   # tools/grow1/pixel/sound.py
 GY6 = 220          # the ground line in art px at 6x (page y 1320)
 HOOK = '--hook' in sys.argv
 
 # ---------------------------------------------------------------- the beats (film seconds)
-# line starts: the locked timeline (gap 0.2 s, s1-1 pause 0.3 s), as v2
+# line starts: each line's duration plus the pause after it (narration.json)
 _t, START = 0.0, {}
 for i, ln in enumerate(NAR):
     START[ln['id']] = round(_t, 3)
-    _t += LOCK[ln['id']]['duration'] + (ln.get('pause', 0.2) if i < len(NAR) - 1 else 0)
+    _t += LOCK[ln['id']]['duration'] + (ln['pause'] if i < len(NAR) - 1 else 0)
+assert all(abs(START[i] - LOCK[i]['start']) < 0.002 for i in START), 'line starts differ from the lock'
 
 
 def sp(i, k, end=False):
@@ -43,36 +48,59 @@ def sp(i, k, end=False):
     return START[i] + LOCK[i]['spans'][k][1 if end else 0]
 
 
+def at(i, s):
+    """Film seconds of s seconds into line i: a word inside a span, from the dips in its level (10 ms RMS)."""
+    return START[i] + s
+
+
 fr = lambda t: round(t * 30) / 30  # noqa: E731
-ST = [fr(sp('s1-1', 1, True) + 0.12), fr(sp('s1-4', 3, True) + 0.03), fr(sp('s1-7', 0, True) + 0.03)]   # day stamps
+# spans (narration.lock.json):  s1-1 [假如你每天长高一倍][我算过了]   g1 [第一天，三点四米][头顶到二楼]
+#   s1-2 [长、宽、厚][各翻一倍][体重八倍][五百六十公斤]   s1-3 [可骨头的截面][只有四倍]
+#   s1-4 [八倍压在四倍上][每平方厘米][扛两倍]   s1-5, s1-7 [再翻一倍]   s1-8b [五百一十二倍][三十五点八四吨][扛八倍]
+#   g5b [头顶到了五楼][五楼的阿姨][我替你道过歉了]   s1-10 [扛两倍][就是背着另一个你][扛八倍][背七个]
+#   g9 [第几天，骨头会扛不住][正片里，算给你看]
+# day stamps: day 1 after 「我算过了」, day 2 after 「扛两倍」, day 3 after the first 「再翻一倍」; so each 「再翻一倍」 is
+# said over the day it names, the stamp just before it (a stamp's sound must be clear of speech)
+ST = [fr(sp('s1-1', 1, True) + 0.12), fr(sp('s1-4', 2, True) + 0.03), fr(sp('s1-5', 0, True) + 0.08)]
 B = dict(
-    q=sp('s1-1', 1), h34=START['g1'] + 0.66, top2=START['g1'] + 1.62, pop2=5.4,
-    x8=sp('s1-2', 0), kg=sp('s1-2', 1), L=sp('s1-2', 2), Wd=sp('s1-2', 3), D=sp('s1-2', 4), all=sp('s1-2', 5),
-    sec=sp('s1-3', 0), wd2=sp('s1-3', 1), x4=sp('s1-3', 2),
-    wts=sp('s1-4', 0), fall=sp('s1-4', 1), cm=sp('s1-4', 2), r2=sp('s1-4', 2, True) + 0.03, carry2=sp('s1-4', 3),
-    again2=START['s1-5'], kid=ST[1] + 0.6, again3=START['s1-7'],
-    x512=sp('s1-8b', 0), t3584=sp('s1-8b', 1), cm3=sp('s1-8b', 2), x8s=sp('s1-8b', 3),
-    top5=sp('g5b', 0), close=sp('g5b', 0, True) - 0.12, pop5=821 / FPS, nb5=sp('g5b', 1), sorry=sp('g5b', 2),
-    apol=fr(sp('g5b', 2, True) + 0.03), col=START['s1-10'] + 0.58,
-    two=sp('s1-10', 0), you=sp('s1-10', 1), one=sp('s1-10', 2), eight=sp('s1-10', 3), seven=sp('s1-10', 4),
-    q9=sp('g9', 0), bone=sp('g9', 1), cant=sp('g9', 2), card=sp('g9', 3), tail=START['g9'] + LOCK['g9']['duration'],
+    q=sp('s1-1', 1), h34=at('g1', 0.83), top2=sp('g1', 1) + 0.15, pop2=fr(sp('g1', 1, True) + 0.05),
+    L=sp('s1-2', 0) + 0.1, Wd=at('s1-2', 0.53), D=at('s1-2', 0.93), all=sp('s1-2', 1), x8=sp('s1-2', 2), kg=sp('s1-2', 3),
+    sec=sp('s1-3', 0), wd2=sp('s1-3', 1), x4=at('s1-3', 2.05),
+    wts=sp('s1-4', 0), fall=at('s1-4', 0.56), cm=sp('s1-4', 1), r2=sp('s1-4', 1, True) + 0.03,
+    kid=ST[1] + 0.6, x4d=ST[1] + 0.9,
+    x512=sp('s1-8b', 0), t3584=sp('s1-8b', 1), cm3=sp('s1-8b', 2), x8s=sp('s1-8b', 2),
+    x8full=sp('s1-8b', 2) + 0.45, tick3=fr(sp('s1-8b', 2, True) + 0.05),
+    top5=sp('g5b', 0), close=sp('g5b', 0, True) - 0.12, pop5=fr(sp('g5b', 1, True) + 0.05), nb5=at('g5b', 1.86),
+    sorry=sp('g5b', 2), apol=fr(sp('g5b', 2, True) + 0.03), col=START['s1-10'] - 0.03,
+    two=sp('s1-10', 0), you=sp('s1-10', 1), one=at('s1-10', 1.49), eight=sp('s1-10', 2), seven=sp('s1-10', 3),
+    r2T=sp('s1-10', 0, True) + 0.03, tickT=fr(sp('s1-10', 2, True) + 0.03),
+    q9=sp('g9', 0), bone=at('g9', 0.79), cant=at('g9', 1.23), tail=START['g9'] + LOCK['g9']['duration'],
 )
-X8CUT = 5.87            # the cut from the section to the 8 little "你" (the uncle's 「？」 up from 5.40)
+# the word onsets inside spans (at(...)): g1 三 0.83; s1-2 宽 0.53, 厚 0.93; s1-3 四 2.05; s1-4 压 0.56;
+# g5b 阿姨 about 1.86; s1-10 另 1.49; g9 骨 0.79, 扛 1.23 (dips of 30-60 dB between the syllables)
+CUBECUT = B['pop2'] + 0.53   # the cut from the section to the blocks: the uncle's 「？」 stays 0.53 s
 PUSH0, PUSH1 = B['close'] - 0.06, B['close'] + 0.39   # the push-in to the 5th-floor window
 HOOK_END, REW0 = 1.7, 1.0                            # hook cut: day 3 to 1.0 s, the rewind 1.0-1.7 s
 SPEECH = [(START[i] + a, START[i] + b) for i in START for a, b in LOCK[i]['spans']]
+# the sound cues (tools/grow1/pixel/sound.py places the effects here; sfx.py's kinds). Day 1's gauge has two ticks:
+# the pause before 「扛两倍」 is 0.16 s (sfx.py keeps 0.02 s before and 0.06 s after every effect clear of speech)
+CUES = [dict(t=ST[0], kind='stamp', day=1), dict(t=B['pop2'], kind='pop'), dict(t=B['r2'] - 0.005, kind='gauge', dur=0.06),
+        dict(t=ST[1], kind='stamp', day=2), dict(t=ST[2], kind='stamp', day=3), dict(t=B['tick3'], kind='gauge', dur=0.12),
+        dict(t=B['pop5'], kind='pop'), dict(t=B['apol'], kind='stamp', day=1, extra=1),
+        dict(t=B['r2T'] - 0.005, kind='gauge', dur=0.0), dict(t=B['tickT'], kind='gauge', dur=0.08),
+        dict(t=fr(B['tail'] + 0.14), kind='end')]
 # the captions, phrase by phrase from the speech spans (each shown from where it is spoken, to the next)
 CAPS = [
-    (0.0, '你每天长高一倍'), (sp('s1-1', 1), '我算过了'),
-    (START['g1'], '第 1 天，3.4 米'), (START['g1'] + 1.45, '头顶到了 2 楼'),
-    (sp('s1-2', 0), '体重 8 倍，560 公斤'), (sp('s1-2', 2), '长、宽、厚，各翻一倍'),
-    (sp('s1-3', 0), '截面只算宽和厚：4 倍'),
-    (sp('s1-4', 0), '8 倍的体重'), (sp('s1-4', 1), '压在 4 倍的截面上'), (sp('s1-4', 2), '每平方厘米，扛两倍'),
+    (0.0, '假如你每天长高一倍'), (sp('s1-1', 1), '我算过了'),
+    (START['g1'], '第 1 天，3.4 米'), (sp('g1', 1), '头顶到 2 楼'),
+    (sp('s1-2', 0), '长、宽、厚，各翻一倍'), (sp('s1-2', 2), '体重 8 倍，560 公斤'),
+    (sp('s1-3', 0), '可骨头的截面'), (sp('s1-3', 1), '只有 4 倍'),
+    (sp('s1-4', 0), '8 倍压在 4 倍上'), (sp('s1-4', 1), '每平方厘米，扛两倍'),
     (START['s1-5'], '再翻一倍'), (START['s1-7'], '再翻一倍'),
-    (sp('s1-8b', 0), '512 倍，35.84 吨'), (sp('s1-8b', 2), '每平方厘米，8 倍'),
-    (sp('g5b', 0), '头顶到了 5 楼'), (sp('g5b', 1), '5 楼的邻居'), (sp('g5b', 2), '我替你道过歉了'),
-    (sp('s1-10', 0), '两倍，就是今天的你'), (sp('s1-10', 2), '背着另一个你'), (sp('s1-10', 3), '8 倍，背着七个'),
-    (sp('g9', 0), '第几天，骨头扛不住？'), (sp('g9', 3), '正片里算'),
+    (sp('s1-8b', 0), '512 倍，35.84 吨'), (sp('s1-8b', 2), '扛 8 倍'),
+    (sp('g5b', 0), '头顶到了 5 楼'), (sp('g5b', 1), '5 楼的阿姨'), (sp('g5b', 2), '我替你道过歉了'),
+    (sp('s1-10', 0), '扛两倍'), (sp('s1-10', 1), '就是背着另一个你'), (sp('s1-10', 2), '扛 8 倍，背七个'),
+    (sp('g9', 0), '第几天，骨头会扛不住？'), (sp('g9', 1), '正片里，算给你看'),
 ]
 _full = ''.join(ln['text'] for ln in NAR)
 _strip = lambda x: ''.join(ch for ch in x if ch not in '，、；：。？！ ')  # noqa: E731
@@ -254,7 +282,7 @@ def hud_at(d, t):
         day = 3 if t < REW0 else REWIND_DAY(t)
         state = dict(day=day, height={3: '13.6 米', 2: '6.8 米', 1: '3.4 米', 0: '1.7 米'}[day],
                      top={3: '5 楼', 2: '3 楼', 1: '2 楼', 0: None}[day])
-        text(d, (x0 + 26, y0 + 102), '假设：每天长高一倍，形状不变', 40, sw=0, fill=(207, 202, 192))
+        text(d, (x0 + 26, y0 + 102), '今天 1.7 米、70 公斤，一层楼 3 米', 40, sw=0, fill=(207, 202, 192))
     else:
         state = hud_state(t)
     day = state['day']
@@ -311,7 +339,7 @@ def hud_state(t):
     """What the readout bar says at t (the storyboard's 读数栏 column)."""
     if t >= B['col']:
         day = '?' if t >= B['q9'] else 'today'
-        load = lerp_load(t, [(B['one'] + 0.05, B['one'] + 0.4, 1, 2), (B['eight'], 33.875, 2, 8)])
+        load = lerp_load(t, [(B['two'] + 0.1, B['two'] + 0.45, 1, 2), (B['eight'], B['tickT'], 2, 8)])
         lab = {2: '×2', 8: '×8'}.get(round(load)) if abs(load - round(load)) < 0.05 and round(load) > 1 else None
         return dict(day=day, height='1.7 米', load=load, load_label=lab)
     if t >= ST[2]:
@@ -322,8 +350,8 @@ def hud_state(t):
             st['top'] = '5 楼'
         if t >= B['x512']:
             st['weight'] = '×512' + (' · 35.84 吨' if t >= B['t3584'] else '')
-        st['load'] = lerp_load(t, [(B['x8s'], 25.633, 4, 8)], 4)          # full at the tick (25.633)
-        st['load_label'] = '×8' if t >= 25.633 else ('×?' if t < B['x8s'] else None)
+        st['load'] = lerp_load(t, [(B['x8s'], B['x8full'], 4, 8)], 4)      # full on 「八倍」, before the tick's sound
+        st['load_label'] = '×8' if t >= B['x8full'] else ('×?' if t < B['x8s'] else None)
         return st
     if t >= ST[1]:
         st = dict(day=2)
@@ -333,8 +361,8 @@ def hud_state(t):
             st['top'] = '3 楼'
         if t >= ST[1] + 0.8:
             st['weight'] = '×64 · 4.48 吨'
-        st['load'] = lerp_load(t, [(B['again2'] + 0.89, B['again3'], 2, 4)], 2)   # 20.12-20.35, after 「再翻一倍」
-        st['load_label'] = '×4' if t >= B['again3'] else ('×?' if t < B['again2'] + 0.89 else None)
+        st['load'] = lerp_load(t, [(B['x4d'], B['x4d'] + 0.3, 2, 4)], 2)
+        st['load_label'] = '×4' if t >= B['x4d'] + 0.3 else ('×?' if t < B['x4d'] else None)
         return st
     st = dict(day=1)
     if t >= B['h34']:
@@ -349,7 +377,7 @@ def hud_state(t):
     return st
 
 
-def panel_at(im, d, t, card=False):
+def panel_at(im, d, t):
     """The narrator's panel: portrait (blinks, pushes her glasses, bows, holds up the stamp), name tag, caption."""
     if t >= B['tail']:
         return
@@ -363,7 +391,9 @@ def panel_at(im, d, t, card=False):
         dy = 18
     talking = any(a <= t < b_ for a, b_ in SPEECH) and int(t * 10) % 2 == 0
     b = bust('talk' if talking else 'deadpan').image(6)
-    im.paste(b, (x0 + 14, y1 - 8 - b.height + dy), b)
+    if dy > 0:                                   # the bow: cut at the panel's inner edge
+        b = b.crop((0, 0, b.width, b.height - dy))
+    im.paste(b, (x0 + 14, y1 - 8 - b.height), b)
     for s0 in ST + [B['apol']]:
         if s0 - 0.15 <= t < s0 + 0.35:
             d.rectangle((x0 + 150, y0 + 30, x0 + 186, y0 + 54), fill=PAL['T'])
@@ -371,11 +401,6 @@ def panel_at(im, d, t, card=False):
     d.rounded_rectangle((x0 + 18, y0 - 44, x0 + 196, y0 + 6), 10, fill=PAL['V'], outline=INK, width=5)
     text(d, (x0 + 46, y0 - 38), '核算员', 36, sw=0)
     cap = caption(t)
-    if card and t >= B['card']:
-        d.rounded_rectangle((x0 + 214, y0 + 40, x1 - 22, y1 - 40), 10, fill=PAPER, outline=INK, width=4)
-        d.rectangle((x0 + 214, y0 + 40, x0 + 226, y1 - 40), fill=REDC)
-        text(d, (x0 + 246, y0 + 76), '正片：《假如你每天长高一倍》', 44, fill=INK, sw=0)
-        return
     if cap:
         size = 58
         while d.textlength(cap, font=font(size)) > x1 - x0 - 250 and size > 40:
@@ -393,23 +418,21 @@ def scene_at(t):
         return rewind(t)
     if t < ST[0]:
         return day0(t)
-    if t < X8CUT:
+    if t < CUBECUT:
         return day1_section(t)
+    if t < B['x8']:
+        return cube_double(t)
     if t < B['kg']:
         return eight_you(t)
-    if t < B['L']:
-        return scale_560(t)
     if t < B['sec']:
-        return cube_double(t)
+        return scale_560(t)
     if t < B['wd2']:
         return xray(t)
-    if t < B['carry2']:
-        return desk_tiles(t)
     if t < ST[1]:
-        return day1_section(t)
+        return desk_tiles(t)
     if t < ST[2]:
         return day2_street(t)
-    if t < B['t3584']:
+    if t < B['x512']:
         return day3_building(t)
     if t < B['cm3']:
         return crowd512(t)
@@ -439,26 +462,33 @@ def day0(t):
 def day1_section(t):
     gy = GY6
     lit = 2 if t >= B['top2'] else None
-    ub = None
-    uf = 'surprised' if t >= B['top2'] + 0.1 else 'neutral'      # the uncle looks up as the head line comes in (4.4 s)
-    if t >= B['pop2']:
-        ub = '??' if t >= B['carry2'] else '?'
+    uf = 'surprised' if t >= B['top2'] + 0.1 else 'neutral'      # the uncle looks up as the head line comes in
     c, z, floors, (x0, x1) = section6(t, lit=lit, uncle_face=uf, uncle_bubble=None)
-    if ub:
+    if t >= B['pop2']:
         f2 = floors[1]; u = uncle(uf)
         bubble(c, 38, f2 - u.h - 1, '?')
-        if ub == '??':
-            bubble(c, 54, f2 - u.h - 5, '?')
+    # after the stamp the giant grows from 1.7 m (half) to 3.4 m in 0.5 s, feet on the ground, with the stamp's squash
     sx, sy = pop_scale(t, ST[0])
-    g = squash(grown(1), sx, sy)
+    k = 0.5 + 0.5 * ease((t - ST[0]) / 0.5)
+    g0 = grown(1)
+    g = squash(g0, sx * k, sy * k)
     gx = x1 + 6
-    c.blit(g, gx + (grown(1).w - g.w) // 2, gy - g.h + 1)
+    c.blit(g, gx + (g0.w - g.w) // 2, gy - g.h + 1)
     if t >= B['top2']:
         n = ease((t - B['top2']) / 0.3)
         head_line(c, gx + 6, round(gx + 6 - (gx + 6 - x0) * n), gy - 2 * 28)
 
     def paint(d, im):
         floor_labels(d, z, gy, x0, hi=2 if lit else None)
+        if t >= B['h34']:                       # 「三点四米」: a measuring rod from the ground to the head, then 「3.4 米」
+            u = ease((t - B['h34']) / 0.35)
+            rx, yb, yt = (gx + g0.w + 3) * z, (gy + 1) * z, (gy - g0.h + 1) * z
+            ytop = round(yb - (yb - yt) * u)
+            d.line((rx, yb, rx, ytop), fill=AMBER, width=8)
+            for yy in (yb, ytop):
+                d.line((rx - 18, yy, rx + 18, yy), fill=AMBER, width=8)
+            if u >= 1:
+                text(d, (rx + 28, (yb + yt) // 2), '3.4 米', 84, fill=AMBER, sw=8, anchor='lm')
     return c, z, paint
 
 
@@ -471,17 +501,17 @@ def eight_you(t):
     spots = [(0, 1, 0), (1, 1, 0), (0, 0, 0), (1, 0, 0), (0, 1, 1), (1, 1, 1), (0, 0, 1), (1, 0, 1)]
     placed = []
     for n, (i, j, l) in enumerate(spots):
-        t0 = X8CUT + 0.06 * n
+        t0 = B['x8'] + 0.035 * n                   # all eight down in about 0.4 s
         p = min(1, max(0, (t - t0) / 0.16))
         if p > 0:
             placed.append((j, l, i, p))
     for j, l, i, p in sorted(placed, key=lambda q: (-q[0], q[1], q[2])):
-        x = 27 + i * 16 + j * 7
-        foot = gy - 6 - j * 6 - l * 29
+        x = 26 + i * 16 + j * 9
+        foot = gy - 6 - j * 8 - l * 29
         c.blit(y1, x, round(foot - y1.h + 1 - (1 - p * p) * 50))
 
     def paint(d, im):
-        if t >= X8CUT + 0.55:
+        if t >= B['x8'] + 0.42:
             text(d, (540, 360), '= 8 个你', 66, sw=7, anchor='ma')
     return c, z, paint
 
@@ -561,6 +591,7 @@ def cube_double(t):
         cube(c, round(x0 + ox), round(y0 + oy), s)
 
     def paint(d, im):
+        text(d, ((x0 + s // 2) * z, (y0 - s // 2) * z), '你', 72, sw=7, anchor='mm')     # the first block is you
         if t >= B['L']:
             text(d, ((x0 - 3) * z, (y0 - s) * z), '长', 64, sw=7, anchor='rm')
         if t >= B['Wd']:
@@ -663,7 +694,7 @@ def desk_tiles(t):
 
 
 def day2_street(t):
-    c, z, boxes, gy = street(t, z=5, tree=False, kid_bang=B['kid'], uncle_bang=B['again3'] + 0.1, cat_turn=t >= B['again3'],
+    c, z, boxes, gy = street(t, z=5, tree=False, kid_bang=B['kid'], uncle_bang=B['x4d'], cat_turn=t >= B['x4d'],
                              lit=3 if t >= B['kid'] else None)
     sx, sy = pop_scale(t, ST[1])
     g0 = grown(2); g = squash(g0, sx, sy)
@@ -691,13 +722,11 @@ def day3_building(t):
 
     def paint(d, im):
         floor_labels(d, z, gy, x0, hi=5 if lit else None)
-        if B['x512'] <= t < B['x512'] + 1.1:
-            text(d, ((gx + 4) * z, (gy - 120) * z), '衣服：64 件拼 1 件', 44, sw=6)
     return c, z, paint
 
 
 def crowd512(t):
-    """35.84 吨 = 512 个你: eight blocks of 64 little "你" (8 x 8), the blocks filling in one after another (6x).
+    """512 倍 = 512 个你 (= 35.84 吨): eight blocks of 64 little "你" (8 x 8), filling in one after another (6x).
     Each little one is 3 x 7 art px: hair, face, white shirt, blue trousers, like the big one."""
     z = 6
     c, gy = desk_room(z)
@@ -707,7 +736,7 @@ def crowd512(t):
     BX, BY = [8 + k * 37 for k in range(4)], [55, 130]
     shown = 0
     for b in range(8):
-        tb = B['t3584'] + 0.1 * b
+        tb = B['x512'] + 0.1 * b
         if t < tb:
             continue
         fill = ease((t - tb) / 0.25)
@@ -718,16 +747,16 @@ def crowd512(t):
                 break
             c.blit(tiny, bx + (i % 8) * 4, by + (i // 8) * 8)
             shown += 1
-    if t >= B['t3584'] + 1.1:
+    if t >= B['x512'] + 1.1:
         assert shown == 512, shown
 
     def paint(d, im):
         for b in range(8):
-            if t >= B['t3584'] + 0.1 * b + 0.25:
+            if t >= B['x512'] + 0.1 * b + 0.25:
                 bx, by = BX[b % 4], BY[b // 4]
                 text(d, ((bx + 15) * z, (by + 66) * z), '64', 38, sw=5, anchor='ma')
-        if t >= B['t3584'] + 0.9:
-            text(d, (468, 1220), '= 512 个你', 64, sw=7, anchor='ma')
+        if t >= B['x512'] + 0.9:
+            text(d, (468, 1220), '= 512 个你' + (' = 35.84 吨' if t >= B['t3584'] else ''), 64, sw=7, anchor='ma')
     return c, z, paint
 
 
@@ -826,8 +855,10 @@ def today(t):
             text(d, ((cx + 27) * z, (gy - 19) * z), '← 一格', 42, sw=6, anchor='lm')
             text(d, ((cx + 27) * z, (gy - 8) * z), '骨头截面', 42, sw=6, anchor='lm')
         if t >= B['cant'] + 0.35:
-            k = 1 + 0.3 * (1 - ease((t - B['cant'] - 0.35) / 0.15))
-            text(d, ((cx + 34) * z, (gy - 62) * z), '？', int(110 * k), fill=REDC, sw=8, anchor='mm')
+            u = t - B['cant'] - 0.35
+            k = 1 + 0.3 * (1 - ease(u / 0.15))
+            bob = round(10 * math.sin(2 * math.pi * u / 0.9)) if u > 0.15 else 0      # a slow bob, so the end is not still
+            text(d, ((cx + 34) * z, (gy - 62) * z + bob), '？', int(110 * k), fill=REDC, sw=8, anchor='mm')
     return c, z, paint
 
 
@@ -896,15 +927,18 @@ def frame(t):
         return im
     load_pop(d, t)
     hud_at(d, t)
-    panel_at(im, d, t, card=True)
+    panel_at(im, d, t)
     return im
 
 
-# (from, to, bar move (a, b, from, to), the bar's start value, the box's top y): day 1 at 17.76, day 3 at 25.633,
-# today at 33.875; each finished 「×N」 stays >= 0.5 s. Day 3's box sits lower, clear of 5 楼 and the head line.
+# (from, to, bar move (a, b, from, to), the bar's start value, the box's top y): day 1's 「×2」 after 「每平方厘米」,
+# today's on 「两倍」 (its tick after the phrase), day 3 full on 「八倍」, today's 「×8」 at its tick; each finished 「×N」
+# stays >= 0.5 s.
+# Day 3's box sits lower, clear of 5 楼 and the head line, and is gone before 「头顶到了五楼」.
 LOAD_POPS = [(B['r2'] - 0.06, B['r2'] + 0.85, (B['r2'], B['r2'] + 0.26, 1, 2), 1, 330),
-             (B['x8s'] - 0.06, 25.633 + 0.55, (B['x8s'], 25.633, 4, 8), 4, 690),
-             (B['eight'] - 0.06, 33.875 + 0.55, (B['eight'], 33.875, 2, 8), 2, 330)]
+             (B['x8s'] - 0.06, min(B['x8full'] + 0.75, B['top5'] - 0.03), (B['x8s'], B['x8full'], 4, 8), 4, 690),
+             (B['two'] - 0.03, B['r2T'] + 0.6, (B['two'] + 0.1, B['two'] + 0.45, 1, 2), 1, 330),
+             (B['eight'] - 0.06, B['tickT'] + 0.55, (B['eight'], B['tickT'], 2, 8), 2, 330)]
 
 
 def load_pop(d, t):
@@ -927,7 +961,7 @@ def load_pop(d, t):
 
 
 def tail_card(im, d, t):
-    """38.46 s: 「你押第几天？」 as the main thing, the 核算单 small under it."""
+    """After the voice: 「你押第几天？」 as the main thing, the 核算单 small under it."""
     d.rectangle((0, 0, 1080, 1920), fill=PAL['C'])
     for y in range(0, 1920, 36):
         d.line((0, y, 1080, y), fill=PAL['c'], width=2)
@@ -959,8 +993,8 @@ def main():
         print(out)
         return
     out = args[args.index('--out') + 1] if '--out' in args else os.path.join(REPO, 'out', 'grow1_pixel' + ('_hook' if HOOK else '') + '.mp4')
-    audio = os.path.join(REPO, 'films', 'grow1', 'audio', 'master.wav')
-    cmd = ['ffmpeg', '-v', 'error', '-y', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', '1080x1920', '-r', str(FPS), '-i', '-',
+    audio = MASTER
+    cmd =['ffmpeg', '-v', 'error', '-y', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', '1080x1920', '-r', str(FPS), '-i', '-',
            '-i', audio, '-map', '0:v', '-map', '1:a', '-c:v', 'libx264', '-preset', 'slow', '-crf', '16', '-pix_fmt', 'yuv420p',
            '-x264-params', 'keyint=60', '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709',
            '-c:a', 'aac', '-b:a', '256k', '-shortest', '-movflags', '+faststart', out]
