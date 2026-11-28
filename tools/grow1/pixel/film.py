@@ -52,7 +52,7 @@ B = dict(
     wts=sp('s1-4', 0), fall=sp('s1-4', 1), cm=sp('s1-4', 2), r2=sp('s1-4', 2, True) + 0.03, carry2=sp('s1-4', 3),
     again2=START['s1-5'], kid=ST[1] + 0.6, again3=START['s1-7'],
     x512=sp('s1-8b', 0), t3584=sp('s1-8b', 1), cm3=sp('s1-8b', 2), x8s=sp('s1-8b', 3),
-    top5=sp('g5b', 0), close=sp('g5b', 0, True) - 0.12, pop5=27.3667, nb5=sp('g5b', 1), sorry=sp('g5b', 2),
+    top5=sp('g5b', 0), close=sp('g5b', 0, True) - 0.12, pop5=821 / FPS, nb5=sp('g5b', 1), sorry=sp('g5b', 2),
     apol=fr(sp('g5b', 2, True) + 0.03), col=START['s1-10'] + 0.58,
     two=sp('s1-10', 0), you=sp('s1-10', 1), one=sp('s1-10', 2), eight=sp('s1-10', 3), seven=sp('s1-10', 4),
     q9=sp('g9', 0), bone=sp('g9', 1), cant=sp('g9', 2), card=sp('g9', 3), tail=START['g9'] + LOCK['g9']['duration'],
@@ -657,13 +657,13 @@ def desk_tiles(t):
             text(d, ((cx0 + 2 * cw + 1) * z, (yf - ch // 2) * z), '宽 ×2', 50, sw=6, anchor='lm')
         if kd and t < B['wts']:
             text(d, ((cx0 + 2 * cw + 1) * z, (yf - 3 * ch // 2) * z), '厚 ×2', 50, sw=6, anchor='lm')
-        if t >= B['wts'] and not (LOAD_POPS[0][0] <= t < LOAD_POPS[0][1]):
+        if t >= B['wts'] and not (LOAD_POPS[0][0] <= t < LOAD_POPS[0][1]):   # the big bar covers it
             text(d, (cx0 * z, 334), '8 倍的体重', 60, sw=7)
     return c, z, paint
 
 
 def day2_street(t):
-    c, z, boxes, gy = street(t, z=5, kid_bang=B['kid'], uncle_bang=B['again3'] + 0.1, cat_turn=t >= B['again3'],
+    c, z, boxes, gy = street(t, z=5, tree=False, kid_bang=B['kid'], uncle_bang=B['again3'] + 0.1, cat_turn=t >= B['again3'],
                              lit=3 if t >= B['kid'] else None)
     sx, sy = pop_scale(t, ST[1])
     g0 = grown(2); g = squash(g0, sx, sy)
@@ -900,29 +900,30 @@ def frame(t):
     return im
 
 
-# (from, to, bar moves (a, b, from, to), the bar's start value): day 1 at 17.76, day 3 at 25.633, today at 33.875
-LOAD_POPS = [(B['r2'] - 0.06, B['r2'] + 0.85, (B['r2'], B['r2'] + 0.26, 1, 2), 1),
-             (B['x8s'] - 0.06, B['top5'], (B['x8s'], 25.633, 4, 8), 4),
-             (B['eight'] - 0.06, B['seven'], (B['eight'], 33.875, 2, 8), 2)]
+# (from, to, bar move (a, b, from, to), the bar's start value, the box's top y): day 1 at 17.76, day 3 at 25.633,
+# today at 33.875; each finished 「×N」 stays >= 0.5 s. Day 3's box sits lower, clear of 5 楼 and the head line.
+LOAD_POPS = [(B['r2'] - 0.06, B['r2'] + 0.85, (B['r2'], B['r2'] + 0.26, 1, 2), 1, 330),
+             (B['x8s'] - 0.06, 25.633 + 0.55, (B['x8s'], 25.633, 4, 8), 4, 690),
+             (B['eight'] - 0.06, 33.875 + 0.55, (B['eight'], 33.875, 2, 8), 2, 330)]
 
 
 def load_pop(d, t):
-    """At each step of the load bar, the bar drawn big under the readout: 「每平方厘米」, 8 cells, 「×N」."""
-    for a, b, move, v0 in LOAD_POPS:
+    """At each step of the load bar, the bar drawn big: 「每平方厘米」, 8 cells, 「×N」 (box 840 x 200)."""
+    for a, b, move, v0, y0 in LOAD_POPS:
         if a <= t < b:
             v = lerp_load(t, [move], v0)
             done = t >= move[1]
-            x0, y0, x1, y1 = 70, 360, 910, 600
+            x0, x1, y1 = 70, 910, y0 + 200
             d.rounded_rectangle((x0, y0, x1, y1), 24, fill=INK, outline=PAPER, width=6)
-            text(d, (x0 + 34, y0 + 22), '每平方厘米', 54, sw=0, fill=PAPER)
+            text(d, (x0 + 30, y0 + 16), '每平方厘米', 48, sw=0, fill=PAPER)
             full, part = int(v), v - int(v)
             for i in range(8):
-                cx = x0 + 34 + i * 66
-                d.rectangle((cx, y0 + 104, cx + 54, y0 + 206), fill=REDC if i < full else (60, 58, 68))
+                cx = x0 + 30 + i * 64
+                d.rectangle((cx, y0 + 86, cx + 52, y0 + 176), fill=REDC if i < full else (60, 58, 68))
                 if i == full and part > 0:
-                    d.rectangle((cx, y0 + 206 - 102 * part, cx + 54, y0 + 206), fill=REDC)
+                    d.rectangle((cx, y0 + 176 - 90 * part, cx + 52, y0 + 176), fill=REDC)
             if done:
-                text(d, (x1 - 30, y0 + 156), f'×{move[3]}', 120, sw=0, fill=REDC, anchor='rm')
+                text(d, (x1 - 28, y0 + 104), f'×{move[3]}', 116, sw=0, fill=REDC, anchor='rm')
 
 
 def tail_card(im, d, t):
